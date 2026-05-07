@@ -1,0 +1,2152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Rossi Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --navy:#0b1a2e;--gold:#c8922a;--gold2:#e0aa44;
+  --cream:#f8f4ee;--cream2:#efe9df;
+  --text:#1a1a2a;--muted:#6e7a8a;
+  --green:#1a7a4a;--gbg:#e6f5ee;
+  --red:#b02020;--rbg:#fdeaea;
+  --orange:#c05010;--obg:#fff0e6;
+  --white:#fff;--border:#e4ddd3;
+  --sh:0 2px 12px rgba(11,26,46,.09);
+  --sh2:0 6px 28px rgba(11,26,46,.16);
+}
+body{font-family:'Outfit',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+.login-box{background:var(--white);border-radius:18px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,.3);}
+.login-logo{font-family:'Playfair Display',serif;font-size:28px;color:var(--navy);text-align:center;margin-bottom:4px;}
+.login-logo em{color:var(--gold);font-style:normal;}
+.login-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:28px;letter-spacing:.5px;}
+.login-err{background:var(--rbg);color:var(--red);border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px;display:none;}
+
+/* HEADER */
+.hdr{background:var(--navy);height:52px;display:flex;align-items:center;padding:0 16px;position:sticky;top:0;z-index:100;gap:12px;}
+.logo{font-family:'Playfair Display',serif;font-size:18px;color:#fff;flex:1;}
+.logo em{color:var(--gold2);font-style:normal;}
+.hdr-user{font-size:12px;color:rgba(255,255,255,.5);}
+.btn-logout{background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.6);padding:5px 10px;border-radius:7px;font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;}
+.btn-logout:hover{background:rgba(255,255,255,.2);color:#fff;}
+
+/* TABS */
+.tabs{background:#0f2035;display:flex;overflow-x:auto;scrollbar-width:none;border-bottom:2px solid rgba(200,146,42,.2);}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:11px 15px;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,.35);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-2px;transition:.15s;}
+.tab.on{color:var(--gold2);border-bottom-color:var(--gold);}
+
+/* PAGE */
+.page{display:none;padding:14px;max-width:800px;margin:0 auto;}
+.page.on{display:block;}
+
+/* CARD */
+.card{background:var(--white);border-radius:13px;box-shadow:var(--sh);overflow:hidden;margin-bottom:13px;}
+.ch{background:var(--navy);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.ch h2{font-family:'Playfair Display',serif;font-size:16px;color:#fff;}
+.cb{padding:15px;}
+
+/* FORM */
+.sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:13px 0 7px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+.fg{display:flex;flex-direction:column;gap:3px;margin-bottom:9px;}
+.fg label{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
+.fg input,.fg select,.fg textarea{border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;font-family:'Outfit',sans-serif;color:var(--text);background:var(--cream);outline:none;width:100%;transition:.15s;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold);background:var(--white);}
+.fg textarea{resize:vertical;min-height:56px;}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;}
+
+/* INFOBOX */
+.ibox{background:var(--cream2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;margin-bottom:9px;}
+.ibox strong{color:var(--gold);}
+.ibox.g{background:var(--gbg);border-color:#a0d8b8;}
+
+/* BOTONES */
+.btn{padding:9px 17px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:'Outfit',sans-serif;transition:.15s;}
+.btn-gold{background:var(--gold);color:#fff;}
+.btn-gold:hover{background:var(--gold2);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--navy);color:var(--navy);}
+.btn-green{background:var(--gbg);color:var(--green);border:1px solid #a0d8b8;}
+.btn-green:hover{background:var(--green);color:#fff;}
+.btn-danger{background:var(--rbg);color:var(--red);border:1px solid #f0c0c0;}
+.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-blue{background:#e8f0fe;color:#1a4a9a;border:1px solid #b0c8f0;}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:7px;}
+.btn-row{display:flex;gap:7px;justify-content:flex-end;margin-top:13px;flex-wrap:wrap;}
+
+/* BUSCADOR */
+.sb{position:relative;}
+.sb-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:14px;}
+.sb input{padding-left:34px !important;}
+.ac{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--white);border:1.5px solid var(--gold);border-radius:10px;box-shadow:var(--sh2);z-index:300;max-height:210px;overflow-y:auto;display:none;}
+.ac.on{display:block;}
+.ac-row{padding:9px 13px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.ac-row:hover{background:var(--cream2);}
+.ac-row:last-child{border-bottom:none;}
+.ac-nom{font-size:13px;font-weight:500;}
+.ac-sub{font-size:11px;color:var(--muted);}
+.ac-p{font-size:13px;font-weight:700;color:var(--gold);white-space:nowrap;margin-left:8px;}
+
+/* TABLA */
+.tbl{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{background:var(--navy);}
+thead th{padding:8px 11px;text-align:left;color:rgba(255,255,255,.7);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+tbody tr{border-bottom:1px solid #ede8e0;}
+tbody tr:hover{background:var(--cream2);}
+td{padding:9px 11px;vertical-align:middle;}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 7px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;}
+.b-ef{background:#e6f5ee;color:#1a7a4a;}
+.b-tr{background:#e3f0ff;color:#1a5fb4;}
+.b-tc{background:#fff3e0;color:#c07a00;}
+.b-mp{background:#e8f8f0;color:#009168;}
+.b-deb{background:#f3e8ff;color:#7a30a0;}
+.b-cp{background:#f0e8ff;color:#6030a0;}
+
+/* PILLS */
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px;}
+.pill{padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:var(--white);color:var(--muted);transition:.13s;}
+.pill.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+/* CUOTAS */
+.cuota{display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:8px;margin-bottom:5px;border:1px solid var(--border);}
+.cuota.pagada{background:var(--gbg);border-color:#a0d8b8;}
+.cuota.vencida{background:var(--rbg);border-color:#f0c0c0;}
+.cuota.proxima{background:var(--obg);border-color:#f0c890;}
+.cuota.pendiente{background:var(--cream2);}
+.cn{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.pagada .cn{background:var(--green);color:#fff;}
+.vencida .cn{background:var(--red);color:#fff;}
+.proxima .cn{background:var(--orange);color:#fff;}
+.pendiente .cn{background:var(--muted);color:#fff;}
+
+/* CREDITO CARDS */
+.cr-card{background:var(--white);border-radius:12px;box-shadow:var(--sh);padding:13px;margin-bottom:10px;border-left:4px solid var(--gold);}
+.cr-card.v{border-left-color:var(--red);}
+.cr-card.p{border-left-color:var(--orange);}
+
+/* LISTA PRECIOS */
+.prod-fila{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--border);}
+.prod-fila:last-child{border-bottom:none;}
+.prod-fila:hover{background:var(--cream2);}
+.pf-nom{flex:1;}
+.pf-prov{font-size:11px;color:var(--muted);}
+.pf-precio{font-family:'Playfair Display',serif;font-size:15px;color:var(--navy);white-space:nowrap;min-width:90px;text-align:right;}
+
+/* ADMIN */
+.user-card{background:var(--white);border-radius:12px;box-shadow:var(--sh);padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+.user-avatar{width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;flex-shrink:0;}
+.user-info{flex:1;}
+.user-nombre{font-weight:600;font-size:14px;}
+.user-rol{font-size:12px;color:var(--muted);}
+.rol-badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+.rol-admin{background:#fff0cc;color:#a07000;}
+.rol-local{background:#e3f0ff;color:#1a5fb4;}
+.rol-vendedor{background:var(--cream2);color:var(--muted);}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-bottom:13px;}
+.stat{background:var(--white);border-radius:11px;padding:12px;box-shadow:var(--sh);border-top:3px solid var(--gold);}
+.stat.v{border-top-color:var(--green);}
+.stat.r{border-top-color:var(--red);}
+.stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:2px;}
+.stat-v{font-family:'Playfair Display',serif;font-size:19px;color:var(--navy);}
+
+/* OVERLAY */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:none;align-items:center;justify-content:center;padding:12px;}
+.overlay.on{display:flex;}
+.modal{background:var(--white);border-radius:15px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh2);}
+.mh{background:var(--navy);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-radius:15px 15px 0 0;position:sticky;top:0;}
+.mh h3{font-family:'Playfair Display',serif;color:#fff;font-size:16px;}
+.mx{color:rgba(255,255,255,.45);cursor:pointer;font-size:22px;line-height:1;}
+.mb{padding:15px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:28px 14px;color:var(--muted);}
+.empty-ico{font-size:30px;margin-bottom:7px;}
+
+/* TOAST */
+.toast{position:fixed;bottom:16px;right:16px;background:var(--navy);color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:var(--sh2);transform:translateY(80px);opacity:0;transition:.3s;z-index:9999;border-left:3px solid var(--gold);}
+.toast.on{transform:translateY(0);opacity:1;}
+
+@media(max-width:560px){.r2,.r3{grid-template-columns:1fr;}.stats{grid-template-columns:1fr 1fr;}.page{padding:10px;}}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Rossi <em>Home</em></div>
+    <div class="login-sub">Sistema de Ventas</div>
+    <div class="login-err" id="login-err">Usuario o contraseña incorrectos</div>
+    <div class="fg"><label>Usuario</label><input type="text" id="login-user" placeholder="Tu nombre" autocapitalize="words"></div>
+    <div class="fg"><label>Contraseña</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn btn-gold" style="width:100%;margin-top:8px;" onclick="doLogin()">Ingresar →</button>
+  </div>
+</div>
+
+<!-- ══ HEADER ══ -->
+<div id="app-hdr" style="display:none;">
+  <div class="hdr">
+    <div class="logo">Rossi <em>Home</em></div>
+    <span id="sync-status" style="font-size:11px;color:rgba(255,255,255,.45);flex:1;text-align:center;"></span>
+    <span class="hdr-user" id="hdr-user"></span>
+    <button class="btn-logout" onclick="doLogout()">Salir</button>
+  </div>
+  <div class="tabs" id="tabs-bar"></div>
+</div>
+
+<!-- ══ PÁGINAS ══ -->
+<div id="app-pages" style="display:none;">
+
+  <!-- NUEVA VENTA -->
+  <div class="page" id="pg-venta">
+  <div class="card">
+    <div class="ch"><h2 id="frm-titulo">🛒 Nueva Venta</h2></div>
+    <div class="cb">
+      <div class="sec">Datos de la venta</div>
+      <div class="r2">
+        <div class="fg"><label>Fecha</label><input type="date" id="f-fecha"></div>
+        <div class="fg"><label>Vendedor/a</label><select id="f-vend"></select></div>
+      </div>
+      <div class="fg">
+        <label>Forma de pago</label>
+        <select id="f-pago" onchange="onPago()">
+          <option value="">Seleccionar…</option>
+          <optgroup label="💵 Efectivo">
+            <option value="EFECTIVO">Efectivo</option>
+          </optgroup>
+          <optgroup label="🔁 Transferencia">
+            <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
+            <option value="TRANSF_FLEX">Transferencia → Flex</option>
+            <option value="TRANSF_ROSA">Transferencia → Rosa</option>
+            <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
+            <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
+          </optgroup>
+          <optgroup label="💳 Tarjeta de Crédito">
+            <option value="TC1">TC 1 cuota</option>
+            <option value="TC2">TC 2 cuotas</option>
+            <option value="TC3">TC 3 cuotas</option>
+            <option value="TC6">TC 6 cuotas</option>
+            <option value="TC9">TC 9 cuotas</option>
+            <option value="TC12">TC 12 cuotas</option>
+          </optgroup>
+          <optgroup label="💳 Mercado Pago">
+            <option value="DEBITO">Tarjeta de Débito</option>
+            <option value="PREPAGA">Tarjeta Prepaga</option>
+            <option value="QR_MP">QR Mercado Pago</option>
+            <option value="LINK_MP">Link de Mercado Pago</option>
+          </optgroup>
+          <optgroup label="📋 Crédito Personal">
+            <option value="CP2">Anticipo + CP 2 cuotas</option>
+            <option value="CP3">Anticipo + CP 3 cuotas</option>
+            <option value="CP6">Anticipo + CP 6 cuotas</option>
+            <option value="CP9">Anticipo + CP 9 cuotas</option>
+            <option value="CP12">Anticipo + CP 12 cuotas</option>
+          </optgroup>
+        </select>
+      </div>
+      <div id="blk-tc" style="display:none;"><div class="ibox" id="tc-info"></div></div>
+      <div id="blk-cp" style="display:none;">
+        <div style="background:var(--cream2);border-radius:10px;padding:13px;margin-bottom:9px;">
+          <div class="sec" style="margin-top:0;">Configuración del crédito</div>
+          <!-- Precio de lista y anticipo -->
+          <div class="r2">
+            <div class="fg">
+              <label>Precio de lista ($)</label>
+              <input type="number" id="cp-lista" placeholder="0" min="0" oninput="recalcCP()">
+            </div>
+            <div class="fg">
+              <label>% Anticipo</label>
+              <select id="cp-pct-ant" onchange="recalcCP()">
+                <option value="50">50% (default)</option>
+                <option value="40">40%</option>
+                <option value="30">30%</option>
+                <option value="0">Monto libre</option>
+              </select>
+            </div>
+          </div>
+          <div class="r2">
+            <div class="fg">
+              <label>Monto anticipo ($)</label>
+              <input type="number" id="cp-ant" placeholder="0" min="0" oninput="recalcCP()">
+            </div>
+            <div class="fg">
+              <label>Fecha pago anticipo</label>
+              <input type="date" id="cp-fecha-ant">
+            </div>
+          </div>
+          <!-- Cuotas -->
+          <div class="r3">
+            <div class="fg">
+              <label>Cant. cuotas</label>
+              <select id="cp-ncuotas" onchange="recalcCP()">
+                <option value="2">2 cuotas</option>
+                <option value="3">3 cuotas</option>
+                <option value="6">6 cuotas</option>
+                <option value="9">9 cuotas</option>
+                <option value="12">12 cuotas</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Frecuencia</label>
+              <select id="cp-freq" onchange="recalcCP()">
+                <option value="mensual">Mensual</option>
+                <option value="quincenal">Quincenal</option>
+                <option value="semanal">Semanal</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Fecha 1ra cuota</label>
+              <input type="date" id="cp-fecha1">
+            </div>
+          </div>
+          <!-- Resumen calculado -->
+          <div class="ibox" id="cp-resumen" style="display:none;"></div>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Producto</label>
+        <div class="sb">
+          <span class="sb-ico">🔍</span>
+          <input type="text" id="f-prod" placeholder="Buscá o escribí libremente…" autocomplete="off" oninput="buscarProd()">
+          <div class="ac" id="prod-ac"></div>
+        </div>
+      </div>
+      <div class="fg"><label>Precio de venta ($)</label><input type="number" id="f-precio" placeholder="0" min="0" oninput="recalc()"></div>
+      <input type="number" id="f-costo" style="display:none;" min="0">
+      <div class="sec" style="margin-top:15px;">Datos del cliente</div>
+      <div class="r2">
+        <div class="fg"><label>Apellido</label><input type="text" id="f-apellido"></div>
+        <div class="fg"><label>Nombre</label><input type="text" id="f-nombre"></div>
+      </div>
+      <div class="r3">
+        <div class="fg"><label>DNI</label><input type="text" id="f-dni"></div>
+        <div class="fg"><label>Teléfono</label><input type="text" id="f-tel"></div>
+        <div class="fg"><label>Dirección</label><input type="text" id="f-dir"></div>
+      </div>
+      <div class="fg"><label>Observaciones</label><textarea id="f-obs"></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="limpiar()">Limpiar</button>
+        <button class="btn btn-gold" id="btn-guardar" onclick="guardar()">✓ Guardar Venta</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- VENTAS -->
+  <div class="page" id="pg-ventas">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <div class="pills" id="pills-vend" style="margin-bottom:0;"></div>
+      <div id="ventas-acciones" style="display:flex;gap:6px;"></div>
+    </div>
+    <div class="stats" id="stats-ventas"></div>
+    <div class="card">
+      <div class="ch"><h2>📋 Ventas</h2><span id="cnt-ventas" style="font-size:11px;color:rgba(255,255,255,.4);"></span></div>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>#</th><th>Fecha</th><th>Vend.</th><th>Producto</th><th>Precio</th><th>Pago</th><th>Cliente</th><th></th></tr></thead>
+          <tbody id="tbody-ventas"></tbody>
+        </table>
+        <div class="empty" id="empty-ventas" style="display:none;"><div class="empty-ico">🛍️</div><p>Sin ventas todavía</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRÉDITOS -->
+  <div class="page" id="pg-creditos">
+    <div class="pills">
+      <button class="pill on" onclick="filtroCredito('todas',this)">Todas</button>
+      <button class="pill" onclick="filtroCredito('anticipo',this)" style="color:var(--orange);">⏳ Anticipo pend.</button>
+      <button class="pill" onclick="filtroCredito('vencidas',this)" style="color:var(--red);">🔴 Vencidas</button>
+      <button class="pill" onclick="filtroCredito('proximas',this)" style="color:var(--orange);">🟡 Próx. 7d</button>
+      <button class="pill" onclick="filtroCredito('pendientes',this)">⬜ Pendientes</button>
+      <button class="pill" onclick="filtroCredito('cobradas',this)" style="color:var(--green);">✅ Al día</button>
+    </div>
+    <div class="stats" id="stats-cred"></div>
+    <div id="cred-list"></div>
+    <div class="empty" id="empty-cred" style="display:none;"><div class="empty-ico">✅</div><p>Sin créditos activos</p></div>
+  </div>
+
+  <!-- LISTA DE PRECIOS -->
+  <div class="page" id="pg-precios">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:11px;flex-wrap:wrap;">
+      <input type="text" id="precio-q" placeholder="🔍 Buscar producto…" oninput="renderPrecios()"
+        style="border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;flex:1;min-width:160px;background:var(--white);">
+      <button class="btn btn-gold btn-sm" id="btn-add-prod" onclick="abrirAddProd()">＋ Agregar</button>
+    </div>
+    <div class="card">
+      <div class="ch"><h2>💰 Lista de Precios</h2><span id="cnt-precios" style="font-size:11px;color:rgba(255,255,255,.4);"></span></div>
+      <div id="lista-precios"></div>
+      <div class="empty" id="empty-precios" style="display:none;"><div class="empty-ico">💰</div><p>Sin productos</p></div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div class="page" id="pg-admin">
+    <div class="card">
+      <div class="ch"><h2>⚙️ Panel de Administración</h2></div>
+      <div class="cb">
+        <div class="sec">Usuarios del sistema</div>
+        <div id="admin-usuarios"></div>
+        <div style="margin-top:14px;">
+          <button class="btn btn-gold btn-sm" onclick="abrirCambiarPass()">🔑 Cambiar contraseña</button>
+        </div>
+        <div class="sec" style="margin-top:16px;">Estadísticas generales</div>
+        <div class="stats" id="stats-admin"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESUPUESTOS -->
+  <div class="page" id="pg-presupuestos">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:8px;">
+      <div class="pills" style="margin-bottom:0;">
+        <button class="pill on" onclick="setFiltroPres('todos',this)">Todos</button>
+        <button class="pill" onclick="setFiltroPres('pendiente',this)">⏳ Pendientes</button>
+        <button class="pill" onclick="setFiltroPres('concretado',this)" style="color:var(--green);">✅ Concretados</button>
+        <button class="pill" onclick="setFiltroPres('no_concretado',this)" style="color:var(--red);">❌ No concretados</button>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <button class="btn btn-gold btn-sm" onclick="abrirPres(1)">＋ Con Formas de Pago</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirPres(2)">＋ Tradicional</button>
+      </div>
+    </div>
+    <div id="pres-list"></div>
+    <div class="empty" id="empty-pres" style="display:none;"><div class="empty-ico">📄</div><p>Sin presupuestos todavía</p></div>
+  </div>
+
+</div>
+
+<!-- ══ MODALES ══ -->
+<div class="overlay" id="ovl-det" onclick="cM('ovl-det',event)">
+  <div class="modal"><div class="mh"><h3 id="det-titulo">Detalle</h3><span class="mx" onclick="cM('ovl-det')">✕</span></div><div class="mb" id="det-body"></div></div>
+</div>
+
+<!-- Modal cobrar cuota/anticipo -->
+<div class="overlay" id="ovl-cobrar" onclick="cM('ovl-cobrar',event)">
+  <div class="modal" style="max-width:460px;">
+    <div class="mh"><h3 id="cobrar-titulo">Registrar Cobro</h3><span class="mx" onclick="cM('ovl-cobrar')">✕</span></div>
+    <div class="mb">
+      <div class="ibox" id="cobrar-info"></div>
+      <div class="fg">
+        <label>Medio de pago</label>
+        <select id="cobrar-medio" onchange="onCobrarMedio()">
+          <option value="EFECTIVO">💵 Efectivo</option>
+          <option value="CHEQUE">📄 Cheque</option>
+          <option value="QR_MP">QR Mercado Pago</option>
+          <option value="LINK_MP">Link de pago</option>
+          <option value="TC">Tarjeta de Crédito</option>
+          <option value="DEBITO">Tarjeta de Débito</option>
+          <option value="PREPAGA">Tarjeta Prepaga</option>
+          <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
+          <option value="TRANSF_FLEX">Transferencia → Flex</option>
+          <option value="TRANSF_ROSA">Transferencia → Rosa</option>
+          <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
+          <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Monto cobrado ($)</label>
+        <input type="number" id="cobrar-monto" min="0">
+      </div>
+      <div class="fg">
+        <label>Fecha de cobro</label>
+        <input type="date" id="cobrar-fecha">
+      </div>
+      <div class="fg">
+        <label>Observaciones (opcional)</label>
+        <input type="text" id="cobrar-obs" placeholder="Ej: Pagó con cheque al 30/06">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-cobrar')">Cancelar</button>
+        <button class="btn btn-gold" onclick="confirmarCobro()">✓ Confirmar cobro y generar recibo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal recibo de crédito -->
+<div class="overlay" id="ovl-recibo-cred" onclick="cM('ovl-recibo-cred',event)">
+  <div class="modal"><div class="mh"><h3>🧾 Recibo</h3><span class="mx" onclick="cM('ovl-recibo-cred')">✕</span></div><div id="recibo-cred-content"></div></div>
+</div>
+
+<div class="overlay" id="ovl-prod" onclick="cM('ovl-prod',event)">
+  <div class="modal" style="max-width:480px;">
+    <div class="mh"><h3 id="prod-titulo">Agregar Producto</h3><span class="mx" onclick="cM('ovl-prod')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><label>Nombre</label><input type="text" id="ap-nom"></div>
+      <div class="r2">
+        <div class="fg"><label>Proveedor</label><input type="text" id="ap-prov"></div>
+        <div class="fg"><label>Precio de venta ($)</label><input type="number" id="ap-precio" min="0"></div>
+      </div>
+      <div class="fg"><label>Costo ($)</label><input type="number" id="ap-costo" min="0"></div>
+      <div class="fg"><label>Descripción</label><textarea id="ap-desc" rows="2"></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-prod')">Cancelar</button>
+        <button class="btn btn-gold" id="btn-prod-guardar" onclick="guardarProd()">✓ Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovl-pass" onclick="cM('ovl-pass',event)">
+  <div class="modal" style="max-width:400px;">
+    <div class="mh"><h3>🔑 Cambiar Contraseña</h3><span class="mx" onclick="cM('ovl-pass')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><label>Usuario</label><select id="pass-user"></select></div>
+      <div class="fg"><label>Nueva contraseña</label><input type="password" id="pass-nueva" placeholder="Mínimo 4 caracteres"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-pass')">Cancelar</button>
+        <button class="btn btn-gold" onclick="guardarPass()">✓ Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal presupuesto tipo 1 — formas de pago -->
+<div class="overlay" id="ovl-pres1" onclick="cM('ovl-pres1',event)">
+  <div class="modal" style="max-width:600px;">
+    <div class="mh"><h3>📄 Presupuesto — Formas de Pago</h3><span class="mx" onclick="cM('ovl-pres1')">✕</span></div>
+    <div class="mb">
+      <div class="r2">
+        <div class="fg"><label>Cliente (opcional)</label><input type="text" id="p1-cliente" placeholder="Nombre y apellido"></div>
+        <div class="fg"><label>Válido hasta</label><input type="date" id="p1-validez"></div>
+      </div>
+      <div class="fg"><label>Producto</label>
+        <div class="sb">
+          <span class="sb-ico">🔍</span>
+          <input type="text" id="p1-prod" placeholder="Buscá el producto…" autocomplete="off" oninput="buscarProdPres()">
+          <div class="ac" id="p1-ac"></div>
+        </div>
+      </div>
+      <div class="fg"><label>Precio de lista ($)</label>
+        <input type="number" id="p1-precio" placeholder="0" min="0" oninput="calcPres1()">
+      </div>
+      <div class="fg"><label>Formas de pago a mostrar</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;" id="p1-pagos-check">
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="EFECTIVO" onchange="calcPres1()"> Efectivo</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TRANSF" onchange="calcPres1()"> Transferencia</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC1" onchange="calcPres1()"> TC 1 cuota</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC2" onchange="calcPres1()"> TC 2 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC3" onchange="calcPres1()"> TC 3 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC6" onchange="calcPres1()"> TC 6 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC9" onchange="calcPres1()"> TC 9 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC12" onchange="calcPres1()"> TC 12 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP2" onchange="calcPres1()"> CP 2 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP3" onchange="calcPres1()"> CP 3 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP6" onchange="calcPres1()"> CP 6 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP9" onchange="calcPres1()"> CP 9 cuotas</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP12" onchange="calcPres1()"> CP 12 cuotas</label>
+        </div>
+      </div>
+      <div id="p1-preview" style="display:none;background:var(--cream2);border-radius:10px;padding:11px;margin-top:6px;font-size:13px;"></div>
+      <div class="fg" style="margin-top:10px;"><label>Observaciones</label><textarea id="p1-obs" rows="2" placeholder="Ej: Precio especial por pago en efectivo"></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-pres1')">Cancelar</button>
+        <button class="btn btn-gold" onclick="guardarPres(1)">✓ Generar Presupuesto</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal presupuesto tipo 2 — tradicional -->
+<div class="overlay" id="ovl-pres2" onclick="cM('ovl-pres2',event)">
+  <div class="modal" style="max-width:560px;">
+    <div class="mh"><h3>📄 Presupuesto Tradicional</h3><span class="mx" onclick="cM('ovl-pres2')">✕</span></div>
+    <div class="mb">
+      <div class="r2">
+        <div class="fg"><label>Dirigido a</label><input type="text" id="p2-cliente" placeholder="Nombre y apellido"></div>
+        <div class="fg"><label>Válido hasta</label><input type="date" id="p2-validez"></div>
+      </div>
+      <div class="sec">Ítems del presupuesto</div>
+      <div id="p2-items"></div>
+      <button class="btn btn-ghost btn-sm" style="margin-bottom:10px;" onclick="addItemPres2()">＋ Agregar ítem</button>
+      <div class="fg"><label>Observaciones</label><textarea id="p2-obs" rows="2" placeholder="Ej: Condiciones especiales de entrega"></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-pres2')">Cancelar</button>
+        <button class="btn btn-gold" onclick="guardarPres(2)">✓ Generar Presupuesto</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ver presupuesto -->
+<div class="overlay" id="ovl-ver-pres" onclick="cM('ovl-ver-pres',event)">
+  <div class="modal"><div class="mh"><h3>📄 Presupuesto</h3><span class="mx" onclick="cM('ovl-ver-pres')">✕</span></div><div id="ver-pres-content"></div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// PRODUCTOS INICIALES
+// ══════════════════════════════════════════════════════
+const PRODS_INICIALES = [
+  {"id": 1, "nombre": "Bajo mesada 0,40 todo puertas", "proveedor": "Muebles French", "costo": 41700, "precio": 83400, "favorito": true},
+  {"id": 2, "nombre": "Alacena con especiero 0,40", "proveedor": "Muebles French", "costo": 31000, "precio": 62000, "favorito": true},
+  {"id": 3, "nombre": "Bajo mesada 0,60 todo puertas", "proveedor": "Muebles French", "costo": 55000, "precio": 110000, "favorito": true},
+  {"id": 4, "nombre": "Alacena con especiero 0,60", "proveedor": "Muebles French", "costo": 35000, "precio": 70000, "favorito": true},
+  {"id": 5, "nombre": "Bajo mesada 0,80 cajonera izquierda", "proveedor": "Muebles French", "costo": 59000, "precio": 118000, "favorito": true},
+  {"id": 6, "nombre": "Bajo mesada 0,80 cajonera derecha", "proveedor": "Muebles French", "costo": 59000, "precio": 118000, "favorito": true},
+  {"id": 7, "nombre": "Bajo mesada 0,80 todo puertas", "proveedor": "Muebles French", "costo": 59000, "precio": 118000, "favorito": true},
+  {"id": 8, "nombre": "Alacena con especiero 0,80", "proveedor": "Muebles French", "costo": 38000, "precio": 76000, "favorito": true},
+  {"id": 9, "nombre": "Bajo mesada 1,00 cajonera izquierda", "proveedor": "Muebles French", "costo": 66000, "precio": 132000, "favorito": true},
+  {"id": 10, "nombre": "Bajo mesada 1,00 cajonera derecha", "proveedor": "Muebles French", "costo": 66000, "precio": 132000, "favorito": true},
+  {"id": 11, "nombre": "Bajo mesada 1,00 todo puertas", "proveedor": "Muebles French", "costo": 66000, "precio": 132000, "favorito": true},
+  {"id": 12, "nombre": "Alacena con especiero 1,00", "proveedor": "Muebles French", "costo": 42000, "precio": 84000, "favorito": true},
+  {"id": 13, "nombre": "Bajo mesada 1,20 cajonera izquierda", "proveedor": "Muebles French", "costo": 74000, "precio": 148000, "favorito": true},
+  {"id": 14, "nombre": "Bajo mesada 1,20 cajonera derecha", "proveedor": "Muebles French", "costo": 74000, "precio": 148000, "favorito": true},
+  {"id": 15, "nombre": "Bajo mesada 1,20 todo puertas", "proveedor": "Muebles French", "costo": 74000, "precio": 148000, "favorito": true},
+  {"id": 16, "nombre": "Alacena con especiero 1,20", "proveedor": "Muebles French", "costo": 49000, "precio": 98000, "favorito": true},
+  {"id": 17, "nombre": "Bajo mesada 1,40 cajonera izquierda", "proveedor": "Muebles French", "costo": 86000, "precio": 172000, "favorito": true},
+  {"id": 18, "nombre": "Bajo mesada 1,40 cajonera derecha", "proveedor": "Muebles French", "costo": 86000, "precio": 172000, "favorito": true},
+  {"id": 19, "nombre": "Bajo mesada 1,40 todo puertas", "proveedor": "Muebles French", "costo": 86000, "precio": 172000, "favorito": true},
+  {"id": 20, "nombre": "Alacena con especiero 1,40", "proveedor": "Muebles French", "costo": 52700, "precio": 105400, "favorito": true},
+  {"id": 21, "nombre": "Bajo mesada 1,60 cajonera izquierda", "proveedor": "Muebles French", "costo": 96000, "precio": 192000, "favorito": true},
+  {"id": 22, "nombre": "Bajo mesada 1,60 cajonera derecha", "proveedor": "Muebles French", "costo": 96000, "precio": 192000, "favorito": true},
+  {"id": 23, "nombre": "Bajo mesada 1,60 todo puertas", "proveedor": "Muebles French", "costo": 96000, "precio": 192000, "favorito": true},
+  {"id": 24, "nombre": "Alacena con especiero 1,60", "proveedor": "Muebles French", "costo": 59000, "precio": 118000, "favorito": true},
+  {"id": 25, "nombre": "Bajo mesada 1,80 cajonera izquierda", "proveedor": "Muebles French", "costo": 105000, "precio": 210000, "favorito": true},
+  {"id": 26, "nombre": "Bajo mesada 1,80 cajonera derecha", "proveedor": "Muebles French", "costo": 105000, "precio": 210000, "favorito": true},
+  {"id": 27, "nombre": "Bajo mesada 1,80 todo puertas", "proveedor": "Muebles French", "costo": 105000, "precio": 210000, "favorito": true},
+  {"id": 28, "nombre": "Alacena con especiero 1,80", "proveedor": "Muebles French", "costo": 66000, "precio": 132000, "favorito": true},
+  {"id": 29, "nombre": "Bajo mesada 2,00 cajonera izquierda", "proveedor": "Muebles French", "costo": 112000, "precio": 224000, "favorito": true},
+  {"id": 30, "nombre": "Bajo mesada 2,00 cajonera derecha", "proveedor": "Muebles French", "costo": 112000, "precio": 224000, "favorito": true},
+  {"id": 31, "nombre": "Bajo mesada 2,00 todo puertas", "proveedor": "Muebles French", "costo": 112000, "precio": 224000, "favorito": true},
+  {"id": 32, "nombre": "Alacena con especiero 2,00", "proveedor": "Muebles French", "costo": 72300, "precio": 144600, "favorito": true},
+  {"id": 33, "nombre": "Bajo esquinero 0,80 x 0,80", "proveedor": "Muebles French", "costo": 125500, "precio": 251000, "favorito": true},
+  {"id": 34, "nombre": "Alacena esquinera con especiero 0,60 x 0,60", "proveedor": "Muebles French", "costo": 73500, "precio": 147000, "favorito": true},
+  {"id": 35, "nombre": "Alacena esquinera con especiero 0,80 x 0,80", "proveedor": "Muebles French", "costo": 86700, "precio": 173400, "favorito": true},
+  {"id": 36, "nombre": "Alacena porta microondas", "proveedor": "Muebles French", "costo": 51000, "precio": 102000, "favorito": true},
+  {"id": 37, "nombre": "Sobrespar 0,60 x 0,40", "proveedor": "Muebles French", "costo": 28000, "precio": 56000, "favorito": true},
+  {"id": 38, "nombre": "Frentín ml lineal", "proveedor": "Muebles French", "costo": 34500, "precio": 69000, "favorito": true},
+  {"id": 39, "nombre": "Ropero eco 0,80 x 1,80", "proveedor": "Muebles French", "costo": 74500, "precio": 149000, "favorito": true},
+  {"id": 40, "nombre": "Alzada eco 0,80 x 0,60", "proveedor": "Muebles French", "costo": 28000, "precio": 56000, "favorito": true},
+  {"id": 41, "nombre": "Ropero eco 1,20 x 1,80", "proveedor": "Muebles French", "costo": 91000, "precio": 182000, "favorito": true},
+  {"id": 42, "nombre": "Alzada eco 1,20 x 0,60", "proveedor": "Muebles French", "costo": 37500, "precio": 75000, "favorito": true},
+  {"id": 43, "nombre": "Ropero eco 1,60 x 1,80", "proveedor": "Muebles French", "costo": 156000, "precio": 312000, "favorito": true},
+  {"id": 44, "nombre": "Alzada eco 1,60 x 0,60", "proveedor": "Muebles French", "costo": 45000, "precio": 90000, "favorito": true},
+  {"id": 45, "nombre": "Alzada ropero macizo 0,60", "proveedor": "Muebles French", "costo": 31300, "precio": 62600, "favorito": true},
+  {"id": 46, "nombre": "Alzada ropero macizo 0,80", "proveedor": "Muebles French", "costo": 36400, "precio": 72800, "favorito": true},
+  {"id": 47, "nombre": "Alzada ropero macizo 1,00", "proveedor": "Muebles French", "costo": 40700, "precio": 81400, "favorito": true},
+  {"id": 48, "nombre": "Alzada ropero macizo 1,20", "proveedor": "Muebles French", "costo": 49000, "precio": 98000, "favorito": true},
+  {"id": 49, "nombre": "Alzada ropero macizo 1,40", "proveedor": "Muebles French", "costo": 52000, "precio": 104000, "favorito": true},
+  {"id": 50, "nombre": "Ropero macizo 1,60 x 1,80", "proveedor": "Muebles French", "costo": 175000, "precio": 350000, "favorito": true},
+  {"id": 51, "nombre": "Alzada ropero macizo 1,80", "proveedor": "Muebles French", "costo": 69500, "precio": 139000, "favorito": true},
+  {"id": 52, "nombre": "Alzada ropero macizo 2,00", "proveedor": "Muebles French", "costo": 81000, "precio": 162000, "favorito": true},
+  {"id": 53, "nombre": "Espejo adicional", "proveedor": "Muebles French", "costo": 14500, "precio": 29000, "favorito": true},
+  {"id": 54, "nombre": "Alzada ropero infantil 0,80", "proveedor": "Muebles French", "costo": 23000, "precio": 46000, "favorito": true},
+  {"id": 55, "nombre": "Alzada ropero infantil 1,20", "proveedor": "Muebles French", "costo": 30000, "precio": 60000, "favorito": true},
+  {"id": 56, "nombre": "Baiut 0,80", "proveedor": "Muebles French", "costo": 76500, "precio": 153000, "favorito": true},
+  {"id": 57, "nombre": "Baiut 1,00", "proveedor": "Muebles French", "costo": 87500, "precio": 175000, "favorito": true},
+  {"id": 58, "nombre": "Baiut 1,20", "proveedor": "Muebles French", "costo": 95000, "precio": 190000, "favorito": true},
+  {"id": 59, "nombre": "Baiut 1,40", "proveedor": "Muebles French", "costo": 112000, "precio": 224000, "favorito": true},
+  {"id": 60, "nombre": "Baiut 1,60", "proveedor": "Muebles French", "costo": 131000, "precio": 262000, "favorito": true},
+  {"id": 61, "nombre": "Biblioteca con puerta 0,40 — 1 puerta", "proveedor": "Muebles French", "costo": 45600, "precio": 91200, "favorito": true},
+  {"id": 62, "nombre": "Biblioteca con puerta 0,60 — 2 puertas", "proveedor": "Muebles French", "costo": 51500, "precio": 103000, "favorito": true},
+  {"id": 63, "nombre": "Biblioteca con puerta 0,80 — 2 puertas", "proveedor": "Muebles French", "costo": 58000, "precio": 116000, "favorito": true},
+  {"id": 64, "nombre": "Biblioteca con puerta 1,00 — 3 puertas", "proveedor": "Muebles French", "costo": 65000, "precio": 130000, "favorito": true},
+  {"id": 65, "nombre": "Biblioteca sin puerta 0,40", "proveedor": "Muebles French", "costo": 36500, "precio": 73000, "favorito": true},
+  {"id": 66, "nombre": "Biblioteca sin puerta 0,60", "proveedor": "Muebles French", "costo": 43500, "precio": 87000, "favorito": true},
+  {"id": 67, "nombre": "Biblioteca sin puerta 0,80", "proveedor": "Muebles French", "costo": 49300, "precio": 98600, "favorito": true},
+  {"id": 68, "nombre": "Biblioteca sin puerta 1,00", "proveedor": "Muebles French", "costo": 52500, "precio": 105000, "favorito": true},
+  {"id": 69, "nombre": "Chiffonier 3 cajones 0,60 x 0,80 x 0,40", "proveedor": "Muebles French", "costo": 62000, "precio": 124000, "favorito": true},
+  {"id": 70, "nombre": "Chiffonier 4 cajones 0,60 x 1,00 x 0,40", "proveedor": "Muebles French", "costo": 68000, "precio": 136000, "favorito": true},
+  {"id": 71, "nombre": "Chiffonier 4+2 cajones 0,80 x 1,20 x 0,40", "proveedor": "Muebles French", "costo": 94000, "precio": 188000, "favorito": true},
+  {"id": 72, "nombre": "Chiffonier 4+2 cajones 1,00 x 1,20 x 0,40", "proveedor": "Muebles French", "costo": 102000, "precio": 204000, "favorito": true},
+  {"id": 73, "nombre": "Chiffonier 5 cajones 0,60 x 1,20 x 0,40", "proveedor": "Muebles French", "costo": 74000, "precio": 148000, "favorito": true},
+  {"id": 74, "nombre": "Chiffonier 5+2 cajones 0,80 x 1,40 x 0,40", "proveedor": "Muebles French", "costo": 110000, "precio": 220000, "favorito": true},
+  {"id": 75, "nombre": "Chiffonier 5+2 cajones 1,00 x 1,40 x 0,40", "proveedor": "Muebles French", "costo": 117000, "precio": 234000, "favorito": true},
+  {"id": 76, "nombre": "Chiffonier 6 cajones 0,60 x 1,40 x 0,40", "proveedor": "Muebles French", "costo": 82500, "precio": 165000, "favorito": true},
+  {"id": 77, "nombre": "Chifonier ropero doble 1,20 x 1,00 x 0,40", "proveedor": "Muebles French", "costo": 125000, "precio": 250000, "favorito": true},
+  {"id": 78, "nombre": "Chifonier ropero simple 1,00 x 1,00 x 0,40", "proveedor": "Muebles French", "costo": 119000, "precio": 238000, "favorito": true},
+  {"id": 79, "nombre": "Cristalero 0,40", "proveedor": "Muebles French", "costo": 68000, "precio": 136000, "favorito": true},
+  {"id": 80, "nombre": "Cristalero 0,60", "proveedor": "Muebles French", "costo": 83000, "precio": 166000, "favorito": true},
+  {"id": 81, "nombre": "Cristalero 0,80", "proveedor": "Muebles French", "costo": 95000, "precio": 190000, "favorito": true},
+  {"id": 82, "nombre": "Cristalero 1,00", "proveedor": "Muebles French", "costo": 107000, "precio": 214000, "favorito": true},
+  {"id": 83, "nombre": "Cómoda 2+2 cajones 0,80 x 0,80 x 0,40", "proveedor": "Muebles French", "costo": 64500, "precio": 129000, "favorito": true},
+  {"id": 84, "nombre": "Cómoda 2+2 cajones 1,00 x 0,80 x 0,40", "proveedor": "Muebles French", "costo": 89000, "precio": 178000, "favorito": true},
+  {"id": 85, "nombre": "Cómoda 3+2 cajones 0,80 x 1,00 x 0,40", "proveedor": "Muebles French", "costo": 89000, "precio": 178000, "favorito": true},
+  {"id": 86, "nombre": "Cómoda 3+2 cajones 1,00 x 1,00 x 0,40", "proveedor": "Muebles French", "costo": 97000, "precio": 194000, "favorito": true},
+  {"id": 87, "nombre": "Cómoda 3+2 cajones 1,20 x 0,80 x 0,40", "proveedor": "Muebles French", "costo": 94000, "precio": 188000, "favorito": true},
+  {"id": 88, "nombre": "Cómoda 3+3 cajones 1,20 x 1,00 x 0,40", "proveedor": "Muebles French", "costo": 100000, "precio": 200000, "favorito": true},
+  {"id": 89, "nombre": "Despensero 0,40 — 2 puertas 1 cajón", "proveedor": "Muebles French", "costo": 55500, "precio": 111000, "favorito": true},
+  {"id": 90, "nombre": "Despensero 0,60 — 4 puertas 1 cajón", "proveedor": "Muebles French", "costo": 73000, "precio": 146000, "favorito": true},
+  {"id": 91, "nombre": "Despensero 0,80 — 4 puertas 1 cajón", "proveedor": "Muebles French", "costo": 85500, "precio": 171000, "favorito": true},
+  {"id": 92, "nombre": "Escobero 0,40 — 2 puertas", "proveedor": "Muebles French", "costo": 55500, "precio": 111000, "favorito": true},
+  {"id": 93, "nombre": "Mesa de luz con puerta", "proveedor": "Muebles French", "costo": 17500, "precio": 35000, "favorito": true},
+  {"id": 94, "nombre": "Mesa de luz eco", "proveedor": "Muebles French", "costo": 11200, "precio": 22400, "favorito": true},
+  {"id": 95, "nombre": "Mesa de luz flotante", "proveedor": "Muebles French", "costo": 9600, "precio": 19200, "favorito": true},
+  {"id": 96, "nombre": "Mesa de luz sin puerta con 1 cajón", "proveedor": "Muebles French", "costo": 15600, "precio": 31200, "favorito": true},
+  {"id": 97, "nombre": "Mesa de luz somier", "proveedor": "Muebles French", "costo": 24000, "precio": 48000, "favorito": true},
+  {"id": 98, "nombre": "Modular 0,70", "proveedor": "Muebles French", "costo": 75500, "precio": 151000, "favorito": true},
+  {"id": 99, "nombre": "Modular 1,00 — 6 puertas 1 cajón", "proveedor": "Muebles French", "costo": 96000, "precio": 192000, "favorito": true},
+  {"id": 100, "nombre": "Modular 1,20 — 6 puertas 2 cajones", "proveedor": "Muebles French", "costo": 104000, "precio": 208000, "favorito": true},
+  {"id": 101, "nombre": "Modular 1,40 — 6 puertas 3 cajones", "proveedor": "Muebles French", "costo": 115600, "precio": 231200, "favorito": true},
+  {"id": 102, "nombre": "Modular 1,60 — 6 puertas 3 cajones", "proveedor": "Muebles French", "costo": 134000, "precio": 268000, "favorito": true},
+  {"id": 103, "nombre": "Modular bajo horno/micro", "proveedor": "Muebles French", "costo": 66000, "precio": 132000, "favorito": true},
+  {"id": 104, "nombre": "Multiuso", "proveedor": "Muebles French", "costo": 74000, "precio": 148000, "favorito": true},
+  {"id": 105, "nombre": "Rack 1,60 x 1,80", "proveedor": "Muebles French", "costo": 150000, "precio": 300000, "favorito": true},
+  {"id": 106, "nombre": "Rack 1,80 x 1,80", "proveedor": "Muebles French", "costo": 167200, "precio": 334400, "favorito": true},
+  {"id": 107, "nombre": "Rack TV 1,00", "proveedor": "Muebles French", "costo": 48000, "precio": 96000, "favorito": true},
+  {"id": 108, "nombre": "Rack TV 1,20", "proveedor": "Muebles French", "costo": 60000, "precio": 120000, "favorito": true},
+  {"id": 109, "nombre": "Vestidor 0,80 x 1,80", "proveedor": "Muebles French", "costo": 75500, "precio": 151000, "favorito": true},
+  {"id": 110, "nombre": "Vestidor 1,20 x 1,80", "proveedor": "Muebles French", "costo": 95000, "precio": 190000, "favorito": true},
+  {"id": 111, "nombre": "Vestidor 1,60 x 1,80", "proveedor": "Muebles French", "costo": 119000, "precio": 238000, "favorito": true}
+];
+
+// ══════════════════════════════════════════════════════
+// USUARIOS Y ROLES
+// ══════════════════════════════════════════════════════
+const ROLES = {
+  ADMIN:    'admin',
+  LOCAL:    'local',
+  VENDEDOR: 'vendedor'
+};
+
+// Contraseñas por defecto — se pueden cambiar desde admin
+const USERS_DEFAULT = {
+  'LEANDRO':   { pass:'leandro123', rol:ROLES.ADMIN },
+  'ROSA':      { pass:'rosa123', rol:ROLES.LOCAL },
+  'GABRIELA':  { pass:'gabriela123', rol:ROLES.LOCAL },
+  'CAROLINA':  { pass:'carol123', rol:ROLES.VENDEDOR },
+  'SUSANA':    { pass:'susana123', rol:ROLES.VENDEDOR },
+  'ROCIO':     { pass:'rocio123', rol:ROLES.VENDEDOR },
+  'ORIANA':    { pass:'oriana123', rol:ROLES.VENDEDOR },
+  'STELLA':    { pass:'stella123', rol:ROLES.VENDEDOR },
+  'ADRIAN':    { pass:'adrian123', rol:ROLES.VENDEDOR },
+  'VALENTINO': { pass:'valentin123', rol:ROLES.VENDEDOR },
+  'CECILIA':   { pass:'cecilia123', rol:ROLES.VENDEDOR },
+  'ROMINA':    { pass:'romina123', rol:ROLES.VENDEDOR },
+};
+
+// Tabs por rol
+const TABS_POR_ROL = {
+  admin:    ['venta','ventas','creditos','precios','presupuestos','admin'],
+  local:    ['venta','ventas','creditos','precios','presupuestos'],
+  vendedor: ['venta','ventas'],
+};
+const TAB_LABELS = {
+  venta:'＋ Nueva Venta', ventas:'📋 Ventas',
+  creditos:'💳 Créditos', precios:'💰 Lista de Precios',
+  presupuestos:'📄 Presupuestos', admin:'⚙️ Admin'
+};
+
+// ══════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════════════════
+let ventas      = [];
+let productos   = [...PRODS_INICIALES];
+let usuarios    = {...USERS_DEFAULT};
+let filtroVend  = 'TODAS';
+let filtroCred  = 'todas';
+let editVentaId = null;
+let editProdId  = null;
+let usuarioActual = null; // { nombre, rol }
+
+// ══════════════════════════════════════════════════════
+// STORAGE
+// ══════════════════════════════════════════════════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxaFHEannPGvJYj0QFBPpqNsu9dp8xZ5R0oz9I_GIXB2CJ0mBOlKPshjLUINKYSyKF7/exec';
+let syncTimer = null;
+
+// Storage local como cache
+async function sSet(k,v){ try{ if(window.storage) await window.storage.set(k,JSON.stringify(v)); }catch(e){} }
+async function sGet(k){ try{ if(window.storage){ const r=await window.storage.get(k); return r?JSON.parse(r.value):null; } }catch(e){} return null; }
+
+function mostrarSync(msg, error) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = error ? '#e07070' : 'rgba(255,255,255,.45)';
+  if (!error) setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+function programarGuardado() {
+  if (syncTimer) clearTimeout(syncTimer);
+  mostrarSync('Guardando…', false);
+  syncTimer = setTimeout(() => guardarEnScript(), 1000);
+}
+
+async function guardarEnScript() {
+  try {
+    mostrarSync('Guardando en Drive…', false);
+    const datos = { ventas, productos, presupuestos, version:1 };
+    const resp = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action:'guardar', ...datos })
+    });
+    if (resp.ok) {
+      mostrarSync('✓ Guardado', false);
+    } else {
+      mostrarSync('⚠ Error al guardar', true);
+    }
+  } catch(e) {
+    mostrarSync('⚠ Sin conexión', true);
+  }
+}
+
+async function leerDeScript() {
+  try {
+    mostrarSync('Cargando datos…', false);
+    const resp = await fetch(SCRIPT_URL);
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    if (!data.ok) return false;
+    const d = data.datos;
+    if (d.ventas && d.ventas.length > 0) ventas = d.ventas;
+    if (d.productos && d.productos.length > 0) productos = d.productos;
+    if (d.presupuestos && d.presupuestos.length > 0) presupuestos = d.presupuestos;
+    mostrarSync('✓ Drive conectado', false);
+    return true;
+  } catch(e) {
+    mostrarSync('⚠ Sin Drive', true);
+    return false;
+  }
+}
+
+async function guardarVentas()  { await sSet('rh_v', ventas);   programarGuardado(); }
+async function guardarProds()   { await sSet('rh_p', productos); programarGuardado(); }
+async function guardarUsers()   { await sSet('rh_u', usuarios);  }
+async function guardarPresupuestos() { await sSet('rh_pres', presupuestos); programarGuardado(); }
+
+async function cargarDatos() {
+  // Cache local primero (instantáneo)
+  const v=await sGet('rh_v'); if(v) ventas=v;
+  const p=await sGet('rh_p'); if(p&&p.length>0) productos=p;
+  const u=await sGet('rh_u'); if(u) usuarios=u;
+  const ps=await sGet('rh_pres'); if(ps) presupuestos=ps;
+  // Leer de Drive (fuente de verdad)
+  await leerDeScript();
+}
+
+// ══════════════════════════════════════════════════════
+// CONSTANTES PAGO
+// ══════════════════════════════════════════════════════
+const TC_RC = {TC1:1,TC2:1.11846,TC3:1.15113,TC6:1.23946,TC9:1.34110,TC12:1.39313};
+const TC_N  = {TC2:2,TC3:3,TC6:6,TC9:9,TC12:12};
+// Intereses CP: 7% mensual × n, 4% quincenal × n, 3% semanal × n
+const CP_INT = {
+  mensual:   {2:0.14, 3:0.21, 6:0.42, 9:0.63, 12:0.84},
+  quincenal: {2:0.08, 3:0.12, 6:0.24, 9:0.36, 12:0.48},
+  semanal:   {2:0.06, 3:0.09, 6:0.18, 9:0.27, 12:0.36},
+};
+const CP_N  = {CP2:2,CP3:3,CP6:6,CP9:9,CP12:12};
+// Mantener para compatibilidad
+const CP_RC = {CP2:1.14,CP3:1.21,CP6:1.42,CP9:1.63,CP12:1.84};
+const PAGO_LBL = {
+  EFECTIVO:'Efectivo',
+  TRANSF_MP:'Transf. MP',TRANSF_FLEX:'Transf. Flex',
+  TRANSF_ROSA:'Transf. Rosa',TRANSF_DOLORES:'Transf. Dolores',TRANSF_GABRIELA:'Transf. Gabriela',
+  TC1:'TC 1c',TC2:'TC 2c',TC3:'TC 3c',TC6:'TC 6c',TC9:'TC 9c',TC12:'TC 12c',
+  DEBITO:'Débito',PREPAGA:'Prepaga',QR_MP:'QR MP',LINK_MP:'Link MP',
+  CP2:'CP 2c',CP3:'CP 3c',CP6:'CP 6c',CP9:'CP 9c',CP12:'CP 12c',
+};
+const PAGO_BADGE = {
+  EFECTIVO:'b-ef',
+  TRANSF_MP:'b-tr',TRANSF_FLEX:'b-tr',TRANSF_ROSA:'b-tr',TRANSF_DOLORES:'b-tr',TRANSF_GABRIELA:'b-tr',
+  TC1:'b-tc',TC2:'b-tc',TC3:'b-tc',TC6:'b-tc',TC9:'b-tc',TC12:'b-tc',
+  DEBITO:'b-deb',PREPAGA:'b-deb',QR_MP:'b-mp',LINK_MP:'b-mp',
+  CP2:'b-cp',CP3:'b-cp',CP6:'b-cp',CP9:'b-cp',CP12:'b-cp',
+};
+
+// ══════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════
+const fmt  = n => Number(n||0).toLocaleString('es-AR');
+const fmtD = s => { try{ const d=new Date(s+'T12:00'); return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}); }catch(e){return s;} };
+const hoy  = () => new Date().toISOString().split('T')[0];
+const addD = (s,n) => { const d=new Date(s+'T12:00'); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
+const difD = (a,b) => Math.round((new Date(a+'T12:00')-new Date(b+'T12:00'))/86400000);
+const isCP = p => p&&p.startsWith('CP');
+const isTC = p => p&&p.startsWith('TC');
+const paso = f => f==='semanal'?7:f==='quincenal'?15:30;
+const cliNom = v => [v.apellido,v.nombre].filter(Boolean).join(' ')||'—';
+const ganancia = v => (v.costo&&v.costo>0) ? v.precio-v.costo : null;
+
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),2800); }
+function cM(id,e){ if(!e||e.target===document.getElementById(id)) document.getElementById(id).classList.remove('on'); }
+const esAdmin = () => usuarioActual?.rol===ROLES.ADMIN;
+const esLocal = () => usuarioActual?.rol===ROLES.LOCAL || esAdmin();
+
+// ══════════════════════════════════════════════════════
+// LOGIN / LOGOUT
+// ══════════════════════════════════════════════════════
+function doLogin() {
+  const user = document.getElementById('login-user').value.trim().toUpperCase();
+  const pass = document.getElementById('login-pass').value;
+  const err  = document.getElementById('login-err');
+
+  if (!usuarios[user]) { err.style.display='block'; err.textContent='Usuario no encontrado'; return; }
+  if (usuarios[user].pass !== pass) { err.style.display='block'; err.textContent='Contraseña incorrecta'; return; }
+
+  usuarioActual = { nombre: user, rol: usuarios[user].rol };
+  err.style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-hdr').style.display = 'block';
+  document.getElementById('app-pages').style.display = 'block';
+  iniciarApp();
+}
+
+function doLogout() {
+  usuarioActual = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-hdr').style.display = 'none';
+  document.getElementById('app-pages').style.display = 'none';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+function iniciarApp() {
+  const { nombre, rol } = usuarioActual;
+  const rolLabel = {admin:'Administrador',local:'Local',vendedor:'Vendedor'}[rol]||rol;
+  document.getElementById('hdr-user').textContent = `${nombre} · ${rolLabel}`;
+
+  // Construir tabs según rol
+  const tabs = TABS_POR_ROL[rol] || ['venta'];
+  const tabsBar = document.getElementById('tabs-bar');
+  tabsBar.innerHTML = tabs.map((t,i) =>
+    `<div class="tab ${i===0?'on':''}" onclick="goTab('${t}')">${TAB_LABELS[t]}</div>`
+  ).join('');
+
+  // Vendedores disponibles
+  const VENDEDORES_LOCAL = ['LOCAL PARADA ROBLES','CAROLINA','SUSANA','ROCIO','ORIANA','STELLA','ADRIAN','VALENTINO','CECILIA','ROMINA'];
+  const VENDEDORES_DISTRIB = ['DISTRIBUIDORA'];
+
+  // Poblar selector de vendedor en el formulario
+  const sel = document.getElementById('f-vend');
+  if (rol === ROLES.ADMIN) {
+    // Leandro ve local + distribuidora
+    const todos = [...VENDEDORES_LOCAL, ...VENDEDORES_DISTRIB];
+    sel.innerHTML = todos.map(v => `<option value="${v}">${v}</option>`).join('');
+    sel.disabled = false;
+  } else if (rol === ROLES.LOCAL) {
+    // Rosa y Gabriela solo ven vendedores del local
+    sel.innerHTML = VENDEDORES_LOCAL.map(v => `<option value="${v}">${v}</option>`).join('');
+    sel.disabled = false;
+  } else {
+    // Vendedor — solo él mismo
+    sel.innerHTML = `<option value="${nombre}" selected>${nombre}</option>`;
+    sel.disabled = true;
+  }
+
+  // Mostrar primera tab
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.getElementById('f-fecha').value = hoy();
+  document.getElementById('pg-venta').classList.add('on');
+
+  // Botones de ventas según rol
+  const accs = document.getElementById('ventas-acciones');
+  if (esAdmin()) {
+    accs.innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="exportarExcel()">⬇ Excel</button>
+      <button class="btn btn-blue btn-sm" onclick="exportarBackup()">💾 Backup</button>
+      <label class="btn btn-green btn-sm" style="cursor:pointer;">📂 Restaurar<input type="file" accept=".json" onchange="importarBackup(event)" style="display:none;"></label>`;
+  } else { accs.innerHTML = ''; }
+
+  renderPills();
+  renderVentas();
+}
+
+// ══════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════
+function goTab(n) {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('on', t.getAttribute('onclick')===`goTab('${n}')`);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.getElementById('pg-'+n).classList.add('on');
+  if (n==='ventas')        { renderPills(); renderVentas(); }
+  if (n==='creditos')      renderCreditos();
+  if (n==='precios')       renderPrecios();
+  if (n==='presupuestos')  renderPresupuestos();
+  if (n==='admin')         renderAdmin();
+}
+
+// ══════════════════════════════════════════════════════
+// FORMULARIO VENTA
+// ══════════════════════════════════════════════════════
+function onPago() {
+  const p = document.getElementById('f-pago').value;
+  document.getElementById('blk-tc').style.display = (isTC(p)&&p!=='TC1') ? 'block' : 'none';
+  document.getElementById('blk-cp').style.display = isCP(p) ? 'block' : 'none';
+  if (isCP(p)) {
+    // Pre-cargar precio de lista desde el precio de venta si ya está cargado
+    const precio = parseFloat(document.getElementById('f-precio').value)||0;
+    if (precio > 0 && !(parseFloat(document.getElementById('cp-lista').value)>0)) {
+      document.getElementById('cp-lista').value = precio;
+    }
+    // Setear cantidad de cuotas según forma de pago
+    const n = CP_N[p] || 2;
+    document.getElementById('cp-ncuotas').value = n;
+    // Fecha anticipo = hoy por defecto
+    if (!document.getElementById('cp-fecha-ant').value)
+      document.getElementById('cp-fecha-ant').value = hoy();
+    recalcCP();
+  }
+  recalc();
+}
+
+function recalcCP() {
+  const lista   = parseFloat(document.getElementById('cp-lista').value)||0;
+  const pctEl   = document.getElementById('cp-pct-ant').value;
+  const antEl   = document.getElementById('cp-ant');
+  const n       = parseInt(document.getElementById('cp-ncuotas').value)||2;
+  const freq    = document.getElementById('cp-freq').value;
+
+  // Calcular anticipo según porcentaje
+  if (pctEl !== '0' && lista > 0) {
+    const pct = parseInt(pctEl)/100;
+    antEl.value = Math.round(lista * pct);
+  }
+  const ant = parseFloat(antEl.value)||0;
+  const saldo = lista - ant;
+  if (saldo <= 0 || lista <= 0) {
+    document.getElementById('cp-resumen').style.display = 'none';
+    return;
+  }
+  const interes = CP_INT[freq]?.[n] || 0;
+  const totalConInt = Math.round(saldo * (1 + interes));
+  const valorCuota  = Math.round(totalConInt / n);
+
+  document.getElementById('cp-resumen').style.display = 'block';
+  document.getElementById('cp-resumen').innerHTML =
+    `Anticipo: <strong>$${fmt(ant)}</strong> &nbsp;|&nbsp; ` +
+    `Saldo: $${fmt(saldo)} &nbsp;|&nbsp; ` +
+    `Interés: ${Math.round(interes*100)}% &nbsp;|&nbsp; ` +
+    `${n} cuotas de <strong>$${fmt(valorCuota)}</strong> &nbsp;|&nbsp; ` +
+    `Total crédito: $${fmt(totalConInt)}`;
+
+  // Sync precio de venta con precio de lista
+  if (lista > 0) document.getElementById('f-precio').value = lista;
+}
+
+function recalc() {
+  const p      = document.getElementById('f-pago').value;
+  const precio = parseFloat(document.getElementById('f-precio').value)||0;
+  if (isTC(p) && p!=='TC1' && precio>0) {
+    const n=TC_N[p],r=TC_RC[p],total=Math.round(precio*r),cuota=Math.round(total/n);
+    document.getElementById('tc-info').innerHTML=`${n} cuotas de <strong>$${fmt(cuota)}</strong> — Total: $${fmt(total)}`;
+    document.getElementById('blk-tc').style.display='block';
+  } else { document.getElementById('blk-tc').style.display='none'; }
+}
+
+function buscarProd() {
+  const q = document.getElementById('f-prod').value.toLowerCase().trim();
+  const ac = document.getElementById('prod-ac');
+  if (!q) { ac.classList.remove('on'); return; }
+  // Buscar por palabras sueltas — todas deben estar presentes en cualquier orden
+  const palabras = q.split(/\s+/).filter(Boolean);
+  const hits = productos.filter(p => {
+    const texto = (p.nombre + ' ' + (p.proveedor||'')).toLowerCase();
+    return palabras.every(pal => texto.includes(pal));
+  }).slice(0, 10);
+  if (!hits.length) { ac.classList.remove('on'); return; }
+  ac.innerHTML = hits.map(p => `
+    <div class="ac-row" onmousedown="selProd(${p.id})">
+      <div><div class="ac-nom">${p.nombre}</div><div class="ac-sub">${p.proveedor||''}</div></div>
+      <div class="ac-p">$${fmt(p.precio)}</div>
+    </div>`).join('');
+  ac.classList.add('on');
+}
+
+function selProd(id) {
+  const p=productos.find(x=>x.id===id); if(!p)return;
+  document.getElementById('f-prod').value=p.nombre;
+  document.getElementById('f-precio').value=p.precio||'';
+  document.getElementById('f-costo').value=p.costo||'';
+  document.getElementById('prod-ac').classList.remove('on');
+  recalc();
+}
+
+async function guardar() {
+  const fecha  = document.getElementById('f-fecha').value||hoy();
+  const vend   = document.getElementById('f-vend').value||usuarioActual.nombre;
+  const prod   = document.getElementById('f-prod').value.trim()||'—';
+  const precio = parseFloat(document.getElementById('f-precio').value)||0;
+  const costo  = parseFloat(document.getElementById('f-costo').value)||0;
+  const pago   = document.getElementById('f-pago').value||'EFECTIVO';
+
+  const base = {
+    fecha,vendedora:vend,producto:prod,precio,costo,pago,
+    apellido:document.getElementById('f-apellido').value.trim(),
+    nombre:  document.getElementById('f-nombre').value.trim(),
+    dni:     document.getElementById('f-dni').value.trim(),
+    tel:     document.getElementById('f-tel').value.trim(),
+    dir:     document.getElementById('f-dir').value.trim(),
+    obs:     document.getElementById('f-obs').value.trim(),
+    cuotasPagadas:{}
+  };
+
+  if (isCP(pago)) {
+    const lista    = parseFloat(document.getElementById('cp-lista').value)||precio;
+    const ant      = parseFloat(document.getElementById('cp-ant').value)||0;
+    const n        = parseInt(document.getElementById('cp-ncuotas').value)||CP_N[pago]||2;
+    const freq     = document.getElementById('cp-freq').value;
+    const fechaAnt = document.getElementById('cp-fecha-ant').value||fecha;
+    const fecha1   = document.getElementById('cp-fecha1').value||'';
+    const saldo    = lista - ant;
+    const interes  = CP_INT[freq]?.[n]||0;
+    const totalInt = Math.round(saldo*(1+interes));
+    const cuota    = Math.round(totalInt/n);
+    base.cpData = {
+      precioLista:lista, anticipo:ant, fechaAnticipo:fechaAnt,
+      anticipoPagado: fechaAnt===fecha ? false : null, // null = a definir
+      saldo, interes:Math.round(interes*100), totalCredito:totalInt,
+      cuota, nCuotas:n, frecuencia:freq,
+      fechaPrimeraCuota:fecha1, cobros:[]
+    };
+  }
+
+  if (editVentaId) {
+    const idx=ventas.findIndex(v=>v.id===editVentaId);
+    if(idx>=0) ventas[idx]={...ventas[idx],...base};
+    editVentaId=null;
+    document.getElementById('frm-titulo').textContent='🛒 Nueva Venta';
+    document.getElementById('btn-guardar').textContent='✓ Guardar Venta';
+    toast('✓ Venta actualizada');
+  } else {
+    ventas.unshift({id:Date.now(),...base});
+    toast('✓ Venta guardada');
+  }
+  await guardarVentas();
+  limpiar();
+  renderPills(); renderVentas(); renderCreditos();
+}
+
+function limpiar() {
+  editVentaId=null;
+  document.getElementById('frm-titulo').textContent='🛒 Nueva Venta';
+  document.getElementById('btn-guardar').textContent='✓ Guardar Venta';
+  ['f-fecha','f-pago','f-prod','f-precio','f-costo',
+   'cp-lista','cp-ant','cp-fecha-ant','cp-fecha1',
+   'f-apellido','f-nombre','f-dni','f-tel','f-dir','f-obs'].forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    if(id==='f-fecha') el.value=hoy(); else el.value='';
+  });
+  // Restaurar vendedor al usuario actual
+  if(usuarioActual) {
+    const sel=document.getElementById('f-vend');
+    if(sel && !sel.disabled) sel.value=usuarioActual.nombre;
+  }
+  ['blk-tc','blk-cp'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('prod-ac').classList.remove('on');
+}
+
+function editarVenta(id) {
+  // Solo admin y local pueden editar
+  if(!esLocal()) return;
+  const v=ventas.find(x=>x.id===id); if(!v)return;
+  goTab('venta');
+  editVentaId=id;
+  document.getElementById('frm-titulo').textContent='✏️ Editando Venta';
+  document.getElementById('btn-guardar').textContent='✓ Guardar Cambios';
+  setTimeout(()=>{
+    document.getElementById('f-fecha').value=v.fecha||hoy();
+    const sel=document.getElementById('f-vend');
+    if(!sel.disabled) sel.value=v.vendedora||usuarioActual.nombre;
+    document.getElementById('f-pago').value=v.pago||'';
+    document.getElementById('f-prod').value=v.producto||'';
+    document.getElementById('f-precio').value=v.precio||'';
+    document.getElementById('f-costo').value=v.costo||'';
+    document.getElementById('f-apellido').value=v.apellido||'';
+    document.getElementById('f-nombre').value=v.nombre||'';
+    document.getElementById('f-dni').value=v.dni||'';
+    document.getElementById('f-tel').value=v.tel||'';
+    document.getElementById('f-dir').value=v.dir||'';
+    document.getElementById('f-obs').value=v.obs||'';
+    if(v.cpData){
+      document.getElementById('f-ant').value=v.cpData.anticipo||'';
+      document.getElementById('f-cuota').value=v.cpData.cuota||'';
+      document.getElementById('f-freq').value=v.cpData.frecuencia||'mensual';
+    }
+    onPago(); recalc();
+  },50);
+}
+
+// ══════════════════════════════════════════════════════
+// CUOTAS
+// ══════════════════════════════════════════════════════
+function buildCuotas(v) {
+  if(!v.cpData)return[];
+  const{cuota,frecuencia,nCuotas,fechaVenta}=v.cpData,step=paso(frecuencia);
+  return Array.from({length:nCuotas},(_,i)=>({num:i+1,fecha:addD(fechaVenta,step*(i+1)),monto:cuota,pagada:v.cuotasPagadas?!!v.cuotasPagadas[i]:false}));
+}
+function estCuota(c) {
+  const h=hoy();
+  if(c.pagada)return'pagada';
+  if(c.fecha<h)return'vencida';
+  if(difD(c.fecha,h)<=7)return'proxima';
+  return'pendiente';
+}
+async function marcarCuota(vid,idx,pagar) {
+  const v=ventas.find(x=>x.id===vid); if(!v)return;
+  if(!v.cuotasPagadas)v.cuotasPagadas={};
+  if(pagar)v.cuotasPagadas[idx]=true; else delete v.cuotasPagadas[idx];
+  await guardarVentas(); renderCreditos(); verDetalle(vid);
+  toast(pagar?'✓ Cuota cobrada':'Desmarcada');
+}
+async function eliminarVenta(id) {
+  if(!esAdmin()){toast('Sin permiso');return;}
+  if(!confirm('¿Eliminás esta venta?'))return;
+  ventas=ventas.filter(v=>v.id!==id);
+  await guardarVentas(); cM('ovl-det'); renderPills(); renderVentas(); renderCreditos();
+  toast('Venta eliminada');
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER VENTAS
+// ══════════════════════════════════════════════════════
+function renderPills() {
+  if(!usuarioActual)return;
+  const { rol, nombre } = usuarioActual;
+  if(rol===ROLES.VENDEDOR){ filtroVend=nombre; }
+  const cont=document.getElementById('pills-vend');
+  if(rol===ROLES.VENDEDOR){ cont.innerHTML=''; return; }
+  // Admin ve todo; local solo ventas del local (sin distribuidora)
+  let usadas=[...new Set(ventas.map(v=>v.vendedora))];
+  if(rol===ROLES.LOCAL) usadas=usadas.filter(v=>v!=='DISTRIBUIDORA');
+  cont.innerHTML=`<button class="pill ${filtroVend==='TODAS'?'on':''}" onclick="setFV('TODAS')">Todas</button>`;
+  usadas.forEach(v=>{ cont.innerHTML+=`<button class="pill ${filtroVend===v?'on':''}" onclick="setFV('${v}')">${v}</button>`; });
+}
+function setFV(v){ filtroVend=v; renderPills(); renderVentas(); }
+
+function renderVentas() {
+  if(!usuarioActual)return;
+  const { rol, nombre } = usuarioActual;
+  let lista;
+  if(rol===ROLES.VENDEDOR){ lista=ventas.filter(v=>v.vendedora===nombre); }
+  else if(rol===ROLES.LOCAL){
+    const base=ventas.filter(v=>v.vendedora!=='DISTRIBUIDORA');
+    lista=filtroVend==='TODAS'?base:base.filter(v=>v.vendedora===filtroVend);
+  } else {
+    lista=filtroVend==='TODAS'?ventas:ventas.filter(v=>v.vendedora===filtroVend);
+  }
+  document.getElementById('cnt-ventas').textContent=`${lista.length} registros`;
+
+  // Stats — sin ganancia para no-admin
+  if(esAdmin()){
+    const totalF=ventas.reduce((s,v)=>s+v.precio,0);
+    document.getElementById('stats-ventas').innerHTML=`
+      <div class="stat"><div class="stat-l">Total ventas</div><div class="stat-v">${ventas.length}</div></div>
+      <div class="stat"><div class="stat-l">Facturado</div><div class="stat-v" style="font-size:15px;">$${fmt(totalF)}</div></div>`;
+  } else {
+    document.getElementById('stats-ventas').innerHTML=`<div class="stat"><div class="stat-l">Mis ventas</div><div class="stat-v">${lista.length}</div></div>`;
+  }
+
+  const tbody=document.getElementById('tbody-ventas');
+  if(!lista.length){ tbody.innerHTML=''; document.getElementById('empty-ventas').style.display='block'; return; }
+  document.getElementById('empty-ventas').style.display='none';
+
+  tbody.innerHTML=lista.map((v,i)=>{
+    const cuotas=buildCuotas(v),pend=cuotas.filter(c=>!c.pagada).length;
+    const puedeEditar=esLocal();
+    return`<tr>
+      <td style="color:var(--muted);font-size:11px;">${lista.length-i}</td>
+      <td style="white-space:nowrap;font-size:12px;">${fmtD(v.fecha)}</td>
+      <td style="font-size:12px;">${v.vendedora}</td>
+      <td style="max-width:150px;font-size:13px;">${v.producto}</td>
+      <td style="font-weight:600;white-space:nowrap;">$${fmt(v.precio)}</td>
+      <td><span class="badge ${PAGO_BADGE[v.pago]||'b-ef'}">${PAGO_LBL[v.pago]||v.pago}</span>${isCP(v.pago)&&pend>0?`<br><span style="font-size:10px;color:var(--orange);">${pend}c pend.</span>`:''}</td>
+      <td style="font-size:12px;color:var(--muted);">${cliNom(v)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="verDetalle(${v.id})">Ver</button>
+        ${puedeEditar?`<button class="btn btn-blue btn-sm" style="margin-left:3px;" onclick="editarVenta(${v.id})">✏</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function verDetalle(id) {
+  const v=ventas.find(x=>x.id===id); if(!v)return;
+  const cuotas=buildCuotas(v);
+  const lbEst={pagada:'✓ Cobrada',vencida:'⚠ Vencida',proxima:'→ Próxima',pendiente:'Pendiente'};
+  const cuotasHTML=cuotas.length?`
+    <div class="sec" style="margin-top:13px;">Cuotas</div>
+    ${cuotas.map(c=>{const est=estCuota(c);return`
+      <div class="cuota ${est}">
+        <div class="cn">${c.num}</div>
+        <div style="flex:1;font-size:12px;"><strong>${fmtD(c.fecha)}</strong> &nbsp;$${fmt(c.monto)}</div>
+        <span style="font-size:11px;font-weight:600;">${lbEst[est]}</span>
+        ${!c.pagada?`<button class="btn btn-green btn-sm" onclick="marcarCuota(${id},${c.num-1},true)">Cobrar</button>`:`<button class="btn btn-ghost btn-sm" onclick="marcarCuota(${id},${c.num-1},false)">Deshacer</button>`}
+      </div>`}).join('')}`:
+  '';
+  document.getElementById('det-titulo').textContent=v.producto.substring(0,40);
+  document.getElementById('det-body').innerHTML=`
+    <div class="r2" style="gap:8px;margin-bottom:12px;">
+      <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Fecha</div><strong>${fmtD(v.fecha)}</strong></div>
+      <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Vendedor/a</div><strong>${v.vendedora}</strong></div>
+      <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Precio</div><div style="font-family:'Playfair Display',serif;font-size:20px;">$${fmt(v.precio)}</div></div>
+      <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pago</div><span class="badge ${PAGO_BADGE[v.pago]||'b-ef'}">${PAGO_LBL[v.pago]||v.pago}</span></div>
+    </div>
+    ${(v.apellido||v.nombre||v.dni||v.tel||v.dir)?`
+    <div style="background:var(--cream2);border-radius:10px;padding:10px 13px;margin-bottom:10px;font-size:13px;">
+      <div class="sec" style="margin-top:0;">Cliente</div>
+      ${v.apellido||v.nombre?`<div><strong>${cliNom(v)}</strong></div>`:''}
+      ${v.dni?`<div style="color:var(--muted);">DNI: ${v.dni}</div>`:''}
+      ${v.tel?`<div style="color:var(--muted);">📱 ${v.tel}</div>`:''}
+      ${v.dir?`<div style="color:var(--muted);">📍 ${v.dir}</div>`:''}
+    </div>`:''}
+    ${v.cpData?`<div class="ibox" style="margin-bottom:10px;">Anticipo: <strong>$${fmt(v.cpData.anticipo)}</strong> | Cuota: <strong>$${fmt(v.cpData.cuota)}</strong> | ${v.cpData.frecuencia}</div>`:''}
+    ${v.obs?`<div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:13px;color:var(--muted);font-style:italic;margin-bottom:10px;">${v.obs}</div>`:''}
+    ${cuotasHTML}
+    <div class="btn-row">
+      ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarVenta(${id})">🗑 Eliminar</button>`:''}
+      ${esLocal()?`<button class="btn btn-blue btn-sm" onclick="cM('ovl-det');editarVenta(${id})">✏ Editar</button>`:''}
+    </div>`;
+  document.getElementById('ovl-det').classList.add('on');
+}
+
+// ══════════════════════════════════════════════════════
+// CRÉDITOS
+// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// CRÉDITOS — nuevo sistema
+// ══════════════════════════════════════════════════════
+function buildFechasCuotas(cp) {
+  if (!cp.fechaPrimeraCuota) return [];
+  const step = cp.frecuencia==='semanal'?7:cp.frecuencia==='quincenal'?15:30;
+  return Array.from({length:cp.nCuotas}, (_,i) => addD(cp.fechaPrimeraCuota, step*i));
+}
+
+function estadoCuotaCP(cp, idx) {
+  const cobros = cp.cobros||[];
+  const cuotaCobro = cobros.find(c=>c.tipo==='cuota'&&c.idx===idx);
+  if (cuotaCobro) return 'pagada';
+  const fechas = buildFechasCuotas(cp);
+  if (!fechas[idx]) return 'pendiente';
+  const h=hoy();
+  if (fechas[idx]<h) return 'vencida';
+  if (difD(fechas[idx],h)<=7) return 'proxima';
+  return 'pendiente';
+}
+
+let cobroActual = null; // {ventaId, tipo:'anticipo'|'cuota', idx?, monto}
+
+function abrirCobrarAnticipo(vid) {
+  const v=ventas.find(x=>x.id===vid); if(!v||!v.cpData)return;
+  const cp=v.cpData;
+  cobroActual = {ventaId:vid, tipo:'anticipo', monto:cp.anticipo};
+  document.getElementById('cobrar-titulo').textContent='Cobrar Anticipo';
+  document.getElementById('cobrar-info').innerHTML=
+    `Cliente: <strong>${cliNom(v)}</strong><br>Anticipo: <strong>$${fmt(cp.anticipo)}</strong><br>Producto: ${v.producto}`;
+  document.getElementById('cobrar-monto').value=cp.anticipo;
+  document.getElementById('cobrar-fecha').value=hoy();
+  document.getElementById('cobrar-obs').value='';
+  document.getElementById('ovl-cobrar').classList.add('on');
+}
+
+function abrirCobrarCuota(vid, idx) {
+  const v=ventas.find(x=>x.id===vid); if(!v||!v.cpData)return;
+  const cp=v.cpData;
+  const fechas=buildFechasCuotas(cp);
+  cobroActual = {ventaId:vid, tipo:'cuota', idx, monto:cp.cuota};
+  document.getElementById('cobrar-titulo').textContent=`Cobrar Cuota ${idx+1} de ${cp.nCuotas}`;
+  document.getElementById('cobrar-info').innerHTML=
+    `Cliente: <strong>${cliNom(v)}</strong><br>Cuota ${idx+1}/${cp.nCuotas}: <strong>$${fmt(cp.cuota)}</strong>${fechas[idx]?`<br>Vence: ${fmtD(fechas[idx])}`:''}`;
+  document.getElementById('cobrar-monto').value=cp.cuota;
+  document.getElementById('cobrar-fecha').value=hoy();
+  document.getElementById('cobrar-obs').value='';
+  document.getElementById('ovl-cobrar').classList.add('on');
+}
+
+async function confirmarCobro() {
+  if (!cobroActual) return;
+  const {ventaId,tipo,idx} = cobroActual;
+  const v=ventas.find(x=>x.id===ventaId); if(!v||!v.cpData)return;
+  const cp=v.cpData;
+  const medio=document.getElementById('cobrar-medio').value;
+  const monto=parseFloat(document.getElementById('cobrar-monto').value)||0;
+  const fecha=document.getElementById('cobrar-fecha').value||hoy();
+  const obs=document.getElementById('cobrar-obs').value.trim();
+
+  if (!cp.cobros) cp.cobros=[];
+  const cobro = {id:Date.now(), tipo, idx:tipo==='cuota'?idx:undefined, monto, medio, fecha, obs};
+  cp.cobros.push(cobro);
+
+  if (tipo==='anticipo') cp.anticipoPagado=true;
+
+  await guardarVentas();
+  cM('ovl-cobrar');
+  generarReciboCredito(v, cobro);
+  renderCreditos();
+  toast('✓ Cobro registrado');
+}
+
+function generarReciboCredito(v, cobro) {
+  const cp=v.cpData;
+  const fechas=buildFechasCuotas(cp);
+  const cobros=cp.cobros||[];
+  const cuotasCobradas=cobros.filter(c=>c.tipo==='cuota').length;
+  const cuotasPend=cp.nCuotas-cuotasCobradas;
+  const medioPagoLbl = PAGO_LBL[cobro.medio]||cobro.medio;
+
+  // Calcular próximas cuotas pendientes
+  const prox=[];
+  for(let i=0;i<cp.nCuotas&&prox.length<3;i++){
+    const yaCobrada=cobros.some(c=>c.tipo==='cuota'&&c.idx===i);
+    if(!yaCobrada) prox.push({n:i+1,fecha:fechas[i]||'—'});
+  }
+
+  document.getElementById('recibo-cred-content').innerHTML=`
+    <div>
+      <div class="rec-hdr">
+        <div class="rec-logo">Rossi <em>Home</em></div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;letter-spacing:1px;">RECIBO DE CRÉDITO PERSONAL</div>
+      </div>
+      <div class="rec-stripe"></div>
+      <div class="rec-body">
+        <div style="display:flex;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed var(--border);">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;">Recibo</div>
+            <div style="font-family:'Playfair Display',serif;font-size:20px;color:var(--navy);">#${cobro.id.toString().slice(-6)}</div>
+          </div>
+          <div style="text-align:right;font-size:13px;color:var(--muted);">${fmtD(cobro.fecha)}</div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Cliente</div>
+          <div style="font-weight:600;font-size:15px;">${cliNom(v)}</div>
+          ${v.tel?`<div style="font-size:12px;color:var(--muted);">📱 ${v.tel}</div>`:''}
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Producto</div>
+          <div style="font-size:13px;">${v.producto}</div>
+          <div style="font-size:12px;color:var(--muted);">Precio de lista: $${fmt(cp.precioLista)}</div>
+        </div>
+        <div class="rec-monto">
+          <div class="rec-ml">${cobro.tipo==='anticipo'?'ANTICIPO RECIBIDO':`CUOTA ${(cobro.idx||0)+1} DE ${cp.nCuotas} RECIBIDA`}</div>
+          <div class="rec-mv">$${fmt(cobro.monto)}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;">Medio: ${medioPagoLbl}</div>
+          ${cobro.obs?`<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px;">${cobro.obs}</div>`:''}
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Estado del crédito</div>
+          <div class="rec-fila"><span class="lbl">Crédito total</span><span class="val">$${fmt(cp.totalCredito)}</span></div>
+          <div class="rec-fila"><span class="lbl">Cuotas cobradas</span><span class="val">${cuotasCobradas} de ${cp.nCuotas}</span></div>
+          <div class="rec-fila"><span class="lbl">Cuotas pendientes</span><span class="val">${cuotasPend}</span></div>
+          ${cp.anticipoPagado?'':`<div class="rec-fila"><span class="lbl">Anticipo</span><span class="val" style="color:var(--orange);">Pendiente $${fmt(cp.anticipo)}</span></div>`}
+        </div>
+        ${prox.length?`<div style="margin-bottom:12px;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Próximas cuotas</div>
+          ${prox.map(c=>`<div class="rec-fila"><span class="lbl">Cuota ${c.n}</span><span class="val">${fmtD(c.fecha)} — $${fmt(cp.cuota)}</span></div>`).join('')}
+        </div>`:''}
+      </div>
+      <div class="rec-actions">
+        <button class="btn btn-navy btn-sm" onclick="window.print()">🖨 Imprimir</button>
+        ${v.tel?`<button class="btn btn-wa btn-sm" onclick="waReciboCred(${v.id},'${cobro.id}')">📲 WhatsApp</button>`:''}
+      </div>
+    </div>`;
+  document.getElementById('ovl-recibo-cred').classList.add('on');
+}
+
+function waReciboCred(vid, cobroId) {
+  const v=ventas.find(x=>x.id===vid); if(!v||!v.cpData)return;
+  const cp=v.cpData;
+  const cobro=cp.cobros?.find(c=>String(c.id)===String(cobroId)); if(!cobro)return;
+  const fechas=buildFechasCuotas(cp);
+  const cobros=cp.cobros||[];
+  const prox=[];
+  for(let i=0;i<cp.nCuotas&&prox.length<2;i++){
+    if(!cobros.some(c=>c.tipo==='cuota'&&c.idx===i)) prox.push(`Cuota ${i+1}: ${fmtD(fechas[i]||'')} $${fmt(cp.cuota)}`);
+  }
+  const msg=`🏠 *ROSSI HOME*\n*Recibo de Crédito Personal*\n\nHola ${cliNom(v)}!\n\nRegistramos tu pago:\n✅ *${cobro.tipo==='anticipo'?'Anticipo':`Cuota ${(cobro.idx||0)+1}/${cp.nCuotas}`}: $${fmt(cobro.monto)}*\nFecha: ${fmtD(cobro.fecha)}\n\n${prox.length?`📅 Próximos pagos:\n${prox.join('\n')}\n\n`:''}Gracias por tu confianza! 🙌`;
+  window.open(`https://wa.me/54${v.tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+function filtroCredito(f,btn){
+  filtroCred=f;
+  document.querySelectorAll('#pg-creditos .pill').forEach(p=>p.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  renderCreditos();
+}
+
+function renderCreditos(){
+  if(!usuarioActual)return;
+  const creditosVentas=ventas.filter(v=>isCP(v.pago)&&v.cpData);
+
+  // Stats
+  let antPend=0, venc=0, prox=0, pend=0, alDia=0;
+  creditosVentas.forEach(v=>{
+    const cp=v.cpData;
+    if(!cp.anticipoPagado) antPend++;
+    const fechas=buildFechasCuotas(cp);
+    for(let i=0;i<cp.nCuotas;i++){
+      const est=estadoCuotaCP(cp,i);
+      if(est==='vencida')venc++;
+      else if(est==='proxima')prox++;
+      else if(est==='pendiente')pend++;
+      else if(est==='pagada')alDia++;
+    }
+  });
+  document.getElementById('stats-cred').innerHTML=`
+    <div class="stat" style="border-top-color:var(--orange);"><div class="stat-l">Anticipo pend.</div><div class="stat-v">${antPend}</div></div>
+    <div class="stat r"><div class="stat-l">Cuotas vencidas</div><div class="stat-v">${venc}</div></div>
+    <div class="stat" style="border-top-color:var(--orange);"><div class="stat-l">Próximas 7d</div><div class="stat-v">${prox}</div></div>
+    <div class="stat v"><div class="stat-l">Al día</div><div class="stat-v">${alDia}</div></div>`;
+
+  // Filtrar
+  let lista=creditosVentas;
+  if(filtroCred==='anticipo') lista=lista.filter(v=>!v.cpData.anticipoPagado);
+  else if(filtroCred==='vencidas') lista=lista.filter(v=>{ const cp=v.cpData; for(let i=0;i<cp.nCuotas;i++){if(estadoCuotaCP(cp,i)==='vencida')return true;} return false; });
+  else if(filtroCred==='proximas') lista=lista.filter(v=>{ const cp=v.cpData; for(let i=0;i<cp.nCuotas;i++){if(estadoCuotaCP(cp,i)==='proxima')return true;} return false; });
+  else if(filtroCred==='pendientes') lista=lista.filter(v=>{ const cp=v.cpData; for(let i=0;i<cp.nCuotas;i++){if(estadoCuotaCP(cp,i)==='pendiente')return true;} return false; });
+  else if(filtroCred==='cobradas') lista=lista.filter(v=>{ const cp=v.cpData; return cp.cobros&&cp.cobros.filter(c=>c.tipo==='cuota').length===cp.nCuotas&&cp.anticipoPagado; });
+
+  const cont=document.getElementById('cred-list'),empty=document.getElementById('empty-cred');
+  if(!lista.length){cont.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+
+  const estLbl={pagada:'✓',vencida:'⚠ Vencida',proxima:'→ Próxima',pendiente:'Pendiente'};
+  const estCol={pagada:'var(--green)',vencida:'var(--red)',proxima:'var(--orange)',pendiente:'var(--muted)'};
+
+  cont.innerHTML=lista.map(v=>{
+    const cp=v.cpData;
+    const fechas=buildFechasCuotas(cp);
+    const cobros=cp.cobros||[];
+    const cardBorder=!cp.anticipoPagado?'var(--orange)':cobros.filter(c=>c.tipo==='cuota').some((_,i)=>estadoCuotaCP(cp,i)==='vencida')?'var(--red)':'var(--gold)';
+
+    return`<div style="background:var(--white);border-radius:12px;box-shadow:var(--sh);padding:13px;margin-bottom:12px;border-left:4px solid ${cardBorder};">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div>
+          <div style="font-weight:600;font-size:15px;">${cliNom(v)}</div>
+          <div style="font-size:12px;color:var(--muted);">${v.producto}</div>
+          ${v.tel?`<div style="font-size:11px;color:var(--muted);">📱 ${v.tel}</div>`:''}
+        </div>
+        <div style="text-align:right;font-size:12px;color:var(--muted);">
+          <div>${fmtD(v.fecha)}</div>
+          <div>Lista: $${fmt(cp.precioLista)}</div>
+          <div>${cp.frecuencia} · ${cp.nCuotas}c</div>
+        </div>
+      </div>
+
+      <!-- Anticipo -->
+      <div style="padding:8px 10px;border-radius:8px;margin-bottom:7px;border:1px solid var(--border);background:${cp.anticipoPagado?'var(--gbg)':'var(--obg)'};">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:${cp.anticipoPagado?'var(--green)':'var(--orange)'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">A</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;">Anticipo $${fmt(cp.anticipo)}</div>
+              <div style="font-size:11px;color:var(--muted);">${cp.anticipoPagado?`Cobrado ${fmtD(cobros.find(c=>c.tipo==='anticipo')?.fecha||'')} · ${PAGO_LBL[cobros.find(c=>c.tipo==='anticipo')?.medio]||''}`:`Previsto: ${fmtD(cp.fechaAnticipo)}`}</div>
+            </div>
+          </div>
+          ${!cp.anticipoPagado?`<button class="btn btn-gold btn-sm" onclick="abrirCobrarAnticipo(${v.id})">Cobrar</button>`:`<span style="font-size:11px;font-weight:700;color:var(--green);">✓ Cobrado</span>`}
+        </div>
+      </div>
+
+      <!-- Cuotas -->
+      ${Array.from({length:cp.nCuotas},(_,i)=>{
+        const est=estadoCuotaCP(cp,i);
+        const fechaCuota=fechas[i]||'';
+        const cobroCuota=cobros.find(c=>c.tipo==='cuota'&&c.idx===i);
+        return`<div class="cuota ${est}" style="margin-bottom:5px;">
+          <div class="cn">${i+1}</div>
+          <div style="flex:1;font-size:12px;">
+            <strong>${fechaCuota?fmtD(fechaCuota):'Sin fecha'}</strong> &nbsp; $${fmt(cp.cuota)}
+            ${cobroCuota?`<span style="font-size:10px;color:var(--green);margin-left:5px;">${PAGO_LBL[cobroCuota.medio]||cobroCuota.medio}</span>`:''}
+          </div>
+          <span style="font-size:11px;font-weight:600;color:${estCol[est]};">${estLbl[est]}</span>
+          ${est!=='pagada'?`<button class="btn btn-green btn-sm" onclick="abrirCobrarCuota(${v.id},${i})">Cobrar</button>`:
+            `<button class="btn btn-sm" style="background:#e8f8f0;color:var(--green);border:1px solid #a0d8b8;" onclick="generarReciboCredito(ventas.find(x=>x.id===${v.id}),${JSON.stringify(cobroCuota)})">🧾</button>`}
+          ${v.tel&&est!=='pagada'?`<button class="btn btn-sm" style="background:#e8f8f0;color:#009168;border:1px solid #a0d8c0;margin-left:3px;" onclick="waRecordatorio('${v.tel}','${cliNom(v)}',${i+1},${cp.nCuotas},${cp.cuota},'${fechaCuota}')">📲</button>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+async function cobrarRapido(vid,idx){
+  // Mantener compatibilidad — abre modal de cobro
+  abrirCobrarCuota(vid,idx);
+}
+
+function waRecordatorio(tel,nombre,nCuota,total,monto,fecha){
+  const msg=`Hola ${nombre}! Te recordamos la cuota ${nCuota}/${total} de $${fmt(monto)} con vencimiento ${fmtD(fecha)}. Rossi Home 🏠`;
+  window.open(`https://wa.me/54${tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+function onCobrarMedio(){} // placeholder
+
+// ══════════════════════════════════════════════════════
+// LISTA DE PRECIOS
+// ══════════════════════════════════════════════════════
+function renderPrecios(){
+  const q=(document.getElementById('precio-q').value||'').toLowerCase();
+  let lista=productos;
+  if(q)lista=lista.filter(p=>p.nombre.toLowerCase().includes(q)||(p.proveedor||'').toLowerCase().includes(q));
+  document.getElementById('cnt-precios').textContent=`${lista.length} productos`;
+  const cont=document.getElementById('lista-precios'),empty=document.getElementById('empty-precios');
+  if(!lista.length){cont.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  const puedeEditar=esLocal();
+  cont.innerHTML=lista.map(p=>`
+    <div class="prod-fila">
+      <div style="flex:1;"><div class="pf-nom" style="font-size:13px;font-weight:500;">${p.nombre}</div><div class="pf-prov">${p.proveedor||''}</div></div>
+      <div class="pf-precio">$${fmt(p.precio)}</div>
+      ${puedeEditar?`<div style="display:flex;gap:5px;margin-left:8px;">
+        <button class="btn btn-blue btn-sm" onclick="editarProd(${p.id})">✏</button>
+        ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProd(${p.id})">✕</button>`:''}
+      </div>`:''}
+    </div>`).join('');
+}
+function abrirAddProd(){
+  if(!esLocal()){toast('Sin permiso');return;}
+  editProdId=null;
+  document.getElementById('prod-titulo').textContent='Agregar Producto';
+  document.getElementById('btn-prod-guardar').textContent='✓ Guardar';
+  ['ap-nom','ap-prov','ap-precio','ap-costo','ap-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ovl-prod').classList.add('on');
+}
+function editarProd(id){
+  if(!esLocal()){toast('Sin permiso');return;}
+  const p=productos.find(x=>x.id===id); if(!p)return;
+  editProdId=id;
+  document.getElementById('prod-titulo').textContent='Editar Producto';
+  document.getElementById('btn-prod-guardar').textContent='✓ Guardar Cambios';
+  document.getElementById('ap-nom').value=p.nombre||'';
+  document.getElementById('ap-prov').value=p.proveedor||'';
+  document.getElementById('ap-precio').value=p.precio||'';
+  document.getElementById('ap-costo').value=p.costo||'';
+  document.getElementById('ap-desc').value=p.desc||'';
+  document.getElementById('ovl-prod').classList.add('on');
+}
+async function guardarProd(){
+  const nombre=document.getElementById('ap-nom').value.trim();
+  if(!nombre){toast('⚠️ Ingresá el nombre');return;}
+  const data={nombre,proveedor:document.getElementById('ap-prov').value.trim(),precio:parseFloat(document.getElementById('ap-precio').value)||0,costo:parseFloat(document.getElementById('ap-costo').value)||0,desc:document.getElementById('ap-desc').value.trim()};
+  if(editProdId){
+    const idx=productos.findIndex(p=>p.id===editProdId);
+    if(idx>=0)productos[idx]={...productos[idx],...data};
+    toast('✓ Producto actualizado');
+  } else {
+    productos.unshift({id:Date.now(),...data});
+    toast('✓ Producto agregado');
+  }
+  await guardarProds(); cM('ovl-prod'); renderPrecios(); editProdId=null;
+}
+async function eliminarProd(id){
+  if(!esAdmin()){toast('Sin permiso');return;}
+  if(!confirm('¿Eliminás este producto?'))return;
+  productos=productos.filter(p=>p.id!==id);
+  await guardarProds(); renderPrecios(); toast('Producto eliminado');
+}
+
+// ══════════════════════════════════════════════════════
+// ADMIN
+// ══════════════════════════════════════════════════════
+function renderAdmin(){
+  if(!esAdmin())return;
+  const rolLabel={admin:'Administrador',local:'Local',vendedor:'Vendedor'};
+  const rolBadge={admin:'rol-admin',local:'rol-local',vendedor:'rol-vendedor'};
+  document.getElementById('admin-usuarios').innerHTML=Object.entries(usuarios).map(([nombre,u])=>`
+    <div class="user-card">
+      <div class="user-avatar">${nombre[0]}</div>
+      <div class="user-info">
+        <div class="user-nombre">${nombre}</div>
+        <div class="user-rol"><span class="rol-badge ${rolBadge[u.rol]||'rol-vendedor'}">${rolLabel[u.rol]||u.rol}</span></div>
+      </div>
+    </div>`).join('');
+  const totalV=ventas.length,totalF=ventas.reduce((s,v)=>s+v.precio,0);
+  document.getElementById('stats-admin').innerHTML=`
+    <div class="stat"><div class="stat-l">Total ventas</div><div class="stat-v">${totalV}</div></div>
+    <div class="stat v"><div class="stat-l">Facturado</div><div class="stat-v" style="font-size:15px;">$${fmt(totalF)}</div></div>
+    <div class="stat"><div class="stat-l">Productos</div><div class="stat-v">${productos.length}</div></div>`;
+}
+
+function abrirCambiarPass(){
+  const sel=document.getElementById('pass-user');
+  sel.innerHTML=Object.keys(usuarios).map(u=>`<option value="${u}">${u}</option>`).join('');
+  document.getElementById('pass-nueva').value='';
+  document.getElementById('ovl-pass').classList.add('on');
+}
+async function guardarPass(){
+  const user=document.getElementById('pass-user').value;
+  const pass=document.getElementById('pass-nueva').value;
+  if(!pass||pass.length<4){toast('⚠️ La contraseña debe tener al menos 4 caracteres');return;}
+  if(!usuarios[user]){toast('Usuario no encontrado');return;}
+  usuarios[user].pass=pass;
+  await guardarUsers(); cM('ovl-pass'); toast(`✓ Contraseña de ${user} actualizada`);
+}
+
+// ══════════════════════════════════════════════════════
+// BACKUP / EXCEL
+// ══════════════════════════════════════════════════════
+function exportarBackup(){
+  if(!esAdmin()){toast('Sin permiso');return;}
+  const data={version:3,fecha:hoy(),ventas,productos};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.download=`RossiHome_Backup_${hoy()}.json`;
+  a.click(); toast('💾 Backup descargado');
+}
+async function importarBackup(event){
+  if(!esAdmin()){toast('Sin permiso');return;}
+  const file=event.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!confirm(`¿Restaurar backup del ${data.fecha||'?'}?\n${data.ventas?.length||0} ventas`))return;
+      if(data.ventas)ventas=data.ventas;
+      if(data.productos&&data.productos.length>0)productos=data.productos;
+      await guardarVentas(); await guardarProds();
+      renderPills(); renderVentas(); renderCreditos(); renderPrecios();
+      toast(`✓ Restaurado: ${ventas.length} ventas`);
+    }catch(err){toast('⚠️ Archivo inválido');}
+  };
+  reader.readAsText(file); event.target.value='';
+}
+function exportarExcel(){
+  if(!esAdmin()){toast('Sin permiso');return;}
+  if(!ventas.length){toast('Sin ventas');return;}
+  const h=['#','Fecha','Vendedor','Producto','Precio','FormaPago','Apellido','Nombre','DNI','Tel','Dir','Obs'];
+  const rows=ventas.map((v,i)=>[ventas.length-i,v.fecha,v.vendedora,`"${(v.producto||'').replace(/"/g,'""')}"`,v.precio,PAGO_LBL[v.pago]||v.pago,v.apellido||'',v.nombre||'',v.dni||'',v.tel||'',v.dir||'',`"${(v.obs||'').replace(/"/g,'""')}"`].join(';'));
+  const csv='\uFEFF'+h.join(';')+'\n'+rows.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`RossiHome_Ventas_${hoy()}.csv`;
+  a.click(); toast('✓ Excel descargado');
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// PRESUPUESTOS
+// ══════════════════════════════════════════════════════
+let presupuestos = [];
+let filtroPres   = 'todos';
+const SK_PRES    = 'rh_pres_v1';
+
+async function guardarPresupuestos() {
+  await sSet(SK_PRES, presupuestos);
+  programarGuardado();
+}
+
+// Info de la empresa
+const INFO_EMPRESA = {
+  nombre: 'ROSSI HOME',
+  dir: 'Los Nogales 278, Barrio Olmo Viejo',
+  localidad: 'Parada Robles — Exaltación de la Cruz CP 6753',
+  wa: '+54 9 2323 478504',
+  horario: 'Lunes a sábados 9:00 a 13:00 y 16:00 a 20:00',
+};
+
+const ANTICIPO_PCT = 0.5; // 50% default para CP en presupuesto
+
+function abrirPres(tipo) {
+  if (tipo === 1) {
+    document.getElementById('p1-cliente').value = '';
+    document.getElementById('p1-prod').value = '';
+    document.getElementById('p1-precio').value = '';
+    document.getElementById('p1-obs').value = '';
+    document.getElementById('p1-preview').style.display = 'none';
+    // Validez: 7 días por defecto
+    const v = new Date(); v.setDate(v.getDate()+7);
+    document.getElementById('p1-validez').value = v.toISOString().split('T')[0];
+    // Desmarcar todos los checks
+    document.querySelectorAll('#p1-pagos-check input[type=checkbox]').forEach(c => c.checked=false);
+    document.getElementById('ovl-pres1').classList.add('on');
+  } else {
+    document.getElementById('p2-cliente').value = '';
+    document.getElementById('p2-obs').value = '';
+    const v = new Date(); v.setDate(v.getDate()+7);
+    document.getElementById('p2-validez').value = v.toISOString().split('T')[0];
+    renderItemsPres2([]);
+    document.getElementById('ovl-pres2').classList.add('on');
+  }
+}
+
+// Buscar producto en presupuesto tipo 1
+function buscarProdPres() {
+  const q = document.getElementById('p1-prod').value.toLowerCase().trim();
+  const ac = document.getElementById('p1-ac');
+  if (!q) { ac.classList.remove('on'); return; }
+  const palabras = q.split(/\s+/).filter(Boolean);
+  const hits = productos.filter(p => {
+    const txt = (p.nombre+' '+(p.proveedor||'')).toLowerCase();
+    return palabras.every(w => txt.includes(w));
+  }).slice(0,8);
+  if (!hits.length) { ac.classList.remove('on'); return; }
+  ac.innerHTML = hits.map(p =>
+    `<div class="ac-row" onmousedown="selProdPres(${p.id})">
+      <div><div class="ac-nom">${p.nombre}</div><div class="ac-sub">${p.proveedor||''}</div></div>
+      <div class="ac-p">$${fmt(p.precio)}</div>
+    </div>`).join('');
+  ac.classList.add('on');
+}
+
+function selProdPres(id) {
+  const p = productos.find(x=>x.id===id); if(!p)return;
+  document.getElementById('p1-prod').value = p.nombre;
+  document.getElementById('p1-precio').value = p.precio||'';
+  document.getElementById('p1-ac').classList.remove('on');
+  calcPres1();
+}
+
+function calcPres1() {
+  const precio = parseFloat(document.getElementById('p1-precio').value)||0;
+  if (!precio) { document.getElementById('p1-preview').style.display='none'; return; }
+  const checks = [...document.querySelectorAll('#p1-pagos-check input[type=checkbox]:checked')].map(c=>c.value);
+  if (!checks.length) { document.getElementById('p1-preview').style.display='none'; return; }
+
+  const filas = checks.map(pago => {
+    let desc='', cuota='', total='';
+    if (pago==='EFECTIVO' || pago==='TRANSF') {
+      desc = pago==='EFECTIVO'?'Efectivo':'Transferencia';
+      total = `$${fmt(precio)}`;
+    } else if (isTC(pago)) {
+      const n=TC_N[pago]||1, r=TC_RC[pago]||1;
+      const tot=Math.round(precio*r), cuo=Math.round(tot/n);
+      desc = PAGO_LBL[pago]||pago;
+      cuota = n>1?`$${fmt(cuo)} c/u`:'';
+      total = `$${fmt(tot)}`;
+    } else if (isCP(pago)) {
+      const n=CP_N[pago]||2, freq='mensual';
+      const ant=Math.round(precio*ANTICIPO_PCT);
+      const saldo=precio-ant, interes=CP_INT[freq]?.[n]||0;
+      const tot=Math.round(saldo*(1+interes)), cuo=Math.round(tot/n);
+      desc = `CP ${n} cuotas (mensual)`;
+      cuota = `Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`;
+      total = `$${fmt(ant+tot)}`;
+    }
+    return `<tr><td style="padding:5px 8px;font-size:13px;">${desc}</td><td style="padding:5px 8px;font-size:13px;color:var(--muted);">${cuota}</td><td style="padding:5px 8px;font-size:13px;font-weight:600;text-align:right;">$${total.replace('$','')}</td></tr>`;
+  }).join('');
+
+  document.getElementById('p1-preview').style.display='block';
+  document.getElementById('p1-preview').innerHTML=`
+    <div style="font-weight:600;margin-bottom:7px;color:var(--navy);">Vista previa de precios:</div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:var(--navy);">
+        <th style="padding:5px 8px;text-align:left;color:rgba(255,255,255,.7);font-size:11px;">Forma de pago</th>
+        <th style="padding:5px 8px;text-align:left;color:rgba(255,255,255,.7);font-size:11px;">Cuotas</th>
+        <th style="padding:5px 8px;text-align:right;color:rgba(255,255,255,.7);font-size:11px;">Total</th>
+      </tr></thead>
+      <tbody>${filas}</tbody>
+    </table>`;
+}
+
+// ── Tipo 2 — ítems ────────────────────────────────────
+let items2 = [];
+
+function renderItemsPres2(arr) {
+  items2 = arr.length ? arr : [{cant:1,desc:'',precioUnit:0}];
+  const cont = document.getElementById('p2-items');
+  cont.innerHTML = items2.map((it,i)=>`
+    <div style="display:grid;grid-template-columns:60px 1fr 120px 100px 30px;gap:7px;align-items:center;margin-bottom:7px;">
+      <input type="number" value="${it.cant}" min="1" placeholder="Cant." oninput="updItem2(${i},'cant',this.value)"
+        style="border:1.5px solid var(--border);border-radius:8px;padding:7px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;text-align:center;background:var(--cream);">
+      <input type="text" value="${it.desc}" placeholder="Descripción del producto" oninput="updItem2(${i},'desc',this.value)"
+        style="border:1.5px solid var(--border);border-radius:8px;padding:7px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--cream);">
+      <input type="number" value="${it.precioUnit||''}" min="0" placeholder="$ Precio u." oninput="updItem2(${i},'precioUnit',this.value)"
+        style="border:1.5px solid var(--border);border-radius:8px;padding:7px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--cream);">
+      <div style="font-size:13px;font-weight:600;color:var(--navy);text-align:right;padding-right:4px;">$${fmt(it.cant*it.precioUnit)}</div>
+      <button onclick="removeItem2(${i})" style="background:var(--rbg);color:var(--red);border:1px solid #f0c0c0;border-radius:7px;padding:4px 7px;cursor:pointer;font-size:13px;">✕</button>
+    </div>`).join('');
+}
+
+function updItem2(i,field,val) {
+  items2[i][field] = field==='desc'?val:parseFloat(val)||0;
+  // Actualizar solo el total sin re-render completo
+  const tots=document.querySelectorAll('#p2-items > div');
+  if(tots[i]) {
+    const totEl=tots[i].querySelectorAll('div')[0];
+    if(totEl) totEl.textContent=`$${fmt(items2[i].cant*items2[i].precioUnit)}`;
+  }
+}
+
+function addItemPres2() {
+  items2.push({cant:1,desc:'',precioUnit:0});
+  renderItemsPres2(items2);
+}
+function removeItem2(i) {
+  items2.splice(i,1);
+  if(!items2.length) items2.push({cant:1,desc:'',precioUnit:0});
+  renderItemsPres2(items2);
+}
+
+// ── Guardar presupuesto ───────────────────────────────
+async function guardarPres(tipo) {
+  let pres = {id:Date.now(), tipo, fecha:hoy(), estado:'pendiente'};
+
+  if (tipo===1) {
+    const prod = document.getElementById('p1-prod').value.trim();
+    const precio = parseFloat(document.getElementById('p1-precio').value)||0;
+    const checks = [...document.querySelectorAll('#p1-pagos-check input[type=checkbox]:checked')].map(c=>c.value);
+    if (!prod||!precio||!checks.length) { toast('⚠️ Completá producto, precio y al menos una forma de pago'); return; }
+    pres.cliente = document.getElementById('p1-cliente').value.trim();
+    pres.validez = document.getElementById('p1-validez').value;
+    pres.obs     = document.getElementById('p1-obs').value.trim();
+    pres.producto= prod;
+    pres.precio  = precio;
+    pres.pagos   = checks;
+    cM('ovl-pres1');
+  } else {
+    // Leer items actualizados del DOM
+    document.querySelectorAll('#p2-items > div').forEach((div,i)=>{
+      const inputs=div.querySelectorAll('input');
+      if(inputs[0]) items2[i].cant=parseFloat(inputs[0].value)||1;
+      if(inputs[1]) items2[i].desc=inputs[1].value.trim();
+      if(inputs[2]) items2[i].precioUnit=parseFloat(inputs[2].value)||0;
+    });
+    const validItems=items2.filter(it=>it.desc);
+    if (!validItems.length) { toast('⚠️ Agregá al menos un ítem'); return; }
+    pres.cliente = document.getElementById('p2-cliente').value.trim();
+    pres.validez = document.getElementById('p2-validez').value;
+    pres.obs     = document.getElementById('p2-obs').value.trim();
+    pres.items   = validItems;
+    cM('ovl-pres2');
+  }
+
+  presupuestos.unshift(pres);
+  await guardarPresupuestos();
+  renderPresupuestos();
+  verPresupuesto(pres.id);
+  toast('✓ Presupuesto generado');
+}
+
+// ── Render lista presupuestos ─────────────────────────
+function setFiltroPres(f,btn) {
+  filtroPres=f;
+  document.querySelectorAll('#pg-presupuestos .pill').forEach(p=>p.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  renderPresupuestos();
+}
+
+function renderPresupuestos() {
+  let lista = presupuestos;
+  if(filtroPres!=='todos') lista=lista.filter(p=>p.estado===filtroPres);
+  const cont=document.getElementById('pres-list'),empty=document.getElementById('empty-pres');
+  if(!lista.length){cont.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  const estBadge={pendiente:'background:#f0e8cc;color:#a07000;',concretado:'background:var(--gbg);color:var(--green);',no_concretado:'background:var(--rbg);color:var(--red);'};
+  const estLbl={pendiente:'⏳ Pendiente',concretado:'✅ Concretado',no_concretado:'❌ No concretado'};
+  cont.innerHTML=lista.map(p=>{
+    const desc=p.tipo===1?p.producto:(p.items?.map(i=>`${i.cant}x ${i.desc}`).join(', ')||'—');
+    const total=p.tipo===1?`$${fmt(p.precio)}`:`$${fmt(p.items?.reduce((s,i)=>s+i.cant*i.precioUnit,0)||0)}`;
+    return`<div style="background:var(--white);border-radius:12px;box-shadow:var(--sh);padding:13px;margin-bottom:10px;border-left:4px solid var(--gold);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div>
+          <div style="font-weight:600;font-size:14px;">${p.cliente||'Sin nombre'}</div>
+          <div style="font-size:12px;color:var(--muted);">${desc}</div>
+          <div style="font-size:11px;color:var(--muted);">${fmtD(p.fecha)} · Válido hasta ${fmtD(p.validez)} · ${p.tipo===1?'Con formas de pago':'Tradicional'}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Playfair Display',serif;font-size:16px;color:var(--navy);">${total}</div>
+          <span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;${estBadge[p.estado]||''}">${estLbl[p.estado]||p.estado}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="verPresupuesto(${p.id})">Ver / Imprimir</button>
+        ${p.estado==='pendiente'?`
+          <button class="btn btn-green btn-sm" onclick="cambiarEstadoPres(${p.id},'concretado')">✅ Concretado</button>
+          <button class="btn btn-danger btn-sm" onclick="cambiarEstadoPres(${p.id},'no_concretado')">❌ No concretado</button>`:
+          `<button class="btn btn-ghost btn-sm" onclick="cambiarEstadoPres(${p.id},'pendiente')">↩ Pendiente</button>`}
+        <button class="btn btn-danger btn-sm" onclick="eliminarPres(${p.id})">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cambiarEstadoPres(id,estado) {
+  const p=presupuestos.find(x=>x.id===id); if(!p)return;
+  p.estado=estado;
+  await guardarPresupuestos(); renderPresupuestos(); toast('✓ Estado actualizado');
+}
+async function eliminarPres(id) {
+  if(!confirm('¿Eliminás este presupuesto?'))return;
+  presupuestos=presupuestos.filter(p=>p.id!==id);
+  await guardarPresupuestos(); renderPresupuestos(); toast('Eliminado');
+}
+
+// ── Ver presupuesto (imprimible) ──────────────────────
+function verPresupuesto(id) {
+  const p=presupuestos.find(x=>x.id===id); if(!p)return;
+  const headerHTML=`
+    <div style="background:var(--navy);padding:20px;text-align:center;">
+      <div style="font-family:'Playfair Display',serif;font-size:26px;color:#fff;">${INFO_EMPRESA.nombre}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:4px;line-height:1.7;">
+        ${INFO_EMPRESA.dir} · ${INFO_EMPRESA.localidad}<br>
+        📱 ${INFO_EMPRESA.wa} · ${INFO_EMPRESA.horario}
+      </div>
+    </div>
+    <div style="height:4px;background:linear-gradient(90deg,var(--gold),var(--gold2));"></div>`;
+
+  const metaHTML=`
+    <div style="display:flex;justify-content:space-between;padding:14px 18px;border-bottom:1px dashed var(--border);">
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Presupuesto</div>
+        <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--navy);">#${String(p.id).slice(-6)}</div>
+        <div style="font-size:12px;color:var(--muted);">Fecha: ${fmtD(p.fecha)}</div>
+      </div>
+      <div style="text-align:right;">
+        ${p.cliente?`<div style="font-weight:600;font-size:14px;">${p.cliente}</div>`:''}
+        <div style="font-size:12px;color:var(--muted);">Válido hasta: <strong>${fmtD(p.validez)}</strong></div>
+      </div>
+    </div>`;
+
+  let bodyHTML='';
+  if(p.tipo===1){
+    // Calcular filas de precios
+    const precio=p.precio;
+    const filas=p.pagos.map(pago=>{
+      let desc='',cuota='',total='';
+      if(pago==='EFECTIVO'||pago==='TRANSF'){
+        desc=pago==='EFECTIVO'?'Efectivo':'Transferencia';
+        total=`$${fmt(precio)}`;
+      } else if(isTC(pago)){
+        const n=TC_N[pago]||1,r=TC_RC[pago]||1;
+        const tot=Math.round(precio*r),cuo=Math.round(tot/n);
+        desc=PAGO_LBL[pago]||pago;
+        cuota=n>1?`${n} cuotas de $${fmt(cuo)}`:'1 pago';
+        total=`$${fmt(tot)}`;
+      } else if(isCP(pago)){
+        const n=CP_N[pago]||2,freq='mensual';
+        const ant=Math.round(precio*ANTICIPO_PCT),saldo=precio-ant;
+        const interes=CP_INT[freq]?.[n]||0,tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);
+        desc=`Crédito Personal ${n} cuotas`;
+        cuota=`Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`;
+        total=`$${fmt(ant+tot)}`;
+      }
+      return`<tr>
+        <td style="padding:9px 12px;font-size:13px;border-bottom:1px solid #f0ece6;">${desc}</td>
+        <td style="padding:9px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid #f0ece6;">${cuota}</td>
+        <td style="padding:9px 12px;font-size:14px;font-weight:700;text-align:right;border-bottom:1px solid #f0ece6;color:var(--navy);">${total}</td>
+      </tr>`;
+    }).join('');
+    bodyHTML=`
+      <div style="padding:14px 18px;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">Producto</div>
+        <div style="font-size:15px;font-weight:600;color:var(--navy);margin-bottom:14px;">${p.producto}</div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--cream2);">
+            <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Forma de pago</th>
+            <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Detalle</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Total</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>`;
+  } else {
+    const totalPres=p.items?.reduce((s,i)=>s+i.cant*i.precioUnit,0)||0;
+    const filas=p.items?.map(i=>`<tr>
+      <td style="padding:9px 12px;font-size:13px;text-align:center;border-bottom:1px solid #f0ece6;">${i.cant}</td>
+      <td style="padding:9px 12px;font-size:13px;border-bottom:1px solid #f0ece6;">${i.desc}</td>
+      <td style="padding:9px 12px;font-size:13px;text-align:right;border-bottom:1px solid #f0ece6;">$${fmt(i.precioUnit)}</td>
+      <td style="padding:9px 12px;font-size:13px;font-weight:600;text-align:right;border-bottom:1px solid #f0ece6;">$${fmt(i.cant*i.precioUnit)}</td>
+    </tr>`).join('');
+    bodyHTML=`
+      <div style="padding:14px 18px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:var(--cream2);">
+            <th style="padding:8px 12px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);width:60px;">Cant.</th>
+            <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Descripción</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">P. Unitario</th>
+            <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);">Total</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+        <div style="display:flex;justify-content:flex-end;padding:12px;border-top:2px solid var(--navy);margin-top:4px;">
+          <div style="text-align:right;">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);">Total</div>
+            <div style="font-family:'Playfair Display',serif;font-size:24px;color:var(--navy);">$${fmt(totalPres)}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  const condHTML=`
+    <div style="background:var(--cream2);padding:12px 18px;border-top:1px dashed var(--border);">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;">Condiciones</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.7;">
+        ✓ Presupuesto válido hasta el ${fmtD(p.validez)}<br>
+        ✓ Entrega sin cargo en Exaltación de la Cruz<br>
+        ✓ Consulte por otras localidades<br>
+        ${p.obs?`✓ ${p.obs}`:''}
+      </div>
+    </div>`;
+
+  const accHTML=`
+    <div style="padding:13px 18px;background:var(--cream);border-top:1px solid var(--border);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-navy btn-sm" onclick="window.print()">🖨 Imprimir / PDF</button>
+      <button class="btn btn-wa btn-sm" onclick="waPres(${p.id})">📲 WhatsApp</button>
+      <button class="btn btn-blue btn-sm" onclick="emailPres(${p.id})">📧 Email</button>
+    </div>`;
+
+  document.getElementById('ver-pres-content').innerHTML = headerHTML+metaHTML+bodyHTML+condHTML+accHTML;
+  document.getElementById('ovl-ver-pres').classList.add('on');
+}
+
+function waPres(id) {
+  const p=presupuestos.find(x=>x.id===id); if(!p)return;
+  let msg=`🏠 *ROSSI HOME*\n📄 *Presupuesto #${String(p.id).slice(-6)}*\n`;
+  if(p.cliente) msg+=`Para: ${p.cliente}\n`;
+  msg+=`\n`;
+  if(p.tipo===1){
+    msg+=`📦 ${p.producto}\n💰 Precio de lista: $${fmt(p.precio)}\n\n`;
+    p.pagos.forEach(pago=>{
+      if(pago==='EFECTIVO'||pago==='TRANSF'){
+        msg+=`• ${pago==='EFECTIVO'?'Efectivo':'Transferencia'}: $${fmt(p.precio)}\n`;
+      } else if(isTC(pago)){
+        const n=TC_N[pago]||1,r=TC_RC[pago]||1,tot=Math.round(p.precio*r),cuo=Math.round(tot/n);
+        msg+=`• ${PAGO_LBL[pago]}: ${n>1?`${n}x$${fmt(cuo)} = `:''}$${fmt(tot)}\n`;
+      } else if(isCP(pago)){
+        const n=CP_N[pago]||2,ant=Math.round(p.precio*ANTICIPO_PCT),saldo=p.precio-ant;
+        const interes=CP_INT['mensual']?.[n]||0,tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);
+        msg+=`• CP ${n} cuotas: Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}\n`;
+      }
+    });
+  } else {
+    p.items?.forEach(i=>{ msg+=`• ${i.cant}x ${i.desc}: $${fmt(i.cant*i.precioUnit)}\n`; });
+    msg+=`\n💰 Total: $${fmt(p.items?.reduce((s,i)=>s+i.cant*i.precioUnit,0)||0)}\n`;
+  }
+  msg+=`\n✓ Válido hasta ${fmtD(p.validez)}\n✓ Entrega sin cargo en Exaltación de la Cruz\n`;
+  if(p.obs) msg+=`✓ ${p.obs}\n`;
+  msg+=`\n📍 ${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad}\n📱 ${INFO_EMPRESA.wa}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+function emailPres(id) {
+  const p=presupuestos.find(x=>x.id===id); if(!p)return;
+  let body=`Estimado/a ${p.cliente||'cliente'},\n\nAdjunto encontrará el presupuesto solicitado de ROSSI HOME.\n\n`;
+  if(p.tipo===1){
+    body+=`Producto: ${p.producto}\nPrecio de lista: $${fmt(p.precio)}\n\n`;
+    p.pagos.forEach(pago=>{
+      if(pago==='EFECTIVO') body+=`• Efectivo: $${fmt(p.precio)}\n`;
+      else if(pago==='TRANSF') body+=`• Transferencia: $${fmt(p.precio)}\n`;
+      else if(isTC(pago)){const n=TC_N[pago]||1,r=TC_RC[pago]||1,tot=Math.round(p.precio*r),cuo=Math.round(tot/n);body+=`• ${PAGO_LBL[pago]}: ${n>1?`${n} cuotas de $${fmt(cuo)} = `:''}$${fmt(tot)}\n`;}
+      else if(isCP(pago)){const n=CP_N[pago]||2,ant=Math.round(p.precio*ANTICIPO_PCT),saldo=p.precio-ant,interes=CP_INT['mensual']?.[n]||0,tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);body+=`• Crédito Personal ${n} cuotas: Anticipo $${fmt(ant)} + ${n} cuotas de $${fmt(cuo)}\n`;}
+    });
+  } else {
+    p.items?.forEach(i=>{body+=`• ${i.cant}x ${i.desc}: $${fmt(i.cant*i.precioUnit)}\n`;});
+    body+=`\nTotal: $${fmt(p.items?.reduce((s,i)=>s+i.cant*i.precioUnit,0)||0)}\n`;
+  }
+  body+=`\nVálido hasta: ${fmtD(p.validez)}\nEntrega sin cargo en Exaltación de la Cruz.\n`;
+  if(p.obs) body+=`${p.obs}\n`;
+  body+=`\nRossi Home\n${INFO_EMPRESA.dir}\n${INFO_EMPRESA.localidad}\n${INFO_EMPRESA.wa}`;
+  const subject=`Presupuesto Rossi Home${p.cliente?' para '+p.cliente:''}`;
+  window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await cargarDatos();
+  const ps = await sGet(SK_PRES); if(ps) presupuestos=ps;
+});
+document.addEventListener('click', e => {
+  if(!e.target.closest('.sb')) document.querySelectorAll('.ac').forEach(a=>a.classList.remove('on'));
+});
+</script>
+</body>
+</html>
