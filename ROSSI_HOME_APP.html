@@ -1556,7 +1556,6 @@ async function guardar() {
   const pagoSimple = document.getElementById('f-pago').value||'EFECTIVO';
   const pago = esMixto && pagosVenta.length > 0 ? (pagosVenta.length===1 ? pagosVenta[0].pago : 'MIXTO') : pagoSimple;
   const pagosDetalle = esMixto && pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precio, label: PAGO_LBL[pagoSimple]||pagoSimple}];
-  const pagosDetalle = pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precio, label: PAGO_LBL[pagoSimple]||pagoSimple}];
 
   const base = {
     fecha,vendedora:vend,producto:prod,precio,costo,pago,
