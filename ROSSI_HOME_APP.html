@@ -189,9 +189,20 @@ td{padding:9px 11px;vertical-align:middle;}
     <div class="login-logo">Rossi <em>Home</em></div>
     <div class="login-sub">Sistema de Ventas</div>
     <div class="login-err" id="login-err">Usuario o contraseña incorrectos</div>
-    <div class="fg"><label>Usuario</label><input type="text" id="login-user" placeholder="Tu nombre" autocapitalize="words"></div>
-    <div class="fg"><label>Contraseña</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="btn btn-gold" style="width:100%;margin-top:8px;" onclick="doLogin()">Ingresar →</button>
+    <!-- Botón Face ID / Huella (se muestra si hay sesión guardada) -->
+    <div id="biometric-btn" style="display:none;margin-bottom:12px;">
+      <button class="btn btn-gold" style="width:100%;font-size:16px;padding:14px;" onclick="loginBiometrico()">
+        🔒 Ingresar con Face ID / Huella
+      </button>
+      <div id="biometric-user-label" style="text-align:center;font-size:12px;color:var(--muted);margin-top:6px;"></div>
+      <button onclick="mostrarLoginManual()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;width:100%;margin-top:8px;">Usar usuario y contraseña</button>
+    </div>
+    <!-- Formulario normal (oculto si hay Face ID) -->
+    <div id="login-form">
+      <div class="fg"><label>Usuario</label><input type="text" id="login-user" placeholder="Tu nombre" autocapitalize="words"></div>
+      <div class="fg"><label>Contraseña</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn btn-gold" style="width:100%;margin-top:8px;" onclick="doLogin()">Ingresar →</button>
+    </div>
   </div>
 </div>
 
@@ -219,43 +230,100 @@ td{padding:9px 11px;vertical-align:middle;}
         <div class="fg"><label>Fecha</label><input type="date" id="f-fecha"></div>
         <div class="fg"><label>Vendedor/a</label><select id="f-vend"></select></div>
       </div>
+      <!-- Forma de pago -->
       <div class="fg">
         <label>Forma de pago</label>
         <select id="f-pago" onchange="onPago()">
-          <option value="">Seleccionar…</option>
-          <optgroup label="💵 Efectivo">
-            <option value="EFECTIVO">Efectivo</option>
-          </optgroup>
-          <optgroup label="🔁 Transferencia">
-            <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
-            <option value="TRANSF_FLEX">Transferencia → Flex</option>
-            <option value="TRANSF_ROSA">Transferencia → Rosa</option>
-            <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
-            <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
-          </optgroup>
-          <optgroup label="💳 Tarjeta de Crédito">
-            <option value="TC1">TC 1 cuota</option>
-            <option value="TC2">TC 2 cuotas</option>
-            <option value="TC3">TC 3 cuotas</option>
-            <option value="TC6">TC 6 cuotas</option>
-            <option value="TC9">TC 9 cuotas</option>
-            <option value="TC12">TC 12 cuotas</option>
-          </optgroup>
-          <optgroup label="💳 Mercado Pago">
-            <option value="DEBITO">Tarjeta de Débito</option>
-            <option value="PREPAGA">Tarjeta Prepaga</option>
-            <option value="QR_MP">QR Mercado Pago</option>
-            <option value="LINK_MP">Link de Mercado Pago</option>
-          </optgroup>
-          <optgroup label="📋 Crédito Personal">
-            <option value="CP2">Anticipo + CP 2 cuotas</option>
-            <option value="CP3">Anticipo + CP 3 cuotas</option>
-            <option value="CP6">Anticipo + CP 6 cuotas</option>
-            <option value="CP9">Anticipo + CP 9 cuotas</option>
-            <option value="CP12">Anticipo + CP 12 cuotas</option>
-          </optgroup>
-        </select>
+            <option value="">Seleccionar…</option>
+            <optgroup label="💵 Efectivo">
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="CHEQUE">Cheque</option>
+            </optgroup>
+            <optgroup label="🔁 Transferencia">
+              <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
+              <option value="TRANSF_FLEX">Transferencia → Flex</option>
+              <option value="TRANSF_ROSA">Transferencia → Rosa</option>
+              <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
+              <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
+            </optgroup>
+            <optgroup label="💳 Tarjeta de Crédito">
+              <option value="TC1">TC 1 cuota</option>
+              <option value="TC2">TC 2 cuotas</option>
+              <option value="TC3">TC 3 cuotas</option>
+              <option value="TC6">TC 6 cuotas</option>
+              <option value="TC9">TC 9 cuotas</option>
+              <option value="TC12">TC 12 cuotas</option>
+            </optgroup>
+            <optgroup label="💳 Mercado Pago">
+              <option value="DEBITO">Tarjeta de Débito</option>
+              <option value="PREPAGA">Tarjeta Prepaga</option>
+              <option value="QR_MP">QR Mercado Pago</option>
+              <option value="LINK_MP">Link de Mercado Pago</option>
+            </optgroup>
+            <optgroup label="📋 Crédito Personal">
+              <option value="CP2">Anticipo + CP 2 cuotas</option>
+              <option value="CP3">Anticipo + CP 3 cuotas</option>
+              <option value="CP6">Anticipo + CP 6 cuotas</option>
+              <option value="CP9">Anticipo + CP 9 cuotas</option>
+              <option value="CP12">Anticipo + CP 12 cuotas</option>
+              <option value="L30M">Lista 30d - 1 cuota mensual</option>
+              <option value="L30Q">Lista 30d - 2 cuotas quincenales</option>
+              <option value="L30S">Lista 30d - 4 cuotas semanales</option>
+            </optgroup>
+          </select>
       </div>
+
+      <!-- Toggle pago mixto -->
+      <div style="margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:var(--cream2);padding:10px;border-radius:8px;">
+          <input type="checkbox" id="chk-mixto" onchange="toggleMixto()">
+          <span>💳 Pago mixto (múltiples métodos)</span>
+        </label>
+      </div>
+
+      <!-- Bloque mixto (oculto por default) -->
+      <div id="blk-mixto" style="display:none;background:var(--cream2);border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div id="pagos-lista" style="margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <div class="fg" style="flex:2;margin:0;">
+            <label>Método</label>
+            <select id="f-pago-extra" style="font-size:13px;">
+              <option value="">Seleccionar…</option>
+              <optgroup label="💵 Efectivo">
+                <option value="EFECTIVO">Efectivo</option>
+                <option value="CHEQUE">Cheque</option>
+              </optgroup>
+              <optgroup label="🔁 Transferencia">
+                <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
+                <option value="TRANSF_FLEX">Transferencia → Flex</option>
+                <option value="TRANSF_ROSA">Transferencia → Rosa</option>
+                <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
+                <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
+              </optgroup>
+              <optgroup label="💳 Tarjeta de Crédito">
+                <option value="TC1">TC 1 cuota</option>
+                <option value="TC2">TC 2 cuotas</option>
+                <option value="TC3">TC 3 cuotas</option>
+                <option value="TC6">TC 6 cuotas</option>
+                <option value="TC9">TC 9 cuotas</option>
+                <option value="TC12">TC 12 cuotas</option>
+              </optgroup>
+              <optgroup label="💳 Mercado Pago">
+                <option value="DEBITO">Tarjeta de Débito</option>
+                <option value="PREPAGA">Tarjeta Prepaga</option>
+                <option value="QR_MP">QR Mercado Pago</option>
+                <option value="LINK_MP">Link de Mercado Pago</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="fg" style="flex:1;margin:0;">
+            <label>Monto ($)</label>
+            <input type="number" id="f-pago-monto" placeholder="0" min="0">
+          </div>
+          <button class="btn btn-blue" style="height:42px;white-space:nowrap;" onclick="agregarPago()">+ Agregar</button>
+        </div>
+      </div>
+
       <div id="blk-tc" style="display:none;"><div class="ibox" id="tc-info"></div></div>
       <div id="blk-cp" style="display:none;">
         <div style="background:var(--cream2);border-radius:10px;padding:13px;margin-bottom:9px;">
@@ -313,6 +381,10 @@ td{padding:9px 11px;vertical-align:middle;}
           </div>
           <!-- Resumen calculado -->
           <div class="ibox" id="cp-resumen" style="display:none;"></div>
+          <div class="fg" id="blk-cuota-manual" style="display:none;margin-top:8px;">
+            <label>Valor cuota ($) <span style="font-size:11px;color:var(--muted);">(editable)</span></label>
+            <input type="number" id="cp-cuota-manual" placeholder="0" min="0" oninput="onCuotaManual()">
+          </div>
         </div>
       </div>
       <div class="fg">
@@ -428,7 +500,347 @@ td{padding:9px 11px;vertical-align:middle;}
 
 </div>
 
+
+  <!-- CAJA -->
+  <div class="page" id="pg-caja">
+    <div class="card">
+      <div class="ch"><h2>🏦 Caja General</h2></div>
+
+      <!-- Resumen sub-cajas -->
+      <div id="notif-tope" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;"></div>
+      <div id="caja-resumen" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;"></div>
+
+      <!-- Filtros -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <select id="caja-filtro-caja" onchange="renderCaja()" style="flex:1;min-width:130px;">
+          <option value="TODAS">Todas las cajas</option>
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela González</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+        <select id="caja-filtro-tipo" onchange="renderCaja()" style="flex:1;min-width:120px;">
+          <option value="TODOS">Todos</option>
+          <option value="ingreso">Ingresos</option>
+          <option value="gasto">Gastos</option>
+          <option value="traspaso">Traspasos</option>
+        </select>
+        <input type="date" id="caja-filtro-desde" onchange="renderCaja()" style="flex:1;min-width:120px;">
+        <input type="date" id="caja-filtro-hasta" onchange="renderCaja()" style="flex:1;min-width:120px;">
+      </div>
+
+      <!-- Botones de acción -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="btn btn-gold" onclick="abrirGasto()">➕ Gasto</button>
+        <button class="btn btn-blue" onclick="abrirTraspaso()">🔄 Traspaso</button>
+        <button class="btn btn-ghost" onclick="abrirDatosCuenta()">📋 Datos de cuenta</button>
+      </div>
+
+      <!-- Lista movimientos -->
+      <div id="caja-lista"></div>
+      <div class="empty" id="empty-caja" style="display:none;"><div class="empty-ico">🏦</div><p>Sin movimientos</p></div>
+    </div>
+  </div>
+
+
+  <!-- REPORTES -->
+  <div class="page" id="pg-reportes">
+    <div class="card">
+      <div class="ch"><h2>📊 Reportes de Ventas</h2></div>
+
+      <!-- Filtros -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="fg" style="margin:0;"><label>Desde</label><input type="date" id="rep-desde" onchange="renderReportes()"></div>
+        <div class="fg" style="margin:0;"><label>Hasta</label><input type="date" id="rep-hasta" onchange="renderReportes()"></div>
+        <div class="fg" style="margin:0;grid-column:1/-1;"><label>Vendedora</label>
+          <select id="rep-vend" onchange="renderReportes()">
+            <option value="TODAS">Todas</option>
+          </select>
+        </div>
+        <div class="fg" style="margin:0;grid-column:1/-1;"><label>Forma de pago</label>
+          <select id="rep-pago" onchange="renderReportes()">
+            <option value="TODAS">Todas</option>
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="TRANSF">Transferencia</option>
+            <option value="TC1">TC 1 cuota</option>
+            <option value="TC2">TC 2 cuotas</option>
+            <option value="TC3">TC 3 cuotas</option>
+            <option value="TC6">TC 6 cuotas</option>
+            <option value="TC9">TC 9 cuotas</option>
+            <option value="TC12">TC 12 cuotas</option>
+            <option value="CP2">CP 2 cuotas</option>
+            <option value="CP3">CP 3 cuotas</option>
+            <option value="CP6">CP 6 cuotas</option>
+            <option value="CP9">CP 9 cuotas</option>
+            <option value="CP12">CP 12 cuotas</option>
+            <option value="L30M">Lista 30d mensual</option>
+            <option value="L30Q">Lista 30d quincenal</option>
+            <option value="L30S">Lista 30d semanal</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Botones -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="setRepPeriodo('hoy')">Hoy</button>
+        <button class="btn btn-ghost btn-sm" onclick="setRepPeriodo('semana')">Esta semana</button>
+        <button class="btn btn-ghost btn-sm" onclick="setRepPeriodo('mes')">Este mes</button>
+        <button class="btn btn-ghost btn-sm" onclick="setRepPeriodo('todo')">Todo</button>
+        <button class="btn btn-gold btn-sm" style="margin-left:auto;" onclick="exportarReportePDF()">📄 Exportar PDF</button>
+      </div>
+
+      <!-- Stats -->
+      <div id="rep-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;"></div>
+
+      <!-- Por vendedora -->
+      <div class="sec">Por Vendedora</div>
+      <div id="rep-por-vend" style="margin-bottom:16px;"></div>
+
+      <!-- Por forma de pago -->
+      <div class="sec">Por Forma de Pago</div>
+      <div id="rep-por-pago" style="margin-bottom:16px;"></div>
+
+      <!-- Listado -->
+      <div class="sec">Detalle de Ventas</div>
+      <div id="rep-lista"></div>
+      <div class="empty" id="empty-rep" style="display:none;"><div class="empty-ico">📊</div><p>Sin ventas en el período</p></div>
+    </div>
+  </div>
+
+
+  <!-- LIQUIDACIONES -->
+  <div class="page" id="pg-liquidaciones">
+    <div class="card">
+      <div class="ch"><h2>💰 Liquidaciones</h2></div>
+
+      <!-- Selector vendedora y período -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="fg" style="margin:0;grid-column:1/-1;"><label>Vendedora</label>
+          <select id="liq-vend" onchange="renderLiquidaciones()">
+          </select>
+        </div>
+        <div class="fg" style="margin:0;"><label>Desde</label><input type="date" id="liq-desde" onchange="renderLiquidaciones()"></div>
+        <div class="fg" style="margin:0;"><label>Hasta</label><input type="date" id="liq-hasta" onchange="renderLiquidaciones()"></div>
+      </div>
+
+      <!-- Períodos anteriores -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="setLiqPeriodo('mes')">Este mes</button>
+        <button class="btn btn-ghost btn-sm" onclick="setLiqPeriodo('anterior')">Mes anterior</button>
+        <button class="btn btn-ghost btn-sm" onclick="setLiqPeriodo('ultimo')">Última liquidación</button>
+        <button class="btn btn-gold btn-sm" style="margin-left:auto;" onclick="cerrarLiquidacion()">✓ Cerrar período</button>
+        <button class="btn btn-blue btn-sm" onclick="exportarLiqPDF()">📄 PDF</button>
+      </div>
+
+      <!-- Calendario publicaciones -->
+      <div class="sec">📅 Publicaciones en estados</div>
+      <div id="liq-calendario" style="margin-bottom:16px;"></div>
+
+      <!-- Configuración (solo LEANDRO) -->
+      <div id="liq-config" style="display:none;">
+        <div class="sec">⚙️ Configuración (solo admin)</div>
+        <div style="background:var(--cream2);border-radius:10px;padding:13px;margin-bottom:16px;">
+          <div class="r2">
+            <div class="fg"><label>Monto por publicación ($)</label><input type="number" id="cfg-pub" min="0"></div>
+            <div class="fg"><label>Ventas mínimas para publicación</label><input type="number" id="cfg-pub-min" min="1"></div>
+          </div>
+          <div class="sec" style="margin-top:8px;">Bonus por cobranza</div>
+          <div class="r3">
+            <div class="fg"><label>Hasta $2.500.000</label><input type="number" id="cfg-b1" min="0"></div>
+            <div class="fg"><label>Hasta $5.000.000</label><input type="number" id="cfg-b2" min="0"></div>
+            <div class="fg"><label>Más de $5.000.000</label><input type="number" id="cfg-b3" min="0"></div>
+          </div>
+          <button class="btn btn-gold" style="margin-top:8px;" onclick="guardarConfigLiq()">✓ Guardar configuración</button>
+        </div>
+      </div>
+
+      <!-- Resumen liquidación -->
+      <div class="sec">Resumen del período</div>
+      <div id="liq-resumen" style="margin-bottom:16px;"></div>
+
+      <!-- Detalle ventas -->
+      <div class="sec">Detalle de ventas</div>
+      <div id="liq-detalle"></div>
+      <div class="empty" id="empty-liq" style="display:none;"><div class="empty-ico">💰</div><p>Sin ventas en el período</p></div>
+    </div>
+  </div>
+
 <!-- ══ MODALES ══ -->
+<!-- Modal Gasto -->
+<div class="overlay" id="ovl-gasto" onclick="cM('ovl-gasto',event)">
+  <div class="modal">
+    <div class="mh"><h3>➕ Registrar Gasto</h3><span class="mx" onclick="cM('ovl-gasto')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><label>Fecha</label><input type="date" id="g-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="g-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela González</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Concepto</label>
+        <select id="g-concepto" onchange="onConceptoGasto()">
+          <option value="">-- Seleccioná --</option>
+          <option value="CEPRAL LUZ LAS LECHUZAS">CEPRAL LUZ LAS LECHUZAS</option>
+          <option value="CEPRAL LUZ EXALTACION">CEPRAL LUZ EXALTACION</option>
+          <option value="CEPRAL LUZ LOCAL PARADA ROBLES">CEPRAL LUZ LOCAL PARADA ROBLES</option>
+          <option value="CEPRAL INTERNET EXALTACION">CEPRAL INTERNET EXALTACION</option>
+          <option value="CEPRAL INTERNET LOCAL PARADA ROBLES">CEPRAL INTERNET LOCAL PARADA ROBLES</option>
+          <option value="CEPRAL INTERNET LAS LECHUZAS">CEPRAL INTERNET LAS LECHUZAS</option>
+          <option value="CEPRAL TELEFONO 471876 EXALTACION">CEPRAL TELEFONO 471876 EXALTACION</option>
+          <option value="CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES">CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES</option>
+          <option value="CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES">CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES</option>
+          <option value="CEPRAL TELEFONO 478687 LAS LECHUZAS">CEPRAL TELEFONO 478687 LAS LECHUZAS</option>
+          <option value="CEPRAL LUZ PORTON LAS LECHUZAS">CEPRAL LUZ PORTON LAS LECHUZAS</option>
+          <option value="COLEGIO IMDP">COLEGIO IMDP</option>
+          <option value="CANDI TCC LUZ">CANDI TCC LUZ</option>
+          <option value="CANDI FONOAUDIOLOGIA SOL STAMATI">CANDI FONOAUDIOLOGIA SOL STAMATI</option>
+          <option value="TERAPIA OCUPACIONAL MAGDALENA">TERAPIA OCUPACIONAL MAGDALENA</option>
+          <option value="EPPIN ACOMPAÑANTE TERAPEUTICO">EPPIN ACOMPAÑANTE TERAPEUTICO</option>
+          <option value="ESTACION DE SERVICIO SHELL">ESTACION DE SERVICIO SHELL</option>
+          <option value="ESTACION DE SERVICIO YPF">ESTACION DE SERVICIO YPF</option>
+          <option value="ESTACION DE SERVICIO AXION">ESTACION DE SERVICIO AXION</option>
+          <option value="ESTACION DE SERVICIO PUMA">ESTACION DE SERVICIO PUMA</option>
+          <option value="ESTACION DE SERVICIO GNC SIN BANDERA">ESTACION DE SERVICIO GNC SIN BANDERA</option>
+          <option value="AGUSTIN ROSSI">AGUSTIN ROSSI</option>
+          <option value="JOSEFINA ROSSI">JOSEFINA ROSSI</option>
+          <option value="VICTORIA KINDERKNECHDT">VICTORIA KINDERKNECHDT</option>
+          <option value="KIOSCO">KIOSCO</option>
+          <option value="MCDONALDS">MCDONALDS</option>
+          <option value="CINE">CINE</option>
+          <option value="SUPERMERCADO">SUPERMERCADO</option>
+          <option value="VERDULERIA">VERDULERIA</option>
+          <option value="CARNICERIA">CARNICERIA</option>
+          <option value="IGLESIA">IGLESIA</option>
+          <option value="UBER VIAJES">UBER VIAJES</option>
+          <option value="UBER ONE">UBER ONE</option>
+          <option value="DIDI">DIDI</option>
+          <option value="DISNEY PLUS">DISNEY PLUS</option>
+          <option value="HBO">HBO</option>
+          <option value="YOUTUBE PREMIUM">YOUTUBE PREMIUM</option>
+          <option value="DIRECTV">DIRECTV</option>
+          <option value="CASA RONALD">CASA RONALD</option>
+          <option value="CANVA">CANVA</option>
+          <option value="PIXEL CUT">PIXEL CUT</option>
+          <option value="CHAT GPT">CHAT GPT</option>
+          <option value="CLAUDE">CLAUDE</option>
+          <option value="ALBERTO TEJO">ALBERTO TEJO</option>
+          <option value="MERCADO LIBRE">MERCADO LIBRE</option>
+          <option value="MERCADO LIBRE MELI">MERCADO LIBRE MELI</option>
+          <option value="STARBUCKS">STARBUCKS</option>
+          <option value="REMISERIA">REMISERIA</option>
+          <option value="SUBE">SUBE</option>
+          <option value="FARMACIA">FARMACIA</option>
+          <option value="PEAJES">PEAJES</option>
+          <option value="LEANDRO ROSSI">LEANDRO ROSSI</option>
+          <option value="OTRO">Otro (escribir)</option>
+        </select>
+      </div>
+      <div class="fg" id="blk-g-otro" style="display:none;"><label>Concepto personalizado</label><input type="text" id="g-otro" placeholder="Escribí el concepto"></div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="g-monto" placeholder="0" min="0"></div>
+      <div class="fg"><label>Observación (opcional)</label><input type="text" id="g-obs" placeholder="Detalle adicional..."></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarGasto()">✓ Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-gasto')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Traspaso -->
+<div class="overlay" id="ovl-traspaso" onclick="cM('ovl-traspaso',event)">
+  <div class="modal">
+    <div class="mh"><h3>🔄 Traspaso entre Cajas</h3><span class="mx" onclick="cM('ovl-traspaso')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><label>Fecha</label><input type="date" id="tr-fecha"></div>
+      <div class="r2">
+        <div class="fg"><label>Desde</label>
+          <select id="tr-desde">
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="MERCADO_PAGO">Mercado Pago</option>
+            <option value="FLEX">Flex Argentina</option>
+            <option value="GABRIELA">Gabriela González</option>
+            <option value="ROSA">Rosa Vallejo</option>
+            <option value="DOLORES">Dolores Heredia</option>
+          </select>
+        </div>
+        <div class="fg"><label>Hacia</label>
+          <select id="tr-hacia">
+            <option value="MERCADO_PAGO">Mercado Pago</option>
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="FLEX">Flex Argentina</option>
+            <option value="GABRIELA">Gabriela González</option>
+            <option value="ROSA">Rosa Vallejo</option>
+            <option value="DOLORES">Dolores Heredia</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="tr-monto" placeholder="0" min="0"></div>
+      <div class="fg"><label>Observación (opcional)</label><input type="text" id="tr-obs" placeholder=""></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-blue" style="flex:1;" onclick="guardarTraspaso()">✓ Confirmar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-traspaso')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Datos de Cuenta -->
+<div class="overlay" id="ovl-cuenta" onclick="cM('ovl-cuenta',event)">
+  <div class="modal">
+    <div class="mh"><h3>📋 Datos de Cuenta</h3><span class="mx" onclick="cM('ovl-cuenta')">✕</span></div>
+    <div class="mb">
+      <div class="fg"><label>Caja</label>
+        <select id="dc-caja" onchange="cargarDatosCuenta()">
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela González</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Apellido y Nombre</label><input type="text" id="dc-nombre" placeholder=""></div>
+      <div class="fg"><label>Alias</label><input type="text" id="dc-alias" placeholder=""></div>
+      <div class="fg"><label>CBU / CVU</label><input type="text" id="dc-cbu" placeholder="22 dígitos"></div>
+      <div class="fg"><label>Entidad / Banco</label><input type="text" id="dc-banco" placeholder=""></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarDatosCuenta()">✓ Guardar</button>
+        <button class="btn btn-blue" onclick="compartirDatosCuenta()">📤 Compartir</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-cuenta')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cheque -->
+<div class="overlay" id="ovl-cheque" onclick="cM('ovl-cheque',event)">
+  <div class="modal">
+    <div class="mh"><h3>🧾 Datos del Cheque</h3><span class="mx" onclick="cM('ovl-cheque')">✕</span></div>
+    <div class="mb">
+      <div class="r2">
+        <div class="fg"><label>N° de cheque</label><input type="text" id="ch-num" placeholder=""></div>
+        <div class="fg"><label>Banco emisor</label><input type="text" id="ch-banco" placeholder=""></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Titular</label><input type="text" id="ch-titular" placeholder=""></div>
+        <div class="fg"><label>Fecha de cheque</label><input type="date" id="ch-fecha-ch"></div>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="ch-monto" placeholder="0" min="0"></div>
+      <div class="fg"><label>Observación</label><input type="text" id="ch-obs" placeholder=""></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarCheque()">✓ Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-cheque')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="ovl-det" onclick="cM('ovl-det',event)">
   <div class="modal"><div class="mh"><h3 id="det-titulo">Detalle</h3><span class="mx" onclick="cM('ovl-det')">✕</span></div><div class="mb" id="det-body"></div></div>
 </div>
@@ -534,20 +946,20 @@ td{padding:9px 11px;vertical-align:middle;}
         <input type="number" id="p1-precio" placeholder="0" min="0" oninput="calcPres1()">
       </div>
       <div class="fg"><label>Formas de pago a mostrar</label>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;" id="p1-pagos-check">
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="EFECTIVO" onchange="calcPres1()"> Efectivo</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TRANSF" onchange="calcPres1()"> Transferencia</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC1" onchange="calcPres1()"> TC 1 cuota</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC2" onchange="calcPres1()"> TC 2 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC3" onchange="calcPres1()"> TC 3 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC6" onchange="calcPres1()"> TC 6 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC9" onchange="calcPres1()"> TC 9 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="TC12" onchange="calcPres1()"> TC 12 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP2" onchange="calcPres1()"> CP 2 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP3" onchange="calcPres1()"> CP 3 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP6" onchange="calcPres1()"> CP 6 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP9" onchange="calcPres1()"> CP 9 cuotas</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" value="CP12" onchange="calcPres1()"> CP 12 cuotas</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;" id="p1-pagos-check">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="EFECTIVO" onchange="calcPres1()"> Efectivo</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TRANSF" onchange="calcPres1()"> Transferencia</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC1" onchange="calcPres1()"> TC 1 cuota</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC2" onchange="calcPres1()"> TC 2 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC3" onchange="calcPres1()"> TC 3 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC6" onchange="calcPres1()"> TC 6 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC9" onchange="calcPres1()"> TC 9 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC12" onchange="calcPres1()"> TC 12 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="CP2" onchange="calcPres1()"> CP 2 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="CP3" onchange="calcPres1()"> CP 3 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="CP6" onchange="calcPres1()"> CP 6 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="CP9" onchange="calcPres1()"> CP 9 cuotas</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;grid-column:1/-1;"><input type="checkbox" value="CP12" onchange="calcPres1()"> CP 12 cuotas</label>
         </div>
       </div>
       <div id="p1-preview" style="display:none;background:var(--cream2);border-radius:10px;padding:11px;margin-top:6px;font-size:13px;"></div>
@@ -717,7 +1129,7 @@ const ROLES = {
 
 // Contraseñas por defecto — se pueden cambiar desde admin
 const USERS_DEFAULT = {
-  'LEANDRO':   { pass:'leandro123', rol:ROLES.ADMIN },
+  'LEANDRO':   { pass:'AgusJoseLosAmo0227.', rol:ROLES.ADMIN },
   'ROSA':      { pass:'rosa123', rol:ROLES.LOCAL },
   'GABRIELA':  { pass:'gabriela123', rol:ROLES.LOCAL },
   'CAROLINA':  { pass:'carol123', rol:ROLES.VENDEDOR },
@@ -733,14 +1145,14 @@ const USERS_DEFAULT = {
 
 // Tabs por rol
 const TABS_POR_ROL = {
-  admin:    ['venta','ventas','creditos','precios','presupuestos','admin'],
-  local:    ['venta','ventas','creditos','precios','presupuestos'],
+  admin:    ['venta','ventas','creditos','precios','presupuestos','caja','reportes','liquidaciones','admin'],
+  local:    ['venta','ventas','creditos','precios','presupuestos','caja'],
   vendedor: ['venta','ventas'],
 };
 const TAB_LABELS = {
   venta:'＋ Nueva Venta', ventas:'📋 Ventas',
   creditos:'💳 Créditos', precios:'💰 Lista de Precios',
-  presupuestos:'📄 Presupuestos', admin:'⚙️ Admin'
+  presupuestos:'📄 Presupuestos', caja:'🏦 Caja', reportes:'📊 Reportes', liquidaciones:'💰 Liquidaciones', admin:'⚙️ Admin'
 };
 
 // ══════════════════════════════════════════════════════
@@ -749,6 +1161,8 @@ const TAB_LABELS = {
 let ventas      = [];
 let productos   = [...PRODS_INICIALES];
 let usuarios    = {...USERS_DEFAULT};
+let movCaja     = []; // movimientos de caja
+let datosCuentas = {}; // datos bancarios por caja
 let filtroVend  = 'TODAS';
 let filtroCred  = 'todas';
 let editVentaId = null;
@@ -782,7 +1196,7 @@ function programarGuardado() {
 async function guardarEnScript() {
   try {
     mostrarSync('Guardando en Drive…', false);
-    const datos = { ventas, productos, presupuestos, version:1 };
+    const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, version:1 };
     const resp = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action:'guardar', ...datos })
@@ -827,6 +1241,12 @@ async function cargarDatos() {
   const p=await sGet('rh_p'); if(p&&p.length>0) productos=p;
   const u=await sGet('rh_u'); if(u) usuarios=u;
   const ps=await sGet('rh_pres'); if(ps) presupuestos=ps;
+  const mc=await sGet(SK_CAJA); if(mc) movCaja=mc;
+  const cs=await sGet(SK_SUELDOS); if(cs) configSueldos={...configSueldos,...cs};
+  const dc=await sGet(SK_CUENTAS); if(dc) datosCuentas=dc;
+  const lq=await sGet(SK_LIQ); if(lq) liquidaciones=lq;
+  const pb=await sGet(SK_PUB); if(pb) publicaciones=pb;
+  const cl=await sGet(SK_CFGLIQ); if(cl) configLiq={...configLiq,...cl};
   // Leer de Drive (fuente de verdad)
   await leerDeScript();
 }
@@ -843,6 +1263,8 @@ const CP_INT = {
   semanal:   {2:0.06, 3:0.09, 6:0.18, 9:0.27, 12:0.36},
 };
 const CP_N  = {CP2:2,CP3:3,CP6:6,CP9:9,CP12:12};
+const L30_N    = {L30M:1,L30Q:2,L30S:4};
+const L30_FREQ = {L30M:'mensual',L30Q:'quincenal',L30S:'semanal'};
 // Mantener para compatibilidad
 const CP_RC = {CP2:1.14,CP3:1.21,CP6:1.42,CP9:1.63,CP12:1.84};
 const PAGO_LBL = {
@@ -852,6 +1274,8 @@ const PAGO_LBL = {
   TC1:'TC 1c',TC2:'TC 2c',TC3:'TC 3c',TC6:'TC 6c',TC9:'TC 9c',TC12:'TC 12c',
   DEBITO:'Débito',PREPAGA:'Prepaga',QR_MP:'QR MP',LINK_MP:'Link MP',
   CP2:'CP 2c',CP3:'CP 3c',CP6:'CP 6c',CP9:'CP 9c',CP12:'CP 12c',
+  L30M:'Lista 30d 1c',L30Q:'Lista 30d 2c',L30S:'Lista 30d 4c',
+  MIXTO:'Pago mixto', CHEQUE:'Cheque',
 };
 const PAGO_BADGE = {
   EFECTIVO:'b-ef',
@@ -859,6 +1283,8 @@ const PAGO_BADGE = {
   TC1:'b-tc',TC2:'b-tc',TC3:'b-tc',TC6:'b-tc',TC9:'b-tc',TC12:'b-tc',
   DEBITO:'b-deb',PREPAGA:'b-deb',QR_MP:'b-mp',LINK_MP:'b-mp',
   CP2:'b-cp',CP3:'b-cp',CP6:'b-cp',CP9:'b-cp',CP12:'b-cp',
+  L30M:'b-l30',L30Q:'b-l30',L30S:'b-l30',
+  MIXTO:'b-tr', CHEQUE:'b-ef',
 };
 
 // ══════════════════════════════════════════════════════
@@ -870,6 +1296,8 @@ const hoy  = () => new Date().toISOString().split('T')[0];
 const addD = (s,n) => { const d=new Date(s+'T12:00'); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
 const difD = (a,b) => Math.round((new Date(a+'T12:00')-new Date(b+'T12:00'))/86400000);
 const isCP = p => p&&p.startsWith('CP');
+const isL30 = p => p&&p.startsWith('L30');
+const isCPorL30 = p => isCP(p)||isL30(p);
 const isTC = p => p&&p.startsWith('TC');
 const paso = f => f==='semanal'?7:f==='quincenal'?15:30;
 const cliNom = v => [v.apellido,v.nombre].filter(Boolean).join(' ')||'—';
@@ -972,25 +1400,44 @@ function goTab(n) {
   if (n==='creditos')      renderCreditos();
   if (n==='precios')       renderPrecios();
   if (n==='presupuestos')  renderPresupuestos();
+  if (n==='caja')          renderCaja();
+  if (n==='reportes')       renderReportes();
+  if (n==='liquidaciones')   renderLiquidaciones();
   if (n==='admin')         renderAdmin();
 }
 
 // ══════════════════════════════════════════════════════
 // FORMULARIO VENTA
 // ══════════════════════════════════════════════════════
+const isEFTRANSF = p => p==='EFECTIVO' || (p&&p.startsWith('TRANSF'));
+
 function onPago() {
   const p = document.getElementById('f-pago').value;
   document.getElementById('blk-tc').style.display = (isTC(p)&&p!=='TC1') ? 'block' : 'none';
-  document.getElementById('blk-cp').style.display = isCP(p) ? 'block' : 'none';
-  if (isCP(p)) {
+  document.getElementById('blk-cp').style.display = isCPorL30(p) ? 'block' : 'none';
+
+  // Si es efectivo o transferencia y hay precio de lista cargado, calcular contado
+  if (isEFTRANSF(p)) {
+    const precioEl = document.getElementById('f-precio');
+    const precioActual = parseFloat(precioEl.value)||0;
+    // Si el precio parece ser de lista (no fue editado manualmente), calcular contado
+    if (precioActual > 0) {
+      precioEl.value = Math.round(precioActual * 0.9);
+    }
+  }
+
+  if (isCPorL30(p)) {
     // Pre-cargar precio de lista desde el precio de venta si ya está cargado
     const precio = parseFloat(document.getElementById('f-precio').value)||0;
     if (precio > 0 && !(parseFloat(document.getElementById('cp-lista').value)>0)) {
       document.getElementById('cp-lista').value = precio;
     }
     // Setear cantidad de cuotas según forma de pago
-    const n = CP_N[p] || 2;
+    const n = isL30(p) ? L30_N[p]||1 : (CP_N[p] || 2);
     document.getElementById('cp-ncuotas').value = n;
+    if (isL30(p)) {
+      document.getElementById('cp-freq').value = L30_FREQ[p]||'mensual';
+    }
     // Fecha anticipo = hoy por defecto
     if (!document.getElementById('cp-fecha-ant').value)
       document.getElementById('cp-fecha-ant').value = hoy();
@@ -1017,7 +1464,8 @@ function recalcCP() {
     document.getElementById('cp-resumen').style.display = 'none';
     return;
   }
-  const interes = CP_INT[freq]?.[n] || 0;
+  const pago_sel = document.getElementById('f-pago').value;
+  const interes = isL30(pago_sel) ? 0 : (CP_INT[freq]?.[n] || 0);
   const totalConInt = Math.round(saldo * (1 + interes));
   const valorCuota  = Math.round(totalConInt / n);
 
@@ -1028,9 +1476,29 @@ function recalcCP() {
     `Interés: ${Math.round(interes*100)}% &nbsp;|&nbsp; ` +
     `${n} cuotas de <strong>$${fmt(valorCuota)}</strong> &nbsp;|&nbsp; ` +
     `Total crédito: $${fmt(totalConInt)}`;
+  document.getElementById('blk-cuota-manual').style.display = 'block';
+  document.getElementById('cp-cuota-manual').value = valorCuota;
 
   // Sync precio de venta con precio de lista
   if (lista > 0) document.getElementById('f-precio').value = lista;
+}
+
+function onCuotaManual() {
+  // Cuando el usuario edita la cuota manualmente, actualizar el resumen
+  const cuotaManual = parseFloat(document.getElementById('cp-cuota-manual').value)||0;
+  const n = parseInt(document.getElementById('cp-ncuotas').value)||2;
+  const antEl = document.getElementById('cp-ant');
+  const ant = parseFloat(antEl.value)||0;
+  const lista = parseFloat(document.getElementById('cp-lista').value)||0;
+  const saldo = lista - ant;
+  if (cuotaManual > 0 && n > 0) {
+    const totalConInt = cuotaManual * n;
+    document.getElementById('cp-resumen').innerHTML =
+      `Anticipo: <strong>$${fmt(ant)}</strong> &nbsp;|&nbsp; ` +
+      `Saldo: $${fmt(saldo)} &nbsp;|&nbsp; ` +
+      `${n} cuotas de <strong>$${fmt(cuotaManual)}</strong> (editado) &nbsp;|&nbsp; ` +
+      `Total crédito: $${fmt(totalConInt)}`;
+  }
 }
 
 function recalc() {
@@ -1065,7 +1533,13 @@ function buscarProd() {
 function selProd(id) {
   const p=productos.find(x=>x.id===id); if(!p)return;
   document.getElementById('f-prod').value=p.nombre;
-  document.getElementById('f-precio').value=p.precio||'';
+  // Calcular precio según forma de pago seleccionada
+  const pago = document.getElementById('f-pago').value;
+  if (isEFTRANSF(pago)) {
+    document.getElementById('f-precio').value = Math.round((p.precio||0) * 0.9);
+  } else {
+    document.getElementById('f-precio').value = p.precio||'';
+  }
   document.getElementById('f-costo').value=p.costo||'';
   document.getElementById('prod-ac').classList.remove('on');
   recalc();
@@ -1077,7 +1551,12 @@ async function guardar() {
   const prod   = document.getElementById('f-prod').value.trim()||'—';
   const precio = parseFloat(document.getElementById('f-precio').value)||0;
   const costo  = parseFloat(document.getElementById('f-costo').value)||0;
-  const pago   = document.getElementById('f-pago').value||'EFECTIVO';
+  // Usar pagosVenta si hay múltiples, sino el select simple
+  const esMixto = document.getElementById('chk-mixto').checked;
+  const pagoSimple = document.getElementById('f-pago').value||'EFECTIVO';
+  const pago = esMixto && pagosVenta.length > 0 ? (pagosVenta.length===1 ? pagosVenta[0].pago : 'MIXTO') : pagoSimple;
+  const pagosDetalle = esMixto && pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precio, label: PAGO_LBL[pagoSimple]||pagoSimple}];
+  const pagosDetalle = pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precio, label: PAGO_LBL[pagoSimple]||pagoSimple}];
 
   const base = {
     fecha,vendedora:vend,producto:prod,precio,costo,pago,
@@ -1087,10 +1566,11 @@ async function guardar() {
     tel:     document.getElementById('f-tel').value.trim(),
     dir:     document.getElementById('f-dir').value.trim(),
     obs:     document.getElementById('f-obs').value.trim(),
+    pagosDetalle,
     cuotasPagadas:{}
   };
 
-  if (isCP(pago)) {
+  if (isCPorL30(pago)) {
     const lista    = parseFloat(document.getElementById('cp-lista').value)||precio;
     const ant      = parseFloat(document.getElementById('cp-ant').value)||0;
     const n        = parseInt(document.getElementById('cp-ncuotas').value)||CP_N[pago]||2;
@@ -1098,9 +1578,12 @@ async function guardar() {
     const fechaAnt = document.getElementById('cp-fecha-ant').value||fecha;
     const fecha1   = document.getElementById('cp-fecha1').value||'';
     const saldo    = lista - ant;
-    const interes  = CP_INT[freq]?.[n]||0;
+    const interes  = isL30(pago) ? 0 : (CP_INT[freq]?.[n]||0);
     const totalInt = Math.round(saldo*(1+interes));
-    const cuota    = Math.round(totalInt/n);
+    const cuotaCalc = Math.round(totalInt/n);
+    const cuotaManualEl = document.getElementById('cp-cuota-manual');
+    const cuotaManual = cuotaManualEl ? parseFloat(cuotaManualEl.value)||0 : 0;
+    const cuota = cuotaManual > 0 ? cuotaManual : cuotaCalc;
     base.cpData = {
       precioLista:lista, anticipo:ant, fechaAnticipo:fechaAnt,
       anticipoPagado: fechaAnt===fecha ? false : null, // null = a definir
@@ -1168,9 +1651,13 @@ function editarVenta(id) {
     document.getElementById('f-dir').value=v.dir||'';
     document.getElementById('f-obs').value=v.obs||'';
     if(v.cpData){
-      document.getElementById('f-ant').value=v.cpData.anticipo||'';
-      document.getElementById('f-cuota').value=v.cpData.cuota||'';
-      document.getElementById('f-freq').value=v.cpData.frecuencia||'mensual';
+      document.getElementById('cp-lista').value=v.cpData.precioLista||v.precio||'';
+      document.getElementById('cp-ant').value=v.cpData.anticipo||'';
+      document.getElementById('cp-ncuotas').value=v.cpData.nCuotas||2;
+      document.getElementById('cp-freq').value=v.cpData.frecuencia||'mensual';
+      document.getElementById('cp-fecha-ant').value=v.cpData.fechaAnticipo||'';
+      document.getElementById('cp-fecha1').value=v.cpData.fechaPrimeraCuota||'';
+      document.getElementById('cp-pct-ant').value='0';
     }
     onPago(); recalc();
   },50);
@@ -1259,11 +1746,15 @@ function renderVentas() {
       <td style="font-size:12px;">${v.vendedora}</td>
       <td style="max-width:150px;font-size:13px;">${v.producto}</td>
       <td style="font-weight:600;white-space:nowrap;">$${fmt(v.precio)}</td>
-      <td><span class="badge ${PAGO_BADGE[v.pago]||'b-ef'}">${PAGO_LBL[v.pago]||v.pago}</span>${isCP(v.pago)&&pend>0?`<br><span style="font-size:10px;color:var(--orange);">${pend}c pend.</span>`:''}</td>
+      <td>${v.pagosDetalle&&v.pagosDetalle.length>1
+        ? v.pagosDetalle.map(p=>`<span class="badge ${PAGO_BADGE[p.pago]||'b-ef'}" style="font-size:10px;margin:1px;">${p.label}</span>`).join(' ')
+        : `<span class="badge ${PAGO_BADGE[v.pago]||'b-ef'}">${PAGO_LBL[v.pago]||v.pago}</span>`
+      }${isCPorL30(v.pago)&&pend>0?`<br><span style="font-size:10px;color:var(--orange);">${pend}c pend.</span>`:''}</td>
       <td style="font-size:12px;color:var(--muted);">${cliNom(v)}</td>
       <td style="white-space:nowrap;">
         <button class="btn btn-ghost btn-sm" onclick="verDetalle(${v.id})">Ver</button>
         ${puedeEditar?`<button class="btn btn-blue btn-sm" style="margin-left:3px;" onclick="editarVenta(${v.id})">✏</button>`:''}
+        ${esAdmin()?`<button class="btn btn-ghost btn-sm" style="margin-left:3px;" onclick="imprimirReciboPDF(${v.id})">🖨️</button>`:''}
       </td>
     </tr>`;
   }).join('');
@@ -1462,7 +1953,7 @@ function waReciboCred(vid, cobroId) {
     if(!cobros.some(c=>c.tipo==='cuota'&&c.idx===i)) prox.push(`Cuota ${i+1}: ${fmtD(fechas[i]||'')} $${fmt(cp.cuota)}`);
   }
   const msg=`🏠 *ROSSI HOME*\n*Recibo de Crédito Personal*\n\nHola ${cliNom(v)}!\n\nRegistramos tu pago:\n✅ *${cobro.tipo==='anticipo'?'Anticipo':`Cuota ${(cobro.idx||0)+1}/${cp.nCuotas}`}: $${fmt(cobro.monto)}*\nFecha: ${fmtD(cobro.fecha)}\n\n${prox.length?`📅 Próximos pagos:\n${prox.join('\n')}\n\n`:''}Gracias por tu confianza! 🙌`;
-  window.open(`https://wa.me/54${v.tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+  abrirWASelector(msg, v.tel);
 }
 
 function filtroCredito(f,btn){
@@ -1474,7 +1965,7 @@ function filtroCredito(f,btn){
 
 function renderCreditos(){
   if(!usuarioActual)return;
-  const creditosVentas=ventas.filter(v=>isCP(v.pago)&&v.cpData);
+  const creditosVentas=ventas.filter(v=>isCPorL30(v.pago)&&v.cpData);
 
   // Stats
   let antPend=0, venc=0, prox=0, pend=0, alDia=0;
@@ -1574,7 +2065,7 @@ async function cobrarRapido(vid,idx){
 
 function waRecordatorio(tel,nombre,nCuota,total,monto,fecha){
   const msg=`Hola ${nombre}! Te recordamos la cuota ${nCuota}/${total} de $${fmt(monto)} con vencimiento ${fmtD(fecha)}. Rossi Home 🏠`;
-  window.open(`https://wa.me/54${tel.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`,'_blank');
+  abrirWASelector(msg, tel);
 }
 
 function onCobrarMedio(){} // placeholder
@@ -1591,15 +2082,30 @@ function renderPrecios(){
   if(!lista.length){cont.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   const puedeEditar=esLocal();
-  cont.innerHTML=lista.map(p=>`
-    <div class="prod-fila">
-      <div style="flex:1;"><div class="pf-nom" style="font-size:13px;font-weight:500;">${p.nombre}</div><div class="pf-prov">${p.proveedor||''}</div></div>
-      <div class="pf-precio">$${fmt(p.precio)}</div>
-      ${puedeEditar?`<div style="display:flex;gap:5px;margin-left:8px;">
-        <button class="btn btn-blue btn-sm" onclick="editarProd(${p.id})">✏</button>
-        ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProd(${p.id})">✕</button>`:''}
-      </div>`:''}
-    </div>`).join('');
+  cont.innerHTML=lista.map(p=>{
+    const contado = Math.round(p.precio * 0.9);
+    return `
+    <div class="prod-fila" style="flex-wrap:wrap;align-items:center;">
+      <div style="flex:1;min-width:150px;">
+        <div class="pf-nom" style="font-size:13px;font-weight:500;">${p.nombre}</div>
+        <div class="pf-prov">${p.proveedor||''}</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Contado</div>
+          <div style="font-weight:700;color:var(--green);font-size:14px;">$${fmt(contado)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Lista TC</div>
+          <div class="pf-precio" style="font-size:14px;">$${fmt(p.precio)}</div>
+        </div>
+        ${puedeEditar?`<div style="display:flex;gap:5px;margin-left:4px;">
+          <button class="btn btn-blue btn-sm" onclick="editarProd(${p.id})">✏</button>
+          ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProd(${p.id})">✕</button>`:''}
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
 }
 function abrirAddProd(){
   if(!esLocal()){toast('Sin permiso');return;}
@@ -1729,6 +2235,23 @@ function exportarExcel(){
 let presupuestos = [];
 let filtroPres   = 'todos';
 const SK_PRES    = 'rh_pres_v1';
+const SK_CAJA    = 'rh_caja_v1';
+const SK_CUENTAS = 'rh_cuentas_v1';
+
+const CAJAS_LABEL = {
+  EFECTIVO:'Efectivo', MERCADO_PAGO:'Mercado Pago',
+  FLEX:'Flex Argentina', GABRIELA:'Gabriela González',
+  ROSA:'Rosa Vallejo', DOLORES:'Dolores Heredia'
+};
+
+const CAJAS_COBRO = {
+  EFECTIVO: ['EFECTIVO','CHEQUE'],
+  MERCADO_PAGO: ['TC1','TC2','TC3','TC6','TC9','TC12','LINK','QR','DEBITO','PREPAGA'],
+  FLEX: ['TRANSF_FLEX'],
+  GABRIELA: ['TRANSF_GABRIELA'],
+  ROSA: ['TRANSF_ROSA'],
+  DOLORES: ['TRANSF_DOLORES']
+};
 
 async function guardarPresupuestos() {
   await sSet(SK_PRES, presupuestos);
@@ -1805,8 +2328,9 @@ function calcPres1() {
   const filas = checks.map(pago => {
     let desc='', cuota='', total='';
     if (pago==='EFECTIVO' || pago==='TRANSF') {
+      const contado = Math.round(precio * 0.9);
       desc = pago==='EFECTIVO'?'Efectivo':'Transferencia';
-      total = `$${fmt(precio)}`;
+      total = `$${fmt(contado)}`;
     } else if (isTC(pago)) {
       const n=TC_N[pago]||1, r=TC_RC[pago]||1;
       const tot=Math.round(precio*r), cuo=Math.round(tot/n);
@@ -2082,6 +2606,7 @@ function verPresupuesto(id) {
     <div style="padding:13px 18px;background:var(--cream);border-top:1px solid var(--border);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
       <button class="btn btn-navy btn-sm" onclick="window.print()">🖨 Imprimir / PDF</button>
       <button class="btn btn-wa btn-sm" onclick="waPres(${p.id})">📲 WhatsApp</button>
+      ${esAdmin()?`<button class="btn btn-ghost btn-sm" onclick="imprimirPresPDF(${p.id})">🖨️ PDF</button>`:''}
       <button class="btn btn-blue btn-sm" onclick="emailPres(${p.id})">📧 Email</button>
     </div>`;
 
@@ -2115,7 +2640,7 @@ function waPres(id) {
   msg+=`\n✓ Válido hasta ${fmtD(p.validez)}\n✓ Entrega sin cargo en Exaltación de la Cruz\n`;
   if(p.obs) msg+=`✓ ${p.obs}\n`;
   msg+=`\n📍 ${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad}\n📱 ${INFO_EMPRESA.wa}`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
+  abrirWASelector(msg);
 }
 
 function emailPres(id) {
@@ -2147,6 +2672,1285 @@ document.addEventListener('DOMContentLoaded', async () => {
 document.addEventListener('click', e => {
   if(!e.target.closest('.sb')) document.querySelectorAll('.ac').forEach(a=>a.classList.remove('on'));
 });
+
+// ══════════════════════════════════════════════════════
+// MÓDULO CAJA
+// ══════════════════════════════════════════════════════
+
+async function guardarCajaData() {
+  await sSet(SK_CAJA, movCaja);
+  await sSet(SK_CUENTAS, datosCuentas);
+  programarGuardado();
+}
+
+function cajaDeMovimiento(mov) {
+  const p = mov.pago || '';
+  if (p === 'EFECTIVO' || p === 'CHEQUE') return 'EFECTIVO';
+  if (p.startsWith('TRANSF_FLEX')) return 'FLEX';
+  if (p.startsWith('TRANSF_GABRIELA')) return 'GABRIELA';
+  if (p.startsWith('TRANSF_ROSA')) return 'ROSA';
+  if (p.startsWith('TRANSF_DOLORES')) return 'DOLORES';
+  if (p.startsWith('TC') || ['LINK_MP','QR_MP','DEBITO','PREPAGA'].includes(p)) return 'MERCADO_PAGO';
+  return 'EFECTIVO';
+}
+
+function impactosCaja(venta) {
+  // Devuelve [{caja, monto}] para ventas con múltiples pagos
+  if (venta.pagosDetalle && venta.pagosDetalle.length > 1) {
+    return venta.pagosDetalle.map(p => ({
+      caja: cajaDeMovimiento({pago: p.pago}),
+      monto: p.monto
+    }));
+  }
+  return [{ caja: cajaDeMovimiento(venta), monto: venta.precio }];
+}
+
+function saldosCaja() {
+  const saldos = {EFECTIVO:0, MERCADO_PAGO:0, FLEX:0, GABRIELA:0, ROSA:0, DOLORES:0};
+  // Ingresos por ventas cobradas
+  ventas.forEach(v => {
+    impactosCaja(v).forEach(({caja, monto}) => {
+      if (saldos[caja] !== undefined) saldos[caja] += monto;
+    });
+    // Cobros de créditos (anticipos y cuotas)
+    if (v.cpData && v.cpData.cobros) {
+      v.cpData.cobros.forEach(c => {
+        const cajaCobro = cajaDeMovimiento({pago: c.medio || 'EFECTIVO'});
+        if (saldos[cajaCobro] !== undefined) saldos[cajaCobro] += c.monto || 0;
+      });
+    }
+  });
+  // Movimientos manuales (gastos y traspasos)
+  movCaja.forEach(m => {
+    if (m.tipo === 'gasto') {
+      if (saldos[m.caja] !== undefined) saldos[m.caja] -= m.monto || 0;
+    } else if (m.tipo === 'traspaso') {
+      if (saldos[m.desde] !== undefined) saldos[m.desde] -= m.monto || 0;
+      if (saldos[m.hacia] !== undefined) saldos[m.hacia] += m.monto || 0;
+    } else if (m.tipo === 'ingreso') {
+      if (saldos[m.caja] !== undefined) saldos[m.caja] += m.monto || 0;
+    }
+  });
+  return saldos;
+}
+
+function renderCaja() {
+  const saldos = saldosCaja();
+  const total = Object.values(saldos).reduce((a,b) => a+b, 0);
+
+  // Resumen cajas
+  document.getElementById('caja-resumen').innerHTML = `
+    <div style="background:var(--navy);color:#fff;border-radius:10px;padding:12px;text-align:center;grid-column:1/-1;">
+      <div style="font-size:11px;opacity:.6;text-transform:uppercase;">Total General</div>
+      <div style="font-size:22px;font-weight:700;">$${fmt(total)}</div>
+    </div>
+    ${Object.entries(CAJAS_LABEL).map(([k,lbl]) => {
+      const esSueldo = ['ROSA','GABRIELA'].includes(k);
+      const tope = esSueldo ? topeDelMes(k) : 0;
+      const pct = esSueldo ? Math.min(100, Math.round((saldos[k]/tope)*100)) : 0;
+      return `
+      <div style="background:var(--cream2);border-radius:10px;padding:10px;text-align:center;cursor:pointer;" onclick="document.getElementById('caja-filtro-caja').value='${k}';renderCaja();">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">${lbl}</div>
+        <div style="font-size:16px;font-weight:700;color:${saldos[k]>=0?'var(--green)':'var(--red)'};">$${fmt(saldos[k])}</div>
+        ${esSueldo ? `
+          <div style="background:var(--border);border-radius:4px;height:4px;margin-top:6px;">
+            <div style="background:${pct>=100?'var(--green)':'var(--gold2)'};height:4px;border-radius:4px;width:${pct}%;"></div>
+          </div>
+          <div style="font-size:9px;color:var(--muted);margin-top:3px;">${pct}% de $${fmt(tope)}</div>
+        ` : ''}
+      </div>`;
+    }).join('')}`;
+
+  // Filtros
+  const filtroCaja = document.getElementById('caja-filtro-caja').value;
+  const filtroTipo = document.getElementById('caja-filtro-tipo').value;
+  const filtroDesde = document.getElementById('caja-filtro-desde').value;
+  const filtroHasta = document.getElementById('caja-filtro-hasta').value;
+
+  // Construir lista unificada de movimientos
+  let todos = [];
+
+  // Ventas como ingresos
+  ventas.forEach(v => {
+    const caja = cajaDeMovimiento(v);
+    todos.push({
+      id: 'v_'+v.id, fecha: v.fecha, tipo: 'ingreso',
+      caja, desc: v.producto || '—',
+      sub: `Venta · ${PAGO_LBL[v.pago]||v.pago} · ${v.apellido||''} ${v.nombre||''}`.trim(),
+      monto: v.precio, signo: 1
+    });
+  });
+
+  // Movimientos manuales
+  movCaja.forEach(m => {
+    if (m.tipo === 'gasto') {
+      todos.push({id:'m_'+m.id, fecha:m.fecha, tipo:'gasto', caja:m.caja,
+        desc: m.concepto, sub: m.obs||'', monto:m.monto, signo:-1});
+    } else if (m.tipo === 'traspaso') {
+      todos.push({id:'mt_'+m.id+'_d', fecha:m.fecha, tipo:'traspaso', caja:m.desde,
+        desc:`Traspaso → ${CAJAS_LABEL[m.hacia]||m.hacia}`, sub:m.obs||'', monto:m.monto, signo:-1});
+      todos.push({id:'mt_'+m.id+'_h', fecha:m.fecha, tipo:'traspaso', caja:m.hacia,
+        desc:`Traspaso ← ${CAJAS_LABEL[m.desde]||m.desde}`, sub:m.obs||'', monto:m.monto, signo:1});
+    } else if (m.tipo === 'ingreso') {
+      todos.push({id:'mi_'+m.id, fecha:m.fecha, tipo:'ingreso', caja:m.caja,
+        desc:m.concepto, sub:m.obs||'', monto:m.monto, signo:1});
+    }
+  });
+
+  // Aplicar filtros
+  if (filtroCaja !== 'TODAS') todos = todos.filter(m => m.caja === filtroCaja);
+  if (filtroTipo !== 'TODOS') todos = todos.filter(m => m.tipo === filtroTipo);
+  if (filtroDesde) todos = todos.filter(m => m.fecha >= filtroDesde);
+  if (filtroHasta) todos = todos.filter(m => m.fecha <= filtroHasta);
+
+  // Ordenar por fecha desc
+  todos.sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  const lista = document.getElementById('caja-lista');
+  const empty = document.getElementById('empty-caja');
+
+  if (!todos.length) { lista.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  const colorTipo = {ingreso:'var(--green)', gasto:'var(--red)', traspaso:'var(--orange)'};
+  const emojiTipo = {ingreso:'⬆', gasto:'⬇', traspaso:'🔄'};
+
+  lista.innerHTML = todos.map(m => `
+    <div class="prod-fila" style="flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
+        <div style="font-weight:600;font-size:13px;">${emojiTipo[m.tipo]||''} ${m.desc}</div>
+        <div style="font-size:11px;color:var(--muted);">${fmtD(m.fecha)} · ${CAJAS_LABEL[m.caja]||m.caja}${m.sub?' · '+m.sub:''}</div>
+      </div>
+      <div style="font-weight:700;font-size:15px;color:${colorTipo[m.tipo]||'var(--navy)'};">
+        ${m.signo>0?'+':'-'}$${fmt(m.monto)}
+      </div>
+    </div>`).join('');
+}
+
+// ── Gastos ──
+function abrirGasto() {
+  document.getElementById('g-fecha').value = hoy();
+  document.getElementById('g-concepto').value = '';
+  document.getElementById('g-otro').value = '';
+  document.getElementById('g-monto').value = '';
+  document.getElementById('g-obs').value = '';
+  document.getElementById('blk-g-otro').style.display = 'none';
+  document.getElementById('ovl-gasto').classList.add('on');
+}
+
+function onConceptoGasto() {
+  const v = document.getElementById('g-concepto').value;
+  document.getElementById('blk-g-otro').style.display = v === 'OTRO' ? 'block' : 'none';
+}
+
+async function guardarGasto() {
+  const concepto = document.getElementById('g-concepto').value;
+  const conceptoFinal = concepto === 'OTRO' ? document.getElementById('g-otro').value.trim() : concepto;
+  if (!conceptoFinal) { toast('⚠️ Seleccioná o escribí un concepto'); return; }
+  const monto = parseFloat(document.getElementById('g-monto').value)||0;
+  if (!monto) { toast('⚠️ Ingresá un monto'); return; }
+  movCaja.unshift({
+    id: Date.now(), tipo: 'gasto',
+    fecha: document.getElementById('g-fecha').value || hoy(),
+    caja: document.getElementById('g-caja').value,
+    concepto: conceptoFinal,
+    monto,
+    obs: document.getElementById('g-obs').value.trim()
+  });
+  await guardarCajaData();
+  cM('ovl-gasto'); renderCaja();
+  toast('✓ Gasto registrado');
+}
+
+// ── Traspasos ──
+function abrirTraspaso() {
+  document.getElementById('tr-fecha').value = hoy();
+  document.getElementById('tr-monto').value = '';
+  document.getElementById('tr-obs').value = '';
+  document.getElementById('ovl-traspaso').classList.add('on');
+}
+
+async function guardarTraspaso() {
+  const desde = document.getElementById('tr-desde').value;
+  const hacia = document.getElementById('tr-hacia').value;
+  if (desde === hacia) { toast('⚠️ Las cajas deben ser distintas'); return; }
+  const monto = parseFloat(document.getElementById('tr-monto').value)||0;
+  if (!monto) { toast('⚠️ Ingresá un monto'); return; }
+  movCaja.unshift({
+    id: Date.now(), tipo: 'traspaso',
+    fecha: document.getElementById('tr-fecha').value || hoy(),
+    desde, hacia, monto,
+    obs: document.getElementById('tr-obs').value.trim()
+  });
+  await guardarCajaData();
+  verificarTopeSueldo(hacia, monto);
+  cM('ovl-traspaso'); renderCaja();
+  toast('✓ Traspaso registrado');
+}
+
+// ── Datos de cuenta ──
+function abrirDatosCuenta() {
+  document.getElementById('ovl-cuenta').classList.add('on');
+  cargarDatosCuenta();
+}
+
+function cargarDatosCuenta() {
+  const caja = document.getElementById('dc-caja').value;
+  const d = datosCuentas[caja] || {};
+  document.getElementById('dc-nombre').value = d.nombre || '';
+  document.getElementById('dc-alias').value = d.alias || '';
+  document.getElementById('dc-cbu').value = d.cbu || '';
+  document.getElementById('dc-banco').value = d.banco || '';
+}
+
+async function guardarDatosCuenta() {
+  const caja = document.getElementById('dc-caja').value;
+  datosCuentas[caja] = {
+    nombre: document.getElementById('dc-nombre').value.trim(),
+    alias: document.getElementById('dc-alias').value.trim(),
+    cbu: document.getElementById('dc-cbu').value.trim(),
+    banco: document.getElementById('dc-banco').value.trim()
+  };
+  await guardarCajaData();
+  toast('✓ Datos guardados');
+}
+
+function compartirDatosCuenta() {
+  const caja = document.getElementById('dc-caja').value;
+  const d = datosCuentas[caja] || {};
+  const lbl = CAJAS_LABEL[caja] || caja;
+  const msg = `🏦 *Datos para transferencia — ${lbl}*\n\n` +
+    `👤 Apellido y Nombre: ${d.nombre||'—'}\n` +
+    `🏛 Entidad: ${d.banco||'—'}\n` +
+    `📝 Alias: ${d.alias||'—'}\n` +
+    `🔢 CBU/CVU: ${d.cbu||'—'}\n\n` +
+    `_Rossi Home_`;
+  abrirWASelector(msg);
+}
+
+// ── Cheque ──
+function abrirCheque() {
+  document.getElementById('ch-num').value = '';
+  document.getElementById('ch-banco').value = '';
+  document.getElementById('ch-titular').value = '';
+  document.getElementById('ch-fecha-ch').value = '';
+  document.getElementById('ch-monto').value = '';
+  document.getElementById('ch-obs').value = '';
+  document.getElementById('ovl-cheque').classList.add('on');
+}
+
+async function guardarCheque() {
+  const monto = parseFloat(document.getElementById('ch-monto').value)||0;
+  if (!monto) { toast('⚠️ Ingresá el monto'); return; }
+  movCaja.unshift({
+    id: Date.now(), tipo: 'ingreso',
+    fecha: hoy(), caja: 'EFECTIVO',
+    concepto: `Cheque N° ${document.getElementById('ch-num').value} · ${document.getElementById('ch-banco').value} · ${document.getElementById('ch-titular').value}`,
+    monto,
+    obs: document.getElementById('ch-obs').value.trim(),
+    cheque: {
+      num: document.getElementById('ch-num').value,
+      banco: document.getElementById('ch-banco').value,
+      titular: document.getElementById('ch-titular').value,
+      fecha: document.getElementById('ch-fecha-ch').value
+    }
+  });
+  await guardarCajaData();
+  cM('ovl-cheque'); renderCaja();
+  toast('✓ Cheque registrado');
+}
+
+// ── WhatsApp selector ──
+let _waPendingMsg = '';
+let _waPendingTel = '';
+
+function abrirWASelector(msg, tel='') {
+  _waPendingMsg = msg;
+  _waPendingTel = tel;
+  // Rosa y Gabriela en PC van directo a WhatsApp Web sin pedir elección
+  if (esPC() && esUsuarioWeb()) {
+    enviarWA('web');
+  } else {
+    document.getElementById('ovl-wa-select').classList.add('on');
+  }
+}
+
+function esPC() {
+  return !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+function esUsuarioWeb() {
+  const u = usuarioActual?.nombre?.toUpperCase() || '';
+  return u === 'ROSA' || u === 'GABRIELA';
+}
+
+function enviarWA(tipo) {
+  const tel = _waPendingTel ? `54${_waPendingTel.replace(/\D/g,'')}` : '';
+  const usarWeb = esPC() && esUsuarioWeb();
+
+  if (usarWeb) {
+    // Siempre WhatsApp Web para Rosa y Gabriela en PC
+    const url = tel
+      ? `https://web.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(_waPendingMsg)}`
+      : `https://web.whatsapp.com/send?text=${encodeURIComponent(_waPendingMsg)}`;
+    window.open(url, '_blank');
+  } else if (tipo === 'business') {
+    const url = tel
+      ? `https://api.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(_waPendingMsg)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(_waPendingMsg)}`;
+    window.open(url, '_blank');
+  } else {
+    const url = tel
+      ? `https://wa.me/${tel}?text=${encodeURIComponent(_waPendingMsg)}`
+      : `https://wa.me/?text=${encodeURIComponent(_waPendingMsg)}`;
+    window.open(url, '_blank');
+  }
+  cM('ovl-wa-select');
+}
+
+// ══════════════════════════════════════════════════════
+// BIOMETRÍA / FACE ID
+// ══════════════════════════════════════════════════════
+
+const BIOMETRIC_KEY = 'rh_biometric_user';
+const BIOMETRIC_ASKED = 'rh_biometric_asked';
+
+async function checkBiometrico() {
+  // Verificar si hay usuario guardado para login biométrico
+  const savedUser = localStorage.getItem(BIOMETRIC_KEY);
+  if (!savedUser) return;
+  
+  // Verificar soporte WebAuthn
+  if (!window.PublicKeyCredential) return;
+  
+  try {
+    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    if (!available) return;
+    
+    // Mostrar botón biométrico y ocultar formulario
+    document.getElementById('biometric-btn').style.display = 'block';
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('biometric-user-label').textContent = `Como: ${savedUser}`;
+  } catch(e) {
+    // Sin soporte, mostrar formulario normal
+  }
+}
+
+function mostrarLoginManual() {
+  document.getElementById('biometric-btn').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+}
+
+async function loginBiometrico() {
+  const savedUser = localStorage.getItem(BIOMETRIC_KEY);
+  if (!savedUser) { mostrarLoginManual(); return; }
+  
+  try {
+    // Solicitar verificación biométrica con challenge simple
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        timeout: 60000,
+        userVerification: 'required',
+        rpId: window.location.hostname
+      }
+    });
+    
+    if (assertion) {
+      // Autenticación exitosa — buscar usuario guardado
+      const userData = JSON.parse(localStorage.getItem('rh_biometric_data') || '{}');
+      if (userData.nombre) {
+        usuarioActual = userData;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-hdr').style.display = 'flex';
+        document.getElementById('app-pages').style.display = 'block';
+        iniciarApp();
+      }
+    }
+  } catch(e) {
+    // Usuario canceló o falló — mostrar formulario
+    if (e.name !== 'NotAllowedError') {
+      mostrarLoginManual();
+    }
+    toast('Autenticación cancelada');
+  }
+}
+
+async function preguntarBiometrico(userData) {
+  // Solo preguntar si nunca se preguntó antes en este dispositivo
+  const asked = localStorage.getItem(BIOMETRIC_ASKED);
+  if (asked) return;
+  
+  // Verificar soporte
+  if (!window.PublicKeyCredential) return;
+  try {
+    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    if (!available) return;
+  } catch(e) { return; }
+  
+  // Guardar referencia del usuario para usar después
+  window._biometricPendingUser = userData;
+  document.getElementById('ovl-biometric').classList.add('on');
+}
+
+async function activarBiometrico() {
+  const userData = window._biometricPendingUser;
+  if (!userData) { cM('ovl-biometric'); return; }
+  
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    const userId = new TextEncoder().encode(userData.nombre);
+    
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'Rossi Home', id: window.location.hostname },
+        user: { id: userId, name: userData.nombre, displayName: userData.nombre },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+        authenticatorSelection: { userVerification: 'required', authenticatorAttachment: 'platform' },
+        timeout: 60000
+      }
+    });
+    
+    if (credential) {
+      localStorage.setItem(BIOMETRIC_KEY, userData.nombre);
+      localStorage.setItem('rh_biometric_data', JSON.stringify(userData));
+      localStorage.setItem(BIOMETRIC_ASKED, '1');
+      toast('✓ Face ID / Huella activado');
+    }
+  } catch(e) {
+    localStorage.setItem(BIOMETRIC_ASKED, '1');
+    toast('No se pudo activar');
+  }
+  cM('ovl-biometric');
+}
+
+function rechazarBiometrico() {
+  localStorage.setItem(BIOMETRIC_ASKED, '1');
+  cM('ovl-biometric');
+}
+
+// ══════════════════════════════════════════════════════
+// REPORTES
+// ══════════════════════════════════════════════════════
+
+function setRepPeriodo(tipo) {
+  const h = hoy();
+  const hDate = new Date(h);
+  let desde = '', hasta = h;
+  if (tipo === 'hoy') {
+    desde = h;
+  } else if (tipo === 'semana') {
+    const d = new Date(hDate);
+    d.setDate(d.getDate() - d.getDay());
+    desde = d.toISOString().split('T')[0];
+  } else if (tipo === 'mes') {
+    desde = h.substring(0,7) + '-01';
+  } else {
+    desde = ''; hasta = '';
+  }
+  document.getElementById('rep-desde').value = desde;
+  document.getElementById('rep-hasta').value = hasta;
+  renderReportes();
+}
+
+function getVentasFiltradas() {
+  const desde = document.getElementById('rep-desde').value;
+  const hasta = document.getElementById('rep-hasta').value;
+  const vend = document.getElementById('rep-vend').value;
+  const pago = document.getElementById('rep-pago').value;
+
+  return ventas.filter(v => {
+    if (desde && v.fecha < desde) return false;
+    if (hasta && v.fecha > hasta) return false;
+    if (vend !== 'TODAS' && v.vendedora !== vend) return false;
+    if (pago !== 'TODAS' && v.pago !== pago) return false;
+    return true;
+  });
+}
+
+function renderReportes() {
+  // Actualizar select de vendedoras
+  const vendSel = document.getElementById('rep-vend');
+  const vendActual = vendSel.value;
+  const vends = [...new Set(ventas.map(v => v.vendedora))].sort();
+  vendSel.innerHTML = '<option value="TODAS">Todas</option>' +
+    vends.map(v => `<option value="${v}" ${v===vendActual?'selected':''}>${v}</option>`).join('');
+
+  const lista = getVentasFiltradas();
+  const empty = document.getElementById('empty-rep');
+
+  if (!lista.length) {
+    document.getElementById('rep-stats').innerHTML = '';
+    document.getElementById('rep-por-vend').innerHTML = '';
+    document.getElementById('rep-por-pago').innerHTML = '';
+    document.getElementById('rep-lista').innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const total = lista.reduce((s,v) => s+v.precio, 0);
+  const totalCosto = lista.reduce((s,v) => s+(v.costo||0), 0);
+  const ganancia = total - totalCosto;
+
+  // Stats
+  document.getElementById('rep-stats').innerHTML = `
+    <div style="background:var(--navy);color:#fff;border-radius:10px;padding:12px;text-align:center;">
+      <div style="font-size:10px;opacity:.6;text-transform:uppercase;">Ventas</div>
+      <div style="font-size:22px;font-weight:700;">${lista.length}</div>
+    </div>
+    <div style="background:var(--green);color:#fff;border-radius:10px;padding:12px;text-align:center;">
+      <div style="font-size:10px;opacity:.6;text-transform:uppercase;">Facturado</div>
+      <div style="font-size:16px;font-weight:700;">$${fmt(total)}</div>
+    </div>
+    <div style="background:var(--gold2);color:#fff;border-radius:10px;padding:12px;text-align:center;">
+      <div style="font-size:10px;opacity:.6;text-transform:uppercase;">Ganancia</div>
+      <div style="font-size:16px;font-weight:700;">$${fmt(ganancia)}</div>
+    </div>
+    <div style="background:var(--cream2);border-radius:10px;padding:12px;text-align:center;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Ticket prom.</div>
+      <div style="font-size:16px;font-weight:700;color:var(--navy);">$${fmt(Math.round(total/lista.length))}</div>
+    </div>`;
+
+  // Por vendedora
+  const porVend = {};
+  lista.forEach(v => {
+    if (!porVend[v.vendedora]) porVend[v.vendedora] = {total:0, cant:0};
+    porVend[v.vendedora].total += v.precio;
+    porVend[v.vendedora].cant++;
+  });
+  document.getElementById('rep-por-vend').innerHTML = Object.entries(porVend)
+    .sort((a,b) => b[1].total - a[1].total)
+    .map(([vend, d]) => `
+      <div class="prod-fila">
+        <div style="flex:1;"><div style="font-weight:600;font-size:13px;">${vend}</div>
+          <div style="font-size:11px;color:var(--muted);">${d.cant} venta${d.cant!==1?'s':''}</div></div>
+        <div style="font-weight:700;color:var(--navy);">$${fmt(d.total)}</div>
+      </div>`).join('');
+
+  // Por forma de pago
+  const porPago = {};
+  lista.forEach(v => {
+    const lbl = PAGO_LBL[v.pago] || v.pago;
+    if (!porPago[lbl]) porPago[lbl] = {total:0, cant:0};
+    porPago[lbl].total += v.precio;
+    porPago[lbl].cant++;
+  });
+  document.getElementById('rep-por-pago').innerHTML = Object.entries(porPago)
+    .sort((a,b) => b[1].total - a[1].total)
+    .map(([pago, d]) => `
+      <div class="prod-fila">
+        <div style="flex:1;"><div style="font-weight:600;font-size:13px;">${pago}</div>
+          <div style="font-size:11px;color:var(--muted);">${d.cant} venta${d.cant!==1?'s':''}</div></div>
+        <div style="font-weight:700;color:var(--navy);">$${fmt(d.total)}</div>
+      </div>`).join('');
+
+  // Listado detalle
+  document.getElementById('rep-lista').innerHTML = lista.map((v,i) => `
+    <div class="prod-fila" style="flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
+        <div style="font-weight:600;font-size:13px;">${v.producto||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);">${fmtD(v.fecha)} · ${v.vendedora} · ${PAGO_LBL[v.pago]||v.pago}</div>
+        ${v.apellido||v.nombre ? `<div style="font-size:11px;color:var(--muted);">${v.apellido||''} ${v.nombre||''}</div>` : ''}
+      </div>
+      <div style="font-weight:700;color:var(--navy);">$${fmt(v.precio)}</div>
+    </div>`).join('');
+}
+
+// ── PDF Reporte ──
+function exportarReportePDF() {
+  const lista = getVentasFiltradas();
+  const desde = document.getElementById('rep-desde').value;
+  const hasta = document.getElementById('rep-hasta').value;
+  const total = lista.reduce((s,v) => s+v.precio, 0);
+  const totalCosto = lista.reduce((s,v) => s+(v.costo||0), 0);
+
+  const periodo = desde && hasta ? `${fmtD(desde)} al ${fmtD(hasta)}` : desde ? `Desde ${fmtD(desde)}` : hasta ? `Hasta ${fmtD(hasta)}` : 'Todo el período';
+
+  const porVend = {};
+  lista.forEach(v => {
+    if (!porVend[v.vendedora]) porVend[v.vendedora] = {total:0, cant:0};
+    porVend[v.vendedora].total += v.precio;
+    porVend[v.vendedora].cant++;
+  });
+
+  const porPago = {};
+  lista.forEach(v => {
+    const lbl = PAGO_LBL[v.pago] || v.pago;
+    if (!porPago[lbl]) porPago[lbl] = {total:0, cant:0};
+    porPago[lbl].total += v.precio;
+    porPago[lbl].cant++;
+  });
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <title>Reporte Rossi Home</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#1a1a2e;font-size:13px;}
+      h1{color:#0b1a2e;font-size:20px;margin-bottom:4px;}
+      .sub{color:#888;font-size:12px;margin-bottom:20px;}
+      .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+      .stat{background:#f5f0e8;border-radius:8px;padding:12px;text-align:center;}
+      .stat-v{font-size:18px;font-weight:700;color:#0b1a2e;}
+      .stat-l{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px;}
+      h2{font-size:14px;color:#0b1a2e;border-bottom:1px solid #ddd;padding-bottom:4px;margin-top:20px;}
+      table{width:100%;border-collapse:collapse;font-size:12px;}
+      th{background:#0b1a2e;color:#fff;padding:6px 8px;text-align:left;}
+      td{padding:5px 8px;border-bottom:1px solid #eee;}
+      tr:nth-child(even) td{background:#fafafa;}
+      .total{font-weight:700;color:#0b1a2e;}
+      @media print{body{padding:15px;}}
+    </style>
+  </head><body>
+    <h1>📊 Reporte de Ventas — Rossi Home</h1>
+    <div class="sub">Período: ${periodo} · Generado: ${fmtD(hoy())}</div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-l">Total ventas</div><div class="stat-v">${lista.length}</div></div>
+      <div class="stat"><div class="stat-l">Facturado</div><div class="stat-v">$${fmt(total)}</div></div>
+      <div class="stat"><div class="stat-l">Costo</div><div class="stat-v">$${fmt(totalCosto)}</div></div>
+      <div class="stat"><div class="stat-l">Ganancia</div><div class="stat-v">$${fmt(total-totalCosto)}</div></div>
+    </div>
+
+    <h2>Por Vendedora</h2>
+    <table>
+      <thead><tr><th>Vendedora</th><th>Ventas</th><th>Total</th></tr></thead>
+      <tbody>${Object.entries(porVend).sort((a,b)=>b[1].total-a[1].total).map(([v,d])=>`
+        <tr><td>${v}</td><td>${d.cant}</td><td class="total">$${fmt(d.total)}</td></tr>`).join('')}
+      </tbody>
+    </table>
+
+    <h2>Por Forma de Pago</h2>
+    <table>
+      <thead><tr><th>Forma de Pago</th><th>Ventas</th><th>Total</th></tr></thead>
+      <tbody>${Object.entries(porPago).sort((a,b)=>b[1].total-a[1].total).map(([p,d])=>`
+        <tr><td>${p}</td><td>${d.cant}</td><td class="total">$${fmt(d.total)}</td></tr>`).join('')}
+      </tbody>
+    </table>
+
+    <h2>Detalle de Ventas (${lista.length})</h2>
+    <table>
+      <thead><tr><th>#</th><th>Fecha</th><th>Vendedora</th><th>Producto</th><th>Cliente</th><th>Pago</th><th>Precio</th></tr></thead>
+      <tbody>${lista.map((v,i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td>${fmtD(v.fecha)}</td>
+          <td>${v.vendedora}</td>
+          <td>${v.producto||'—'}</td>
+          <td>${v.apellido||''} ${v.nombre||''}</td>
+          <td>${PAGO_LBL[v.pago]||v.pago}</td>
+          <td class="total">$${fmt(v.precio)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ── PDF Presupuesto ──
+function imprimirPresPDF(id) {
+  const p = presupuestos.find(x=>x.id===id); if(!p) return;
+  let filas = '';
+  if (p.tipo === 1) {
+    const checks = p.pagos || [];
+    checks.forEach(pago => {
+      let desc='', cuota='', total='';
+      const contado = Math.round(p.precio * 0.9);
+      if (pago==='EFECTIVO'||pago==='TRANSF') {
+        desc = pago==='EFECTIVO'?'Efectivo':'Transferencia';
+        total = `$${fmt(contado)}`;
+      } else if (isTC(pago)) {
+        const n=TC_N[pago]||1,r=TC_RC[pago]||1,tot=Math.round(p.precio*r),cuo=Math.round(tot/n);
+        desc = PAGO_LBL[pago]; cuota = n>1?`${n} cuotas de $${fmt(cuo)}`:''; total=`$${fmt(tot)}`;
+      } else if (isCPorL30(pago)) {
+        const n=CP_N[pago]||L30_N[pago]||2,ant=Math.round(p.precio*ANTICIPO_PCT),saldo=p.precio-ant;
+        const interes=isL30(pago)?0:(CP_INT['mensual']?.[n]||0),tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);
+        desc=PAGO_LBL[pago]; cuota=`Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`; total=`$${fmt(ant+tot)}`;
+      }
+      filas += `<tr><td>${desc}</td><td>${cuota}</td><td style="font-weight:700;text-align:right;">$${total.replace('$','')}</td></tr>`;
+    });
+  } else {
+    p.items?.forEach(i => {
+      filas += `<tr><td>${i.cant}x ${i.desc}</td><td></td><td style="font-weight:700;text-align:right;">$${fmt(i.cant*i.precioUnit)}</td></tr>`;
+    });
+  }
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8"><title>Presupuesto Rossi Home</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:600px;margin:0 auto;}
+      .logo{font-size:24px;font-weight:700;color:#0b1a2e;margin-bottom:4px;}
+      .logo em{color:#c8922a;font-style:normal;}
+      .sub{color:#888;font-size:12px;margin-bottom:24px;}
+      .info{background:#f5f0e8;border-radius:8px;padding:16px;margin-bottom:20px;}
+      .info-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+      table{width:100%;border-collapse:collapse;font-size:13px;}
+      th{background:#0b1a2e;color:#fff;padding:8px 10px;text-align:left;}
+      td{padding:8px 10px;border-bottom:1px solid #eee;}
+      .footer{margin-top:24px;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:12px;}
+      @media print{body{padding:20px;}}
+    </style>
+  </head><body>
+    <div class="logo">Rossi <em>Home</em></div>
+    <div class="sub">Presupuesto N° ${p.id} · ${fmtD(p.fecha||hoy())}</div>
+    <div class="info">
+      <div class="info-row"><span><strong>Cliente:</strong> ${p.cliente||'—'}</span><span><strong>Válido hasta:</strong> ${fmtD(p.validez)}</span></div>
+      ${p.tipo===1?`<div class="info-row"><span><strong>Producto:</strong> ${p.producto||'—'}</span><span><strong>Precio lista:</strong> $${fmt(p.precio)}</span></div>`:''}
+      ${p.obs?`<div class="info-row"><span><strong>Obs:</strong> ${p.obs}</span></div>`:''}
+    </div>
+    <table>
+      <thead><tr><th>Forma de Pago</th><th>Detalle</th><th>Total</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+    <div class="footer">
+      <p>✓ Entrega sin cargo en Exaltación de la Cruz</p>
+      <p>${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad} · ${INFO_EMPRESA.wa}</p>
+    </div>
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ── PDF Recibo de venta ──
+function imprimirReciboPDF(id) {
+  const v = ventas.find(x=>x.id===id); if(!v) return;
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8"><title>Recibo Rossi Home</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:500px;margin:0 auto;}
+      .logo{font-size:24px;font-weight:700;color:#0b1a2e;margin-bottom:4px;}
+      .logo em{color:#c8922a;font-style:normal;}
+      .sub{color:#888;font-size:12px;margin-bottom:24px;}
+      .box{background:#f5f0e8;border-radius:8px;padding:16px;margin-bottom:16px;}
+      .row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.06);}
+      .total-row{display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding:10px 0;}
+      .footer{margin-top:20px;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:12px;}
+      @media print{body{padding:20px;}}
+    </style>
+  </head><body>
+    <div class="logo">Rossi <em>Home</em></div>
+    <div class="sub">Recibo de Venta · ${fmtD(v.fecha)}</div>
+    <div class="box">
+      <div class="row"><span>Cliente</span><span>${v.apellido||''} ${v.nombre||''}</span></div>
+      ${v.dni?`<div class="row"><span>DNI</span><span>${v.dni}</span></div>`:''}
+      ${v.tel?`<div class="row"><span>Teléfono</span><span>${v.tel}</span></div>`:''}
+      ${v.dir?`<div class="row"><span>Dirección</span><span>${v.dir}</span></div>`:''}
+    </div>
+    <div class="box">
+      <div class="row"><span>Producto</span><span>${v.producto||'—'}</span></div>
+      <div class="row"><span>Forma de pago</span><span>${PAGO_LBL[v.pago]||v.pago}</span></div>
+      <div class="row"><span>Vendedora</span><span>${v.vendedora}</span></div>
+      ${v.cpData?`
+        <div class="row"><span>Anticipo</span><span>$${fmt(v.cpData.anticipo)}</span></div>
+        <div class="row"><span>Cuota</span><span>$${fmt(v.cpData.cuota)} x ${v.cpData.nCuotas}</span></div>
+        <div class="row"><span>Frecuencia</span><span>${v.cpData.frecuencia}</span></div>
+      `:''}
+      <div class="total-row"><span>Total</span><span>$${fmt(v.precio)}</span></div>
+    </div>
+    ${v.obs?`<div class="box"><div class="row"><span>Observaciones</span><span>${v.obs}</span></div></div>`:''}
+    <div class="footer">
+      <p>${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad}</p>
+      <p>${INFO_EMPRESA.wa}</p>
+    </div>
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ══════════════════════════════════════════════════════
+// LIQUIDACIONES
+// ══════════════════════════════════════════════════════
+
+let liquidaciones = []; // períodos cerrados
+let publicaciones = {}; // {vendedora: {fecha: true}}
+let configLiq = {
+  montoPub: 1000,
+  ventasMinPub: 3,
+  bonus1: 25000,  // hasta 2.5M
+  bonus2: 50000,  // hasta 5M
+  bonus3: 100000  // mas de 5M
+};
+
+const SK_LIQ    = 'rh_liq_v1';
+const SK_PUB    = 'rh_pub_v1';
+const SK_CFGLIQ = 'rh_cfgliq_v1';
+
+async function guardarLiqData() {
+  await sSet(SK_LIQ, liquidaciones);
+  await sSet(SK_PUB, publicaciones);
+  await sSet(SK_CFGLIQ, configLiq);
+  programarGuardado();
+}
+
+function cobradoEnPeriodo(vendedora, desde, hasta) {
+  // Sumar lo efectivamente cobrado en el período por la vendedora
+  let total = 0;
+  ventas.filter(v => v.vendedora === vendedora && v.fecha >= desde && v.fecha <= hasta).forEach(v => {
+    if (isCPorL30(v.pago) && v.cpData) {
+      // Cobros del crédito en el período
+      (v.cpData.cobros||[]).forEach(c => {
+        if (c.fecha >= desde && c.fecha <= hasta) total += c.monto || 0;
+      });
+    } else {
+      total += v.precio || 0;
+    }
+  });
+  return total;
+}
+
+function comisionVenta(v, desde, hasta) {
+  // Calcular comisión de una venta
+  if (v.comisionSobreVenta) {
+    // Opción B: 10% del precio total, solo en el primer cobro
+    const primerCobro = isCPorL30(v.pago) && v.cpData
+      ? (v.cpData.cobros||[]).filter(c => c.fecha >= desde && c.fecha <= hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0]
+      : null;
+    if (!isCPorL30(v.pago)) return v.precio * 0.1;
+    return primerCobro ? v.precio * 0.1 : 0;
+  } else {
+    // Opción A: 10% de cada cobro en el período
+    if (isCPorL30(v.pago) && v.cpData) {
+      const cobrosEnPeriodo = (v.cpData.cobros||[]).filter(c => c.fecha >= desde && c.fecha <= hasta);
+      return cobrosEnPeriodo.reduce((s,c) => s + (c.monto||0)*0.1, 0);
+    }
+    return v.precio * 0.1;
+  }
+}
+
+function calcularLiquidacion(vendedora, desde, hasta) {
+  const ventasVend = ventas.filter(v => v.vendedora === vendedora && v.fecha >= desde && v.fecha <= hasta);
+  const totalCobrado = cobradoEnPeriodo(vendedora, desde, hasta);
+  const cantVentas = ventasVend.length;
+
+  // Comisiones
+  const comisiones = ventasVend.reduce((s,v) => s + comisionVenta(v, desde, hasta), 0);
+
+  // Publicaciones
+  const pubVend = publicaciones[vendedora] || {};
+  const diasPub = Object.keys(pubVend).filter(f => f >= desde && f <= hasta && pubVend[f]).length;
+  const bonusPub = cantVentas >= configLiq.ventasMinPub ? diasPub * configLiq.montoPub : 0;
+
+  // Bonus cobranza
+  let bonusCobranza = 0;
+  if (totalCobrado <= 2500000) bonusCobranza = configLiq.bonus1;
+  else if (totalCobrado <= 5000000) bonusCobranza = configLiq.bonus2;
+  else bonusCobranza = configLiq.bonus3;
+
+  const total = comisiones + bonusPub + bonusCobranza;
+
+  return { ventasVend, totalCobrado, cantVentas, comisiones, diasPub, bonusPub, bonusCobranza, total };
+}
+
+function setLiqPeriodo(tipo) {
+  const h = hoy();
+  const hDate = new Date(h);
+  let desde = '', hasta = h;
+
+  if (tipo === 'mes') {
+    desde = h.substring(0,7) + '-01';
+  } else if (tipo === 'anterior') {
+    const d = new Date(hDate.getFullYear(), hDate.getMonth()-1, 1);
+    const d2 = new Date(hDate.getFullYear(), hDate.getMonth(), 0);
+    desde = d.toISOString().split('T')[0];
+    hasta = d2.toISOString().split('T')[0];
+  } else if (tipo === 'ultimo') {
+    const vend = document.getElementById('liq-vend').value;
+    const ult = [...liquidaciones].filter(l => l.vendedora === vend).sort((a,b) => b.hasta.localeCompare(a.hasta))[0];
+    if (ult) {
+      // Siguiente liquidación arranca al día siguiente
+      const sig = new Date(ult.hasta);
+      sig.setDate(sig.getDate()+1);
+      desde = sig.toISOString().split('T')[0];
+    }
+  }
+  document.getElementById('liq-desde').value = desde;
+  document.getElementById('liq-hasta').value = hasta;
+  renderLiquidaciones();
+}
+
+function renderLiquidaciones() {
+  // Poblar select con vendedoras del sistema (excluir Rosa, Gabriela, Dolores)
+  const EXCLUIR_LIQ = ['ROSA','GABRIELA','DOLORES'];
+  const vendSel = document.getElementById('liq-vend');
+  const vendActualLiq = vendSel.value;
+  const vendsLiq = [...new Set(ventas.map(v => v.vendedora))]
+    .filter(v => !EXCLUIR_LIQ.includes(v.toUpperCase()))
+    .sort();
+  if (vendSel.options.length === 0 || !vendsLiq.includes(vendActualLiq)) {
+    vendSel.innerHTML = vendsLiq.length
+      ? vendsLiq.map(v => `<option value="${v}">${v}</option>`).join('')
+      : '<option value="">Sin vendedoras</option>';
+  }
+
+  const vend = vendSel.value;
+  const desde = document.getElementById('liq-desde').value;
+  const hasta = document.getElementById('liq-hasta').value;
+
+  // Mostrar config solo para LEANDRO
+  document.getElementById('liq-config').style.display = usuarioActual?.nombre?.toUpperCase()==='LEANDRO' ? 'block' : 'none';
+
+  // Cargar config en los inputs
+  if (usuarioActual?.nombre?.toUpperCase()==='LEANDRO') {
+    document.getElementById('cfg-pub').value = configLiq.montoPub;
+    document.getElementById('cfg-pub-min').value = configLiq.ventasMinPub;
+    document.getElementById('cfg-b1').value = configLiq.bonus1;
+    document.getElementById('cfg-b2').value = configLiq.bonus2;
+    document.getElementById('cfg-b3').value = configLiq.bonus3;
+  }
+
+  if (!desde || !hasta) {
+    document.getElementById('liq-resumen').innerHTML = '<p style="color:var(--muted);font-size:13px;">Seleccioná un período para ver la liquidación.</p>';
+    document.getElementById('liq-detalle').innerHTML = '';
+    document.getElementById('liq-calendario').innerHTML = '';
+    return;
+  }
+
+  // Calendario de publicaciones
+  renderCalendarioPub(vend, desde, hasta);
+
+  // Calcular
+  const liq = calcularLiquidacion(vend, desde, hasta);
+
+  if (!liq.cantVentas) {
+    document.getElementById('liq-resumen').innerHTML = '';
+    document.getElementById('liq-detalle').innerHTML = '';
+    document.getElementById('empty-liq').style.display = 'block';
+    return;
+  }
+  document.getElementById('empty-liq').style.display = 'none';
+
+  // Resumen
+  document.getElementById('liq-resumen').innerHTML = `
+    <div style="background:var(--cream2);border-radius:10px;padding:14px;margin-bottom:10px;">
+      <div class="prod-fila" style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px;">
+        <div style="flex:1;font-size:13px;color:var(--muted);">Total cobrado en el período</div>
+        <div style="font-weight:700;">$${fmt(liq.totalCobrado)}</div>
+      </div>
+      <div class="prod-fila">
+        <div style="flex:1;font-size:13px;">Comisiones por ventas (10%)</div>
+        <div style="font-weight:700;color:var(--navy);">$${fmt(Math.round(liq.comisiones))}</div>
+      </div>
+      <div class="prod-fila">
+        <div style="flex:1;font-size:13px;">Bonus publicaciones (${liq.diasPub} días${liq.cantVentas < configLiq.ventasMinPub ? ' — sin ventas mínimas':''}) </div>
+        <div style="font-weight:700;color:var(--navy);">$${fmt(liq.bonusPub)}</div>
+      </div>
+      <div class="prod-fila">
+        <div style="flex:1;font-size:13px;">Bonus cobranza</div>
+        <div style="font-weight:700;color:var(--navy);">$${fmt(liq.bonusCobranza)}</div>
+      </div>
+      <div class="prod-fila" style="border-top:2px solid var(--navy);margin-top:8px;padding-top:8px;">
+        <div style="flex:1;font-size:15px;font-weight:700;">TOTAL A PAGAR</div>
+        <div style="font-size:20px;font-weight:700;color:var(--gold2);">$${fmt(Math.round(liq.total))}</div>
+      </div>
+    </div>`;
+
+  // Detalle ventas con toggle comisión
+  const esAdmin = usuarioActual?.nombre?.toUpperCase()==='LEANDRO';
+  document.getElementById('liq-detalle').innerHTML = liq.ventasVend.map(v => `
+    <div class="prod-fila" style="flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
+        <div style="font-weight:600;font-size:13px;">${v.producto||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);">${fmtD(v.fecha)} · ${PAGO_LBL[v.pago]||v.pago}</div>
+        <div style="font-size:11px;color:var(--muted);">Comisión: ${v.comisionSobreVenta?'sobre precio venta':'sobre cobrado'}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-weight:700;">$${fmt(v.precio)}</div>
+        <div style="font-size:12px;color:var(--green);">Com: $${fmt(Math.round(comisionVenta(v, desde, hasta)))}</div>
+        ${esAdmin ? `<button class="btn btn-ghost btn-sm" style="font-size:10px;margin-top:4px;" onclick="toggleComisionVenta(${v.id})">${v.comisionSobreVenta?'▶ Sobre cobrado':'▶ Sobre venta'}</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function renderCalendarioPub(vend, desde, hasta) {
+  const pubVend = publicaciones[vend] || {};
+  const dias = [];
+  let cur = new Date(desde);
+  const fin = new Date(hasta);
+  while (cur <= fin) {
+    dias.push(cur.toISOString().split('T')[0]);
+    cur.setDate(cur.getDate()+1);
+  }
+
+  const esPermitido = ['LEANDRO','ROSA','GABRIELA'].includes(usuarioActual?.nombre?.toUpperCase());
+
+  document.getElementById('liq-calendario').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      ${dias.map(f => {
+        const marcado = pubVend[f];
+        return `<div onclick="${esPermitido?`togglePub('${vend}','${f}')`:''}" style="
+          width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+          font-size:11px;font-weight:600;cursor:${esPermitido?'pointer':'default'};
+          background:${marcado?'var(--green)':'var(--cream2)'};
+          color:${marcado?'#fff':'var(--muted)'};
+          border:2px solid ${marcado?'var(--green)':'var(--border)'};">
+          ${f.substring(8)}
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">Verde = publicó en estados · Tocá para marcar/desmarcar</div>`;
+}
+
+async function togglePub(vend, fecha) {
+  if (!publicaciones[vend]) publicaciones[vend] = {};
+  publicaciones[vend][fecha] = !publicaciones[vend][fecha];
+  await guardarLiqData();
+  renderLiquidaciones();
+}
+
+async function toggleComisionVenta(id) {
+  const v = ventas.find(x => x.id === id); if(!v) return;
+  v.comisionSobreVenta = !v.comisionSobreVenta;
+  await guardarVentas();
+  renderLiquidaciones();
+  toast(`Comisión: ${v.comisionSobreVenta?'sobre precio venta':'sobre cobrado'}`);
+}
+
+async function guardarConfigLiq() {
+  if (usuarioActual?.nombre?.toUpperCase() !== 'LEANDRO') { toast('Sin permiso'); return; }
+  configLiq = {
+    montoPub: parseFloat(document.getElementById('cfg-pub').value)||1000,
+    ventasMinPub: parseInt(document.getElementById('cfg-pub-min').value)||3,
+    bonus1: parseFloat(document.getElementById('cfg-b1').value)||25000,
+    bonus2: parseFloat(document.getElementById('cfg-b2').value)||50000,
+    bonus3: parseFloat(document.getElementById('cfg-b3').value)||100000
+  };
+  await guardarLiqData();
+  toast('✓ Configuración guardada');
+  renderLiquidaciones();
+}
+
+async function cerrarLiquidacion() {
+  const vend = document.getElementById('liq-vend').value;
+  const desde = document.getElementById('liq-desde').value;
+  const hasta = document.getElementById('liq-hasta').value;
+  if (!desde || !hasta) { toast('⚠️ Seleccioná un período'); return; }
+  if (!confirm(`¿Cerrar liquidación de ${vend} del ${fmtD(desde)} al ${fmtD(hasta)}?`)) return;
+  
+  const liq = calcularLiquidacion(vend, desde, hasta);
+  liquidaciones.push({
+    id: Date.now(), vendedora: vend, desde, hasta,
+    totalCobrado: liq.totalCobrado, comisiones: Math.round(liq.comisiones),
+    bonusPub: liq.bonusPub, bonusCobranza: liq.bonusCobranza,
+    total: Math.round(liq.total), fechaCierre: hoy()
+  });
+  await guardarLiqData();
+  toast('✓ Liquidación cerrada');
+  
+  // Avanzar al día siguiente automáticamente
+  const sig = new Date(hasta);
+  sig.setDate(sig.getDate()+1);
+  document.getElementById('liq-desde').value = sig.toISOString().split('T')[0];
+  document.getElementById('liq-hasta').value = '';
+  renderLiquidaciones();
+}
+
+function exportarLiqPDF() {
+  const vend = document.getElementById('liq-vend').value;
+  const desde = document.getElementById('liq-desde').value;
+  const hasta = document.getElementById('liq-hasta').value;
+  if (!desde || !hasta) { toast('⚠️ Seleccioná un período'); return; }
+
+  const liq = calcularLiquidacion(vend, desde, hasta);
+  const pubVend = publicaciones[vend] || {};
+  const diasPubLista = Object.keys(pubVend).filter(f => f >= desde && f <= hasta && pubVend[f]);
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8"><title>Liquidación ${vend}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:600px;margin:0 auto;font-size:13px;}
+      h1{color:#0b1a2e;font-size:20px;margin-bottom:4px;}
+      .sub{color:#888;font-size:12px;margin-bottom:24px;}
+      .box{background:#f5f0e8;border-radius:8px;padding:16px;margin-bottom:16px;}
+      .row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.06);}
+      .total-row{display:flex;justify-content:space-between;font-size:18px;font-weight:700;padding:10px 0;border-top:2px solid #0b1a2e;margin-top:8px;}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;}
+      th{background:#0b1a2e;color:#fff;padding:6px 8px;text-align:left;}
+      td{padding:5px 8px;border-bottom:1px solid #eee;}
+      @media print{body{padding:20px;}}
+    </style>
+  </head><body>
+    <h1>💰 Liquidación — Rossi Home</h1>
+    <div class="sub">${vend} · Período: ${fmtD(desde)} al ${fmtD(hasta)} · Generado: ${fmtD(hoy())}</div>
+    
+    <div class="box">
+      <div class="row"><span>Total cobrado en el período</span><span><strong>$${fmt(liq.totalCobrado)}</strong></span></div>
+      <div class="row"><span>Cantidad de ventas</span><span>${liq.cantVentas}</span></div>
+      <div class="row"><span>Comisiones por ventas (10%)</span><span>$${fmt(Math.round(liq.comisiones))}</span></div>
+      <div class="row"><span>Días publicados en estados (${liq.diasPub} días × $${fmt(configLiq.montoPub)})</span><span>$${fmt(liq.bonusPub)}</span></div>
+      <div class="row"><span>Bonus por cobranza</span><span>$${fmt(liq.bonusCobranza)}</span></div>
+      <div class="total-row"><span>TOTAL A PAGAR</span><span style="color:#c8922a;">$${fmt(Math.round(liq.total))}</span></div>
+    </div>
+
+    <table>
+      <thead><tr><th>Fecha</th><th>Producto</th><th>Precio</th><th>Pago</th><th>Comisión</th></tr></thead>
+      <tbody>${liq.ventasVend.map(v=>`
+        <tr>
+          <td>${fmtD(v.fecha)}</td>
+          <td>${v.producto||'—'}</td>
+          <td>$${fmt(v.precio)}</td>
+          <td>${PAGO_LBL[v.pago]||v.pago}</td>
+          <td>$${fmt(Math.round(comisionVenta(v,desde,hasta)))}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+
+    ${diasPubLista.length ? `<p style="margin-top:16px;font-size:12px;color:#888;">Días con publicación: ${diasPubLista.map(f=>fmtD(f)).join(', ')}</p>` : ''}
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ══════════════════════════════════════════════════════
+// MÚLTIPLES FORMAS DE PAGO
+// ══════════════════════════════════════════════════════
+
+let pagosVenta = []; // [{pago, monto, label}]
+
+function toggleMixto() {
+  const mixto = document.getElementById('chk-mixto').checked;
+  document.getElementById('blk-mixto').style.display = mixto ? 'block' : 'none';
+  if (!mixto) { pagosVenta = []; renderPagosVenta(); }
+}
+
+function agregarPago() {
+  const pago = document.getElementById('f-pago-extra').value;
+  const monto = parseFloat(document.getElementById('f-pago-monto').value)||0;
+  if (!pago) { toast('⚠️ Seleccioná una forma de pago'); return; }
+  if (!monto) { toast('⚠️ Ingresá el monto'); return; }
+
+  // Si es CP o L30 solo puede haber uno
+  if (isCPorL30(pago) && pagosVenta.some(p => isCPorL30(p.pago))) {
+    toast('⚠️ Solo un crédito personal por venta'); return;
+  }
+
+  pagosVenta.push({ pago, monto, label: PAGO_LBL[pago]||pago });
+  document.getElementById('f-pago').value = '';
+  document.getElementById('f-pago-monto').value = '';
+  document.getElementById('blk-tc').style.display = 'none';
+  document.getElementById('blk-cp').style.display = 'none';
+  renderPagosVenta();
+  actualizarPreciosDesdePagos();
+}
+
+function quitarPago(idx) {
+  pagosVenta.splice(idx, 1);
+  renderPagosVenta();
+  actualizarPreciosDesdePagos();
+}
+
+function actualizarPreciosDesdePagos() {
+  const total = pagosVenta.reduce((s,p) => s+p.monto, 0);
+  if (total > 0) document.getElementById('f-precio').value = total;
+}
+
+function renderPagosVenta() {
+  const lista = document.getElementById('pagos-lista');
+  if (!pagosVenta.length) {
+    lista.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0;">Sin pagos agregados aún</div>';
+    return;
+  }
+  const total = pagosVenta.reduce((s,p) => s+p.monto, 0);
+  lista.innerHTML = pagosVenta.map((p,i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--cream2);border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+      <span class="badge ${PAGO_BADGE[p.pago]||'b-ef'}" style="font-size:11px;">${p.label}</span>
+      <span style="flex:1;font-weight:600;">$${fmt(p.monto)}</span>
+      <button onclick="quitarPago(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;">✕</button>
+    </div>`).join('') +
+    `<div style="text-align:right;font-size:13px;font-weight:700;color:var(--navy);padding:4px 0;">Total: $${fmt(total)}</div>`;
+}
+
+// ══════════════════════════════════════════════════════
+// TOPE DE SUELDO ROSA Y GABRIELA
+// ══════════════════════════════════════════════════════
+
+const SUELDO_BASE = 700000;
+const SUELDO_AGUINALDO_MESES = [1, 8]; // enero y agosto
+const CAJAS_SUELDO = ['ROSA', 'GABRIELA'];
+
+let configSueldos = { base: 700000 }; // editable por LEANDRO
+const SK_SUELDOS = 'rh_sueldos_v1';
+
+function topeDelMes(caja, fecha) {
+  const mes = new Date(fecha || hoy()).getMonth() + 1;
+  const base = configSueldos.base || SUELDO_BASE;
+  return SUELDO_AGUINALDO_MESES.includes(mes) ? Math.round(base * 1.5) : base;
+}
+
+function cobradoEnCajaMes(caja, fecha) {
+  const f = fecha || hoy();
+  const mes = f.substring(0, 7); // YYYY-MM
+  const saldos = saldosCaja();
+  // Calcular solo ingresos del mes para esa caja
+  let total = 0;
+  ventas.forEach(v => {
+    if (!v.fecha.startsWith(mes)) return;
+    impactosCaja(v).forEach(({caja: c, monto}) => {
+      if (c === caja) total += monto;
+    });
+  });
+  movCaja.forEach(m => {
+    if (!m.fecha.startsWith(mes)) return;
+    if (m.tipo === 'traspaso' && m.hacia === caja) total += m.monto;
+    if (m.tipo === 'traspaso' && m.desde === caja) total -= m.monto;
+    if (m.tipo === 'ingreso' && m.caja === caja) total += m.monto;
+    if (m.tipo === 'gasto' && m.caja === caja) total -= m.monto;
+  });
+  return total;
+}
+
+function verificarTopeSueldo(caja, montoNuevo) {
+  if (!CAJAS_SUELDO.includes(caja)) return;
+  const tope = topeDelMes(caja);
+  const actual = cobradoEnCajaMes(caja);
+  if (actual + montoNuevo > tope) {
+    const excedente = (actual + montoNuevo) - tope;
+    const nombre = CAJAS_LABEL[caja] || caja;
+    toast(`⚠️ ${nombre} superó el tope del mes ($${fmt(tope)}). Excedente: $${fmt(excedente)}`, 5000);
+    // Notificación persistente en la app
+    const notif = document.getElementById('notif-tope');
+    if (notif) {
+      notif.style.display = 'block';
+      notif.innerHTML = `⚠️ <strong>${nombre}</strong> superó el tope mensual de $${fmt(tope)}. Excedente: <strong>$${fmt(excedente)}</strong>`;
+    }
+  }
+}
 </script>
+
+<!-- Modal WhatsApp selector -->
+<div class="overlay" id="ovl-wa-select" onclick="cM('ovl-wa-select',event)">
+  <div class="modal" style="max-width:320px;">
+    <div class="mh"><h3>📲 Enviar por WhatsApp</h3><span class="mx" onclick="cM('ovl-wa-select')">✕</span></div>
+    <div class="mb" style="display:flex;flex-direction:column;gap:10px;">
+      <p style="font-size:13px;color:var(--muted);margin:0;">¿Con qué WhatsApp querés enviar?</p>
+      <button class="btn btn-gold" style="width:100%;font-size:15px;" onclick="enviarWA('personal')">💬 WhatsApp Personal</button>
+      <button class="btn btn-blue" style="width:100%;font-size:15px;" onclick="enviarWA('business')">💼 WhatsApp Business</button>
+      <button class="btn btn-ghost" onclick="cM('ovl-wa-select')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal activar Face ID -->
+<div class="overlay" id="ovl-biometric" onclick="cM('ovl-biometric',event)">
+  <div class="modal" style="max-width:320px;">
+    <div class="mh"><h3>🔒 Acceso Rápido</h3><span class="mx" onclick="cM('ovl-biometric')">✕</span></div>
+    <div class="mb" style="text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+      <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">¿Querés activar Face ID o huella para entrar más rápido la próxima vez?</p>
+      <button class="btn btn-gold" style="width:100%;margin-bottom:8px;" onclick="activarBiometrico()">✓ Sí, activar</button>
+      <button class="btn btn-ghost" style="width:100%;" onclick="rechazarBiometrico()">Ahora no</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
