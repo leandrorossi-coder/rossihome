@@ -2826,8 +2826,14 @@ function renderCaja() {
         <div style="font-weight:600;font-size:13px;">${emojiTipo[m.tipo]||''} ${m.desc}</div>
         <div style="font-size:11px;color:var(--muted);">${fmtD(m.fecha)} · ${CAJAS_LABEL[m.caja]||m.caja}${m.sub?' · '+m.sub:''}</div>
       </div>
-      <div style="font-weight:700;font-size:15px;color:${colorTipo[m.tipo]||'var(--navy)'};">
-        ${m.signo>0?'+':'-'}$${fmt(m.monto)}
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-weight:700;font-size:15px;color:${colorTipo[m.tipo]||'var(--navy)'};">
+          ${m.signo>0?'+':'-'}$${fmt(m.monto)}
+        </div>
+        ${esAdmin()?`<div style="display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-sm" onclick="editarMovCaja('${m.id}')" style="font-size:11px;padding:3px 8px;">Ed</button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarMovCaja('${m.id}')" style="font-size:11px;padding:3px 8px;">X</button>
+        </div>`:''}
       </div>
     </div>`).join('');
 }
@@ -3356,7 +3362,61 @@ function exportarReportePDF() {
     </table>
 
     <script>window.onload=function(){window.print();}<\/script>
-  </body></html>`);
+  
+<!-- Modal Ingreso Manual -->
+<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
+  <div class="modal">
+    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
+    <div class="mb">
+      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="ing-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
+      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Movimiento -->
+<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
+  <div class="modal">
+    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="edit-mov-id">
+      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="edit-mov-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
+      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
+      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close();
 }
 
@@ -3421,7 +3481,61 @@ function imprimirPresPDF(id) {
       <p>${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad} · ${INFO_EMPRESA.wa}</p>
     </div>
     <script>window.onload=function(){window.print();}<\/script>
-  </body></html>`);
+  
+<!-- Modal Ingreso Manual -->
+<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
+  <div class="modal">
+    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
+    <div class="mb">
+      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="ing-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
+      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Movimiento -->
+<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
+  <div class="modal">
+    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="edit-mov-id">
+      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="edit-mov-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
+      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
+      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close();
 }
 
@@ -3468,7 +3582,61 @@ function imprimirReciboPDF(id) {
       <p>${INFO_EMPRESA.wa}</p>
     </div>
     <script>window.onload=function(){window.print();}<\/script>
-  </body></html>`);
+  
+<!-- Modal Ingreso Manual -->
+<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
+  <div class="modal">
+    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
+    <div class="mb">
+      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="ing-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
+      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Movimiento -->
+<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
+  <div class="modal">
+    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="edit-mov-id">
+      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="edit-mov-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
+      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
+      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close();
 }
 
@@ -3812,7 +3980,61 @@ function exportarLiqPDF() {
 
     ${diasPubLista.length ? `<p style="margin-top:16px;font-size:12px;color:#888;">Días con publicación: ${diasPubLista.map(f=>fmtD(f)).join(', ')}</p>` : ''}
     <script>window.onload=function(){window.print();}<\/script>
-  </body></html>`);
+  
+<!-- Modal Ingreso Manual -->
+<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
+  <div class="modal">
+    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
+    <div class="mb">
+      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="ing-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
+      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Movimiento -->
+<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
+  <div class="modal">
+    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="edit-mov-id">
+      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="edit-mov-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
+      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
+      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>`);
   w.document.close();
 }
 
@@ -3964,6 +4186,69 @@ function leerDeScriptJSONP() {
     document.head.appendChild(script);
   });
 }
+
+// Ingreso manual de caja
+function abrirIngreso() {
+  document.getElementById('ing-fecha').value = hoy();
+  document.getElementById('ing-monto').value = '';
+  document.getElementById('ing-obs').value = '';
+  document.getElementById('ovl-ingreso').classList.add('on');
+}
+
+async function guardarIngreso() {
+  const monto = parseFloat(document.getElementById('ing-monto').value)||0;
+  if (!monto) { toast('Ingresa un monto'); return; }
+  movCaja.unshift({
+    id: Date.now(), tipo: 'ingreso',
+    fecha: document.getElementById('ing-fecha').value || hoy(),
+    caja: document.getElementById('ing-caja').value,
+    concepto: 'Ingreso manual',
+    monto,
+    obs: document.getElementById('ing-obs').value.trim()
+  });
+  await guardarCajaData();
+  cM('ovl-ingreso'); renderCaja();
+  toast('OK Ingreso registrado');
+}
+
+// Editar movimiento de caja
+function editarMovCaja(id) {
+  const numId = parseInt(id) || id;
+  const m = movCaja.find(x => x.id == numId);
+  if (!m) return;
+  document.getElementById('edit-mov-id').value = m.id;
+  document.getElementById('edit-mov-fecha').value = m.fecha || hoy();
+  document.getElementById('edit-mov-caja').value = m.caja || m.desde || 'EFECTIVO';
+  document.getElementById('edit-mov-monto').value = m.monto || 0;
+  document.getElementById('edit-mov-concepto').value = m.concepto || '';
+  document.getElementById('edit-mov-obs').value = m.obs || '';
+  document.getElementById('ovl-edit-mov').classList.add('on');
+}
+
+async function guardarEditMovCaja() {
+  const id = document.getElementById('edit-mov-id').value;
+  const idx = movCaja.findIndex(x => x.id == id);
+  if (idx < 0) return;
+  movCaja[idx] = {
+    ...movCaja[idx],
+    fecha: document.getElementById('edit-mov-fecha').value,
+    caja: document.getElementById('edit-mov-caja').value,
+    monto: parseFloat(document.getElementById('edit-mov-monto').value)||0,
+    concepto: document.getElementById('edit-mov-concepto').value.trim(),
+    obs: document.getElementById('edit-mov-obs').value.trim()
+  };
+  await guardarCajaData();
+  cM('ovl-edit-mov'); renderCaja();
+  toast('OK Movimiento actualizado');
+}
+
+async function eliminarMovCaja(id) {
+  if (!confirm('Eliminar este movimiento?')) return;
+  movCaja = movCaja.filter(x => x.id != id);
+  await guardarCajaData();
+  renderCaja();
+  toast('OK Movimiento eliminado');
+}
 </script>
 
 <!-- Modal WhatsApp selector -->
@@ -3988,6 +4273,60 @@ function leerDeScriptJSONP() {
       <p style="font-size:14px;color:var(--muted);margin-bottom:16px;">¿Querés activar Face ID o huella para entrar más rápido la próxima vez?</p>
       <button class="btn btn-gold" style="width:100%;margin-bottom:8px;" onclick="activarBiometrico()">OK Sí, activar</button>
       <button class="btn btn-ghost" style="width:100%;" onclick="rechazarBiometrico()">Ahora no</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ingreso Manual -->
+<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
+  <div class="modal">
+    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
+    <div class="mb">
+      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="ing-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
+      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Movimiento -->
+<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
+  <div class="modal">
+    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="edit-mov-id">
+      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
+      <div class="fg"><label>Caja</label>
+        <select id="edit-mov-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Flex Argentina</option>
+          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
+      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
+      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
+      </div>
     </div>
   </div>
 </div>
