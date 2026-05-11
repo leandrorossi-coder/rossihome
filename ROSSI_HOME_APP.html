@@ -667,6 +667,22 @@ td{padding:9px 11px;vertical-align:middle;}
     </div>
   </div>
 
+
+  <!-- CLIENTES -->
+  <div class="page" id="pg-clientes">
+    <div class="card">
+      <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>&#128101; Clientes</h2>
+        <button class="btn btn-gold btn-sm" onclick="abrirNuevoCliente()">+ Nuevo</button>
+      </div>
+      <div style="margin-bottom:12px;">
+        <input type="text" id="cli-buscar" placeholder="Buscar por nombre, apellido o c&#243;digo..." oninput="renderClientes()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+      </div>
+      <div id="clientes-lista"></div>
+      <div class="empty" id="empty-clientes" style="display:none;"><div class="empty-ico">&#128101;</div><p>Sin clientes todav&#237;a</p></div>
+    </div>
+  </div>
+
 <!-- ══ MODALES ══ -->
 <!-- Modal Gasto -->
 <div class="overlay" id="ovl-gasto" onclick="cM('ovl-gasto',event)">
@@ -1145,8 +1161,8 @@ const USERS_DEFAULT = {
 
 // Tabs por rol
 const TABS_POR_ROL = {
-  admin:    ['venta','ventas','creditos','precios','presupuestos','caja','reportes','liquidaciones','admin'],
-  local:    ['venta','ventas','creditos','precios','presupuestos','caja'],
+  admin:    ['venta','ventas','creditos','precios','presupuestos','caja','reportes','liquidaciones','clientes','admin'],
+  local:    ['venta','ventas','creditos','precios','presupuestos','caja','clientes'],
   vendedor: ['venta','ventas'],
 };
 const TAB_LABELS = {
@@ -1163,6 +1179,7 @@ let productos   = [...PRODS_INICIALES];
 let usuarios    = {...USERS_DEFAULT};
 let movCaja     = []; // movimientos de caja
 let datosCuentas = {}; // datos bancarios por caja
+let clientes    = []; // maestro de clientes
 let filtroVend  = 'TODAS';
 let filtroCred  = 'todas';
 let editVentaId = null;
@@ -1196,7 +1213,7 @@ function programarGuardado() {
 async function guardarEnScript() {
   try {
     mostrarSync('Guardando en Drive…', false);
-    const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, version:1 };
+    const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, version:1 };
     const resp = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action:'guardar', ...datos })
@@ -1228,6 +1245,7 @@ async function leerDeScript() {
     if (d.liquidaciones && d.liquidaciones.length > 0) liquidaciones = d.liquidaciones;
     if (d.publicaciones) publicaciones = d.publicaciones;
     if (d.configLiq) configLiq = {...configLiq, ...d.configLiq};
+    if (d.clientes && d.clientes.length > 0) clientes = d.clientes;
     mostrarSync('OK Drive conectado', false);
     return true;
   } catch(e) {
@@ -1249,6 +1267,7 @@ async function cargarDatos() {
   const ps=await sGet('rh_pres'); if(ps) presupuestos=ps;
   const mc=await sGet(SK_CAJA); if(mc) movCaja=mc;
   const cs=await sGet(SK_SUELDOS); if(cs) configSueldos={...configSueldos,...cs};
+  const cli=await sGet(SK_CLIENTES); if(cli) clientes=cli;
   const dc=await sGet(SK_CUENTAS); if(dc) datosCuentas=dc;
   const lq=await sGet(SK_LIQ); if(lq) liquidaciones=lq;
   const pb=await sGet(SK_PUB); if(pb) publicaciones=pb;
@@ -1409,6 +1428,7 @@ function goTab(n) {
   if (n==='caja')          renderCaja();
   if (n==='reportes')       renderReportes();
   if (n==='liquidaciones')   renderLiquidaciones();
+  if (n==='clientes')        renderClientes();
   if (n==='admin')         renderAdmin();
 }
 
@@ -2241,6 +2261,7 @@ let presupuestos = [];
 let filtroPres   = 'todos';
 const SK_PRES    = 'rh_pres_v1';
 const SK_CAJA    = 'rh_caja_v1';
+const SK_CLIENTES = 'rh_cli_v1';
 const SK_CUENTAS = 'rh_cuentas_v1';
 
 const CAJAS_LABEL = {
@@ -3416,6 +3437,31 @@ function exportarReportePDF() {
     </div>
   </div>
 </div>
+
+<!-- Modal Cliente -->
+<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
+  <div class="modal">
+    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="cli-id">
+      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
+      <div class="r2">
+        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
+        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
+        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
+      </div>
+      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
+      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body></html>`);
   w.document.close();
 }
@@ -3535,6 +3581,31 @@ function imprimirPresPDF(id) {
     </div>
   </div>
 </div>
+
+<!-- Modal Cliente -->
+<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
+  <div class="modal">
+    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="cli-id">
+      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
+      <div class="r2">
+        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
+        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
+        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
+      </div>
+      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
+      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body></html>`);
   w.document.close();
 }
@@ -3632,6 +3703,31 @@ function imprimirReciboPDF(id) {
       <div style="display:flex;gap:8px;margin-top:12px;">
         <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
         <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cliente -->
+<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
+  <div class="modal">
+    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="cli-id">
+      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
+      <div class="r2">
+        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
+        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
+        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
+      </div>
+      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
+      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
       </div>
     </div>
   </div>
@@ -4034,6 +4130,31 @@ function exportarLiqPDF() {
     </div>
   </div>
 </div>
+
+<!-- Modal Cliente -->
+<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
+  <div class="modal">
+    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="cli-id">
+      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
+      <div class="r2">
+        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
+        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
+        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
+      </div>
+      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
+      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body></html>`);
   w.document.close();
 }
@@ -4249,6 +4370,202 @@ async function eliminarMovCaja(id) {
   renderCaja();
   toast('OK Movimiento eliminado');
 }
+
+// ══════════════════════════════════════════════════════
+// MÓDULO CLIENTES
+// ══════════════════════════════════════════════════════
+
+async function guardarClientes() {
+  await sSet(SK_CLIENTES, clientes);
+  programarGuardado();
+}
+
+function generarCodigoCliente() {
+  const apellido = document.getElementById('cli-apellido').value.trim().toUpperCase();
+  if (!apellido || apellido.length < 2) return;
+  const prefix = apellido.replace(/[^A-Z]/g,'').substring(0,3);
+  // Buscar el próximo número libre
+  const existentes = clientes.filter(c => c.codigo && c.codigo.startsWith(prefix));
+  const nums = existentes.map(c => parseInt(c.codigo.replace(prefix,''))||0);
+  const siguiente = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+  document.getElementById('cli-codigo').value = prefix + String(siguiente).padStart(3,'0');
+}
+
+function renderClientes() {
+  const buscar = (document.getElementById('cli-buscar')?.value||'').toLowerCase();
+  let lista = clientes;
+  if (buscar) {
+    lista = lista.filter(c =>
+      (c.apellido||'').toLowerCase().includes(buscar) ||
+      (c.nombre||'').toLowerCase().includes(buscar) ||
+      (c.codigo||'').toLowerCase().includes(buscar) ||
+      (c.dni||'').includes(buscar)
+    );
+  }
+  lista = [...lista].sort((a,b) => (a.apellido||'').localeCompare(b.apellido||''));
+
+  const empty = document.getElementById('empty-clientes');
+  const cont = document.getElementById('clientes-lista');
+
+  if (!lista.length) { cont.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  cont.innerHTML = lista.map(c => `
+    <div class="prod-fila" style="flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
+        <div style="font-weight:600;font-size:13px;">${c.apellido||''} ${c.nombre||''}</div>
+        <div style="font-size:11px;color:var(--muted);">
+          <span style="font-family:monospace;background:var(--cream2);padding:2px 6px;border-radius:4px;">${c.codigo||''}</span>
+          ${c.dni?' · DNI '+c.dni:''}${c.tel?' · '+c.tel:''}
+        </div>
+        ${c.dir?`<div style="font-size:11px;color:var(--muted);">${c.dir}</div>`:''}
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-blue btn-sm" onclick="editarCliente('${c.id}')">Ed</button>
+        ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarCliente('${c.id}')">X</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function abrirNuevoCliente() {
+  document.getElementById('cli-modal-titulo').textContent = 'Nuevo Cliente';
+  document.getElementById('cli-id').value = '';
+  document.getElementById('cli-codigo').value = '';
+  document.getElementById('cli-apellido').value = '';
+  document.getElementById('cli-nombre').value = '';
+  document.getElementById('cli-dni').value = '';
+  document.getElementById('cli-tel').value = '';
+  document.getElementById('cli-dir').value = '';
+  document.getElementById('cli-obs').value = '';
+  document.getElementById('ovl-cliente').classList.add('on');
+}
+
+function editarCliente(id) {
+  const c = clientes.find(x => x.id == id);
+  if (!c) return;
+  document.getElementById('cli-modal-titulo').textContent = 'Editar Cliente';
+  document.getElementById('cli-id').value = c.id;
+  document.getElementById('cli-codigo').value = c.codigo||'';
+  document.getElementById('cli-apellido').value = c.apellido||'';
+  document.getElementById('cli-nombre').value = c.nombre||'';
+  document.getElementById('cli-dni').value = c.dni||'';
+  document.getElementById('cli-tel').value = c.tel||'';
+  document.getElementById('cli-dir').value = c.dir||'';
+  document.getElementById('cli-obs').value = c.obs||'';
+  document.getElementById('ovl-cliente').classList.add('on');
+}
+
+async function guardarCliente() {
+  const apellido = document.getElementById('cli-apellido').value.trim();
+  if (!apellido) { toast('Ingres&#225; el apellido'); return; }
+  const id = document.getElementById('cli-id').value;
+  const cliente = {
+    id: id || Date.now(),
+    codigo: document.getElementById('cli-codigo').value.trim().toUpperCase(),
+    apellido,
+    nombre: document.getElementById('cli-nombre').value.trim(),
+    dni: document.getElementById('cli-dni').value.trim(),
+    tel: document.getElementById('cli-tel').value.trim(),
+    dir: document.getElementById('cli-dir').value.trim(),
+    obs: document.getElementById('cli-obs').value.trim()
+  };
+  if (id) {
+    const idx = clientes.findIndex(x => x.id == id);
+    if (idx >= 0) clientes[idx] = cliente;
+  } else {
+    clientes.unshift(cliente);
+  }
+  await guardarClientes();
+  cM('ovl-cliente'); renderClientes();
+  toast('OK Cliente guardado');
+}
+
+async function eliminarCliente(id) {
+  if (!confirm('Eliminar este cliente?')) return;
+  clientes = clientes.filter(x => x.id != id);
+  await guardarClientes();
+  renderClientes();
+  toast('OK Cliente eliminado');
+}
+
+// Autoguardar cliente al guardar venta
+function actualizarMaestroClientes(venta) {
+  if (!venta.apellido || venta.apellido === 'CONSUMIDOR FINAL') return;
+  // Buscar si ya existe por DNI o apellido+nombre
+  const existe = clientes.find(c =>
+    (venta.dni && c.dni === venta.dni) ||
+    (c.apellido.toUpperCase() === (venta.apellido||'').toUpperCase() &&
+     c.nombre.toUpperCase() === (venta.nombre||'').toUpperCase())
+  );
+  if (!existe) {
+    const apellido = (venta.apellido||'').toUpperCase();
+    const prefix = apellido.replace(/[^A-Z]/g,'').substring(0,3);
+    const existentes = clientes.filter(c => c.codigo && c.codigo.startsWith(prefix));
+    const nums = existentes.map(c => parseInt(c.codigo.replace(prefix,''))||0);
+    const siguiente = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    clientes.unshift({
+      id: Date.now(),
+      codigo: prefix + String(siguiente).padStart(3,'0'),
+      apellido: venta.apellido,
+      nombre: venta.nombre||'',
+      dni: venta.dni||'',
+      tel: venta.tel||'',
+      dir: venta.dir||''
+    });
+    guardarClientes();
+  }
+}
+
+// Búsqueda de clientes en formulario de venta
+function buscarCliente(query) {
+  const sug = document.getElementById('f-cliente-sugerencias');
+  if (!query || query.length < 2) { sug.style.display='none'; return; }
+  const q = query.toLowerCase();
+  const resultados = clientes.filter(c =>
+    (c.apellido||'').toLowerCase().includes(q) ||
+    (c.nombre||'').toLowerCase().includes(q) ||
+    (c.codigo||'').toLowerCase().includes(q)
+  ).slice(0,5);
+  if (!resultados.length) { sug.style.display='none'; return; }
+  sug.style.display='block';
+  sug.innerHTML = resultados.map(c => `
+    <div onclick="seleccionarCliente('${c.id}')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;" onmouseover="this.style.background='var(--cream2)'" onmouseout="this.style.background=''">
+      <strong>${c.apellido} ${c.nombre}</strong>
+      <span style="font-size:11px;color:var(--muted);margin-left:6px;">${c.codigo}</span>
+    </div>`).join('');
+}
+
+function seleccionarCliente(id) {
+  const c = clientes.find(x => x.id == id);
+  if (!c) return;
+  document.getElementById('f-apellido').value = c.apellido||'';
+  document.getElementById('f-nombre').value = c.nombre||'';
+  document.getElementById('f-dni').value = c.dni||'';
+  document.getElementById('f-tel').value = c.tel||'';
+  document.getElementById('f-dir').value = c.dir||'';
+  document.getElementById('f-cliente-buscar').value = c.apellido + ' ' + c.nombre;
+  document.getElementById('f-cliente-sugerencias').style.display='none';
+}
+
+// Toggle consumidor final
+function toggleConsFinal() {
+  const cf = document.getElementById('chk-cons-final').checked;
+  const blk = document.getElementById('blk-datos-cliente');
+  const buscar = document.getElementById('blk-cliente-buscar');
+  if (cf) {
+    blk.style.display = 'none';
+    buscar.style.display = 'none';
+    document.getElementById('f-apellido').value = 'CONSUMIDOR FINAL';
+    document.getElementById('f-nombre').value = '';
+    document.getElementById('f-dni').value = '';
+    document.getElementById('f-tel').value = '';
+    document.getElementById('f-dir').value = '';
+  } else {
+    blk.style.display = 'block';
+    buscar.style.display = 'block';
+    document.getElementById('f-apellido').value = '';
+  }
+}
 </script>
 
 <!-- Modal WhatsApp selector -->
@@ -4326,6 +4643,31 @@ async function eliminarMovCaja(id) {
       <div style="display:flex;gap:8px;margin-top:12px;">
         <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
         <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cliente -->
+<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
+  <div class="modal">
+    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="cli-id">
+      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
+      <div class="r2">
+        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
+        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
+        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
+      </div>
+      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
+      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
+        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
       </div>
     </div>
   </div>
