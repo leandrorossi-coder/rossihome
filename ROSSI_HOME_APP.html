@@ -1214,9 +1214,10 @@ async function guardarEnScript() {
 async function leerDeScript() {
   try {
     mostrarSync('Cargando datos…', false);
-    // Usar JSONP para evitar CORS
-    const data = await leerDeScriptJSONP();
-    if (!data) return false;
+    // Usar proxy Cloudflare
+    const resp = await fetch(SCRIPT_URL, { method: 'GET' });
+    if (!resp.ok) return false;
+    const data = await resp.json();
     if (!data.ok) return false;
     const d = data.datos;
     if (d.ventas && d.ventas.length > 0) ventas = d.ventas;
