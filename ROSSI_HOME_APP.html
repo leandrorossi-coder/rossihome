@@ -241,7 +241,7 @@ td{padding:9px 11px;vertical-align:middle;}
             </optgroup>
             <optgroup label=" Transferencia">
               <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
-              <option value="TRANSF_FLEX">Transferencia → Flex</option>
+              <option value="TRANSF_FLEX">Transferencia → Prex</option>
               <option value="TRANSF_ROSA">Transferencia → Rosa</option>
               <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
               <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
@@ -295,7 +295,7 @@ td{padding:9px 11px;vertical-align:middle;}
               </optgroup>
               <optgroup label=" Transferencia">
                 <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
-                <option value="TRANSF_FLEX">Transferencia → Flex</option>
+                <option value="TRANSF_FLEX">Transferencia → Prex</option>
                 <option value="TRANSF_ROSA">Transferencia → Rosa</option>
                 <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
                 <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
@@ -439,7 +439,7 @@ td{padding:9px 11px;vertical-align:middle;}
       <div class="ch"><h2> Ventas</h2><span id="cnt-ventas" style="font-size:11px;color:rgba(255,255,255,.4);"></span></div>
       <div class="tbl">
         <table>
-          <thead><tr><th>#</th><th>Fecha</th><th>Vend.</th><th>Producto</th><th>Precio</th><th>Pago</th><th>Cliente</th><th></th></tr></thead>
+          <thead><tr><th>#</th><th>Fecha</th><th>Vend.</th><th>Producto</th><th>Precio</th><th>Pago</th><th>Cliente</th><th>Estado</th><th></th></tr></thead>
           <tbody id="tbody-ventas"></tbody>
         </table>
         <div class="empty" id="empty-ventas" style="display:none;"><div class="empty-ico">[+]</div><p>Sin ventas todavía</p></div>
@@ -528,7 +528,7 @@ td{padding:9px 11px;vertical-align:middle;}
           <option value="TODAS">Todas las cajas</option>
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela González</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -707,7 +707,7 @@ td{padding:9px 11px;vertical-align:middle;}
         <select id="g-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela González</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -793,7 +793,7 @@ td{padding:9px 11px;vertical-align:middle;}
           <select id="tr-desde">
             <option value="EFECTIVO">Efectivo</option>
             <option value="MERCADO_PAGO">Mercado Pago</option>
-            <option value="FLEX">Flex Argentina</option>
+            <option value="FLEX">Prex Argentina</option>
             <option value="GABRIELA">Gabriela González</option>
             <option value="ROSA">Rosa Vallejo</option>
             <option value="DOLORES">Dolores Heredia</option>
@@ -803,7 +803,7 @@ td{padding:9px 11px;vertical-align:middle;}
           <select id="tr-hacia">
             <option value="MERCADO_PAGO">Mercado Pago</option>
             <option value="EFECTIVO">Efectivo</option>
-            <option value="FLEX">Flex Argentina</option>
+            <option value="FLEX">Prex Argentina</option>
             <option value="GABRIELA">Gabriela González</option>
             <option value="ROSA">Rosa Vallejo</option>
             <option value="DOLORES">Dolores Heredia</option>
@@ -828,7 +828,7 @@ td{padding:9px 11px;vertical-align:middle;}
       <div class="fg"><label>Caja</label>
         <select id="dc-caja" onchange="cargarDatosCuenta()">
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela González</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -891,7 +891,7 @@ td{padding:9px 11px;vertical-align:middle;}
           <option value="DEBITO">Tarjeta de Débito</option>
           <option value="PREPAGA">Tarjeta Prepaga</option>
           <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
-          <option value="TRANSF_FLEX">Transferencia → Flex</option>
+          <option value="TRANSF_FLEX">Transferencia → Prex</option>
           <option value="TRANSF_ROSA">Transferencia → Rosa</option>
           <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
           <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
@@ -975,7 +975,7 @@ td{padding:9px 11px;vertical-align:middle;}
         <input type="number" id="p1-precio" placeholder="0" min="0" oninput="calcPres1()">
       </div>
       <div class="fg"><label>Formas de pago a mostrar</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;" id="p1-pagos-check">
+        <div style="display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px;" id="p1-pagos-check">
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="EFECTIVO" onchange="calcPres1()"> Efectivo</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TRANSF" onchange="calcPres1()"> Transferencia</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC1" onchange="calcPres1()"> TC 1 cuota</label>
@@ -1260,6 +1260,11 @@ async function leerDeScript() {
     if (d.configLiq) configLiq = {...configLiq, ...d.configLiq};
     if (d.clientes && d.clientes.length > 0) clientes = d.clientes;
     mostrarSync('OK Drive conectado', false);
+    // Importar clientes de ventas existentes si el maestro esta vacio
+    if (clientes.length === 0 && ventas.length > 0) {
+      ventas.forEach(v => actualizarMaestroClientes(v));
+      guardarClientes();
+    }
     return true;
   } catch(e) {
     mostrarSync('⚠ Sin Drive', true);
@@ -1307,7 +1312,7 @@ const L30_FREQ = {L30M:'mensual',L30Q:'quincenal',L30S:'semanal'};
 const CP_RC = {CP2:1.14,CP3:1.21,CP6:1.42,CP9:1.63,CP12:1.84};
 const PAGO_LBL = {
   EFECTIVO:'Efectivo',
-  TRANSF_MP:'Transf. MP',TRANSF_FLEX:'Transf. Flex',
+  TRANSF_MP:'Transf. MP',TRANSF_FLEX:'Transf. Prex',
   TRANSF_ROSA:'Transf. Rosa',TRANSF_DOLORES:'Transf. Dolores',TRANSF_GABRIELA:'Transf. Gabriela',
   TC1:'TC 1c',TC2:'TC 2c',TC3:'TC 3c',TC6:'TC 6c',TC9:'TC 9c',TC12:'TC 12c',
   DEBITO:'Débito',PREPAGA:'Prepaga',QR_MP:'QR MP',LINK_MP:'Link MP',
@@ -1605,6 +1610,7 @@ async function guardar() {
     dir:     document.getElementById('f-dir').value.trim(),
     obs:     document.getElementById('f-obs').value.trim(),
     pagosDetalle,
+    estado:  'pendiente',
     cuotasPagadas:{}
   };
 
@@ -1974,7 +1980,7 @@ function generarReciboCredito(v, cobro) {
       </div>
       <div class="rec-actions">
         <button class="btn btn-navy btn-sm" onclick="window.print()">🖨 Imprimir</button>
-        ${v.tel?`<button class="btn btn-wa btn-sm" onclick="waReciboCred(${v.id},'${cobro.id}')">WA WhatsApp</button>`:''}
+        <button class="btn btn-wa btn-sm" onclick="waReciboCred(${v.id},'${cobro.id}')">WA WhatsApp</button>
       </div>
     </div>`;
   document.getElementById('ovl-recibo-cred').classList.add('on');
@@ -2279,7 +2285,7 @@ const SK_CUENTAS = 'rh_cuentas_v1';
 
 const CAJAS_LABEL = {
   EFECTIVO:'Efectivo', MERCADO_PAGO:'Mercado Pago',
-  FLEX:'Flex Argentina', GABRIELA:'Gabriela González',
+  FLEX:'Prex Argentina', GABRIELA:'Gabriela González',
   ROSA:'Rosa Vallejo', DOLORES:'Dolores Heredia'
 };
 
@@ -2864,10 +2870,7 @@ function renderCaja() {
         <div style="font-weight:700;font-size:15px;color:${colorTipo[m.tipo]||'var(--navy)'};">
           ${m.signo>0?'+':'-'}$${fmt(m.monto)}
         </div>
-        ${esAdmin()?`<div style="display:flex;gap:4px;">
-          <button class="btn btn-ghost btn-sm" onclick="editarMovCaja('${m.id}')" style="font-size:11px;padding:3px 8px;">Ed</button>
-          <button class="btn btn-danger btn-sm" onclick="eliminarMovCaja('${m.id}')" style="font-size:11px;padding:3px 8px;">X</button>
-        </div>`:''}
+        ${esAdmin()?("<div style='display:flex;gap:4px;'><button class='btn btn-ghost btn-sm' onclick='editarMovCaja(" + m.id + ")' style='font-size:11px;padding:3px 8px;'>Ed</button><button class='btn btn-danger btn-sm' onclick='eliminarMovCaja(" + m.id + ")' style='font-size:11px;padding:3px 8px;'>X</button></div>"):''}
       </div>
     </div>`).join('');
 }
@@ -3407,7 +3410,7 @@ function exportarReportePDF() {
         <select id="ing-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -3434,7 +3437,7 @@ function exportarReportePDF() {
         <select id="edit-mov-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -3551,7 +3554,7 @@ function imprimirPresPDF(id) {
         <select id="ing-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -3578,7 +3581,7 @@ function imprimirPresPDF(id) {
         <select id="edit-mov-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -3677,7 +3680,7 @@ function imprimirReciboPDF(id) {
         <select id="ing-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -3704,7 +3707,7 @@ function imprimirReciboPDF(id) {
         <select id="edit-mov-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -4100,7 +4103,7 @@ function exportarLiqPDF() {
         <select id="ing-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -4127,7 +4130,7 @@ function exportarLiqPDF() {
         <select id="edit-mov-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -4579,6 +4582,14 @@ function toggleConsFinal() {
     document.getElementById('f-apellido').value = '';
   }
 }
+
+async function cambiarEstadoVenta(id, estado) {
+  const v = ventas.find(x => x.id == id);
+  if (!v) return;
+  v.estado = estado;
+  await guardarVentas();
+  toast('OK Estado actualizado');
+}
 </script>
 
 <!-- Modal WhatsApp selector -->
@@ -4617,7 +4628,7 @@ function toggleConsFinal() {
         <select id="ing-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
@@ -4644,7 +4655,7 @@ function toggleConsFinal() {
         <select id="edit-mov-caja">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Flex Argentina</option>
+          <option value="FLEX">Prex Argentina</option>
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
