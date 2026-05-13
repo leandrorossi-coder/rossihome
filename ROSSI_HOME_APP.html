@@ -1795,8 +1795,10 @@ function renderVentas() {
         : `<span class="badge ${PAGO_BADGE[v.pago]||'b-ef'}">${PAGO_LBL[v.pago]||v.pago}</span>`
       }${isCPorL30(v.pago)&&pend>0?`<br><span style="font-size:10px;color:var(--orange);">${pend}c pend.</span>`:''}</td>
       <td style="font-size:12px;color:var(--muted);">${cliNom(v)}</td>
+      <td>${buildEstadoCell(v)}</td>
       <td style="white-space:nowrap;">
         <button class="btn btn-ghost btn-sm" onclick="verDetalle(${v.id})">Ver</button>
+        <button class="btn btn-wa btn-sm" style="margin-left:3px;" onclick="compartirReciboPDF(${v.id})">WA</button>
         ${puedeEditar?`<button class="btn btn-blue btn-sm" style="margin-left:3px;" onclick="editarVenta(${v.id})">Ed</button>`:''}
         ${esAdmin()?`<button class="btn btn-ghost btn-sm" style="margin-left:3px;" onclick="imprimirReciboPDF(${v.id})">PDF</button>`:''}
       </td>
@@ -1840,6 +1842,7 @@ function verDetalle(id) {
     <div class="btn-row">
       ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarVenta(${id})">🗑 Eliminar</button>`:''}
       ${esLocal()?`<button class="btn btn-blue btn-sm" onclick="cM('ovl-det');editarVenta(${id})">Ed Editar</button>`:''}
+      <button class="btn btn-wa btn-sm" onclick="compartirReciboPDF(${id})">WA Recibo</button>
     </div>`;
   document.getElementById('ovl-det').classList.add('on');
 }
@@ -1980,7 +1983,7 @@ function generarReciboCredito(v, cobro) {
       </div>
       <div class="rec-actions">
         <button class="btn btn-navy btn-sm" onclick="window.print()">🖨 Imprimir</button>
-        <button class="btn btn-wa btn-sm" onclick="waReciboCred(${v.id},'${cobro.id}')">WA WhatsApp</button>
+        <button class="btn btn-wa btn-sm" onclick="compartirReciboCreditoPDF(${v.id},'${cobro.id}')">WA Recibo</button>
       </div>
     </div>`;
   document.getElementById('ovl-recibo-cred').classList.add('on');
@@ -2870,7 +2873,7 @@ function renderCaja() {
         <div style="font-weight:700;font-size:15px;color:${colorTipo[m.tipo]||'var(--navy)'};">
           ${m.signo>0?'+':'-'}$${fmt(m.monto)}
         </div>
-        ${esAdmin()?("<div style='display:flex;gap:4px;'><button class='btn btn-ghost btn-sm' onclick='editarMovCaja(" + m.id + ")' style='font-size:11px;padding:3px 8px;'>Ed</button><button class='btn btn-danger btn-sm' onclick='eliminarMovCaja(" + m.id + ")' style='font-size:11px;padding:3px 8px;'>X</button></div>"):''}
+        ${esAdmin()?`<div style="display:flex;gap:4px;"><button class="btn btn-ghost btn-sm" onclick="editarMovCaja(${m.id})" style="font-size:11px;padding:3px 8px;">Ed</button><button class="btn btn-danger btn-sm" onclick="eliminarMovCaja(${m.id})" style="font-size:11px;padding:3px 8px;">X</button></div>`:''}
       </div>
     </div>`).join('');
 }
@@ -4589,6 +4592,124 @@ async function cambiarEstadoVenta(id, estado) {
   v.estado = estado;
   await guardarVentas();
   toast('OK Estado actualizado');
+}
+
+function buildEstadoCell(v) {
+  const est = v.estado || 'pendiente';
+  const bg = est==='entregado' ? '#1a7a4a' : est==='camino' ? '#c05010' : '#efe9df';
+  const color = est!=='pendiente' ? '#fff' : '#1a1a2e';
+  const pe = esAdmin() ? '' : 'pointer-events:none;';
+  const opts = ['pendiente','camino','entregado'];
+  const labels = {pendiente:'Pendiente', camino:'En camino', entregado:'Entregado'};
+  const optHtml = opts.map(o => '<option value="'+o+'"'+(est===o?' selected':'')+'>'+labels[o]+'</option>').join('');
+  return '<select onchange="cambiarEstadoVenta('+v.id+',this.value)" style="font-size:11px;padding:3px;border-radius:6px;border:1px solid #ddd;'+pe+'background:'+bg+';color:'+color+';">'+optHtml+'</select>';
+}
+
+// ══════════════════════════════════════════════════════
+// RECIBO PDF - COMPARTIR POR WHATSAPP
+// ══════════════════════════════════════════════════════
+
+function generarHTMLRecibo(v) {
+  const cuotas = buildCuotas ? buildCuotas(v) : [];
+  const cobradas = cuotas.filter(c => c.pagada);
+  const pendientes = cuotas.filter(c => !c.pagada);
+  
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recibo Rossi Home</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; color: #1a1a2e; background: #fff; padding: 20px; max-width: 400px; margin: 0 auto; }
+  .logo { font-size: 22px; font-weight: 700; color: #0b1a2e; text-align: center; margin-bottom: 4px; }
+  .logo em { color: #c8922a; font-style: normal; }
+  .sub { text-align: center; font-size: 11px; color: #888; margin-bottom: 16px; }
+  .sep { border: none; border-top: 2px solid #c8922a; margin: 12px 0; }
+  .row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+  .row strong { color: #0b1a2e; }
+  .total { display: flex; justify-content: space-between; padding: 10px 0; font-size: 16px; font-weight: 700; border-top: 2px solid #0b1a2e; margin-top: 8px; }
+  .box { background: #f8f4ee; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .titulo { font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 6px; font-weight: 600; letter-spacing: .5px; }
+  .badge { display: inline-block; background: #0b1a2e; color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 20px; }
+  .footer { text-align: center; font-size: 10px; color: #aaa; margin-top: 16px; }
+  @media print {
+    body { padding: 10px; }
+    .no-print { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="logo">Rossi <em>Home</em></div>
+  <div class="sub">Sistema de Ventas</div>
+  <hr class="sep">
+  
+  <div class="box">
+    <div class="titulo">Datos de la venta</div>
+    <div class="row"><span>Fecha</span><strong>${fmtD(v.fecha)}</strong></div>
+    <div class="row"><span>Vendedora</span><strong>${v.vendedora}</strong></div>
+    <div class="row"><span>Producto</span><strong>${v.producto||'—'}</strong></div>
+    <div class="row"><span>Forma de pago</span><strong>${PAGO_LBL[v.pago]||v.pago}</strong></div>
+    ${v.estado ? '<div class="row"><span>Estado entrega</span><strong>'+(v.estado==='entregado'?'Entregado':v.estado==='camino'?'En camino':'Pendiente')+'</strong></div>' : ''}
+  </div>
+  
+  <div class="box">
+    <div class="titulo">Cliente</div>
+    <div class="row"><span>Nombre</span><strong>${v.apellido||''} ${v.nombre||''}</strong></div>
+    ${v.dni ? '<div class="row"><span>DNI</span><strong>'+v.dni+'</strong></div>' : ''}
+    ${v.tel ? '<div class="row"><span>Tel&eacute;fono</span><strong>'+v.tel+'</strong></div>' : ''}
+    ${v.dir ? '<div class="row"><span>Direcci&oacute;n</span><strong>'+v.dir+'</strong></div>' : ''}
+  </div>
+
+  ${v.pagosDetalle && v.pagosDetalle.length > 1 ? 
+    '<div class="box"><div class="titulo">Formas de pago</div>' + 
+    v.pagosDetalle.map(p => '<div class="row"><span>'+p.label+'</span><strong>$'+fmt(p.monto)+'</strong></div>').join('') +
+    '</div>' : ''}
+
+  ${isCPorL30 && isCPorL30(v.pago) && v.cpData ? 
+    '<div class="box"><div class="titulo">Plan de pagos</div>' +
+    '<div class="row"><span>Anticipo</span><strong>$'+fmt(v.cpData.anticipo)+'</strong></div>' +
+    '<div class="row"><span>Cuotas</span><strong>'+v.cpData.nCuotas+'x $'+fmt(v.cpData.cuota)+'</strong></div>' +
+    '<div class="row"><span>Frecuencia</span><strong>'+(v.cpData.frecuencia||'mensual')+'</strong></div>' +
+    '</div>' : ''}
+
+  <div class="total"><span>TOTAL</span><span>$${fmt(v.precio)}</span></div>
+  
+  ${v.obs ? '<div class="box" style="margin-top:12px;"><div class="titulo">Observaciones</div><div style="font-size:12px;">'+v.obs+'</div></div>' : ''}
+  
+  <div class="footer">
+    <p>Rossi Home &mdash; Exaltaci&oacute;n de la Cruz</p>
+    <p>Gracias por su compra</p>
+  </div>
+</body>
+</html>`;
+}
+
+function compartirReciboPDF(id) {
+  const v = ventas.find(x => x.id == id);
+  if (!v) return;
+  const html = generarHTMLRecibo(v);
+  const w = window.open('', '_blank');
+  if (!w) { toast('Permiti&oacute; las ventanas emergentes'); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => {
+    w.print();
+  }, 500);
+}
+
+function compartirReciboCreditoPDF(vid, cobroId) {
+  const v = ventas.find(x => x.id == vid);
+  if (!v) return;
+  // Agregar info del cobro específico
+  const cobro = v.cpData?.cobros?.find(c => c.id == cobroId);
+  const html = generarHTMLRecibo(v) + (cobro ? '<script>document.querySelector(".footer").insertAdjacentHTML("beforebegin","<div class=\"box\" style=\"margin-top:12px;\"><div class=\"titulo\">Cobro registrado</div><div class=\"row\"><span>Fecha cobro</span><strong>' + fmtD(cobro.fecha) + '</strong></div><div class=\"row\"><span>Monto cobrado</span><strong>$' + fmt(cobro.monto) + '</strong></div></div>");<\/script>' : '');
+  const w = window.open('', '_blank');
+  if (!w) { toast('Permiti&oacute; las ventanas emergentes'); return; }
+  w.document.write(generarHTMLRecibo(v));
+  w.document.close();
+  setTimeout(() => { w.print(); }, 500);
 }
 </script>
 
