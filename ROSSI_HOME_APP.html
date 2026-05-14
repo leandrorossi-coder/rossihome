@@ -1336,7 +1336,7 @@ const PAGO_BADGE = {
 const fmt  = n => Number(n||0).toLocaleString('es-AR');
 const fmtD = s => { try{ const d=new Date(s+'T12:00'); return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}); }catch(e){return s;} };
 const hoy  = () => new Date().toISOString().split('T')[0];
-const addD = (s,n) => { const d=new Date(s+'T12:00'); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
+const addD = (s,n) => { try { if(!s||s==='undefined') return ''; const d=new Date(s+'T12:00'); if(isNaN(d)) return ''; d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; } catch(e){ return ''; } };
 const difD = (a,b) => Math.round((new Date(a+'T12:00')-new Date(b+'T12:00'))/86400000);
 const isCP = p => p&&p.startsWith('CP');
 const isL30 = p => p&&p.startsWith('L30');
@@ -2832,15 +2832,15 @@ function renderCaja() {
   // Movimientos manuales
   movCaja.forEach(m => {
     if (m.tipo === 'gasto') {
-      todos.push({id:'m_'+m.id, fecha:m.fecha, tipo:'gasto', caja:m.caja,
+      todos.push({id:'m_'+m.id, realId:m.id, fecha:m.fecha, tipo:'gasto', caja:m.caja,
         desc: m.concepto, sub: m.obs||'', monto:m.monto, signo:-1});
     } else if (m.tipo === 'traspaso') {
-      todos.push({id:'mt_'+m.id+'_d', fecha:m.fecha, tipo:'traspaso', caja:m.desde,
+      todos.push({id:'mt_'+m.id+'_d', realId:m.id, fecha:m.fecha, tipo:'traspaso', caja:m.desde,
         desc:`Traspaso → ${CAJAS_LABEL[m.hacia]||m.hacia}`, sub:m.obs||'', monto:m.monto, signo:-1});
-      todos.push({id:'mt_'+m.id+'_h', fecha:m.fecha, tipo:'traspaso', caja:m.hacia,
+      todos.push({id:'mt_'+m.id+'_h', realId:m.id, fecha:m.fecha, tipo:'traspaso', caja:m.hacia,
         desc:`Traspaso ← ${CAJAS_LABEL[m.desde]||m.desde}`, sub:m.obs||'', monto:m.monto, signo:1});
     } else if (m.tipo === 'ingreso') {
-      todos.push({id:'mi_'+m.id, fecha:m.fecha, tipo:'ingreso', caja:m.caja,
+      todos.push({id:'mi_'+m.id, realId:m.id, fecha:m.fecha, tipo:'ingreso', caja:m.caja,
         desc:m.concepto, sub:m.obs||'', monto:m.monto, signo:1});
     }
   });
@@ -2873,7 +2873,7 @@ function renderCaja() {
         <div style="font-weight:700;font-size:15px;color:${colorTipo[m.tipo]||'var(--navy)'};">
           ${m.signo>0?'+':'-'}$${fmt(m.monto)}
         </div>
-        ${esAdmin()?`<div style="display:flex;gap:4px;"><button class="btn btn-ghost btn-sm" onclick="editarMovCaja(${m.id})" style="font-size:11px;padding:3px 8px;">Ed</button><button class="btn btn-danger btn-sm" onclick="eliminarMovCaja(${m.id})" style="font-size:11px;padding:3px 8px;">X</button></div>`:''}
+        ${esAdmin()?`<div style="display:flex;gap:4px;"><button class="btn btn-ghost btn-sm" onclick="editarMovCaja('${m.realId}')" style="font-size:11px;padding:3px 8px;">Ed</button><button class="btn btn-danger btn-sm" onclick="eliminarMovCaja('${m.realId}')" style="font-size:11px;padding:3px 8px;">X</button></div>`:''}
       </div>
     </div>`).join('');
 }
