@@ -96,6 +96,31 @@ body{font-family:'Outfit',sans-serif;background:var(--cream);color:var(--text);m
 
 /* TABLA */
 .tbl{overflow-x:auto;}
+@media(max-width:700px){
+  .tbl table,.tbl thead,.tbl tbody,.tbl th,.tbl td,.tbl tr{display:block;}
+  .tbl thead{display:none;}
+  .tbl tbody tr{
+    background:#fff;
+    border-radius:10px;
+    margin-bottom:10px;
+    padding:12px;
+    box-shadow:0 2px 8px rgba(11,26,46,.08);
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:2px 8px;
+    position:relative;
+  }
+  .tbl td{padding:2px 0;border:none;font-size:13px;}
+  .tbl td:nth-child(1){font-size:11px;color:var(--muted);grid-column:1;} /* # */
+  .tbl td:nth-child(2){font-size:11px;color:var(--muted);grid-column:2;text-align:right;} /* fecha */
+  .tbl td:nth-child(3){font-weight:600;font-size:12px;color:var(--muted);grid-column:1 / span 2;} /* vend */
+  .tbl td:nth-child(4){font-weight:700;font-size:15px;color:var(--navy);grid-column:1 / span 2;} /* producto */
+  .tbl td:nth-child(5){font-weight:700;font-size:15px;color:var(--green);grid-column:1;} /* precio */
+  .tbl td:nth-child(6){grid-column:2;text-align:right;} /* pago */
+  .tbl td:nth-child(7){font-size:12px;color:var(--muted);grid-column:1 / span 2;} /* cliente */
+  .tbl td:nth-child(8){grid-column:1;} /* estado */
+  .tbl td:nth-child(9){grid-column:2;text-align:right;white-space:nowrap;} /* acciones */
+}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 thead tr{background:var(--navy);}
 thead th{padding:8px 11px;text-align:left;color:rgba(255,255,255,.7);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
@@ -532,6 +557,7 @@ td{padding:9px 11px;vertical-align:middle;}
           <option value="GABRIELA">Gabriela González</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
         <select id="caja-filtro-tipo" onchange="renderCaja()" style="flex:1;min-width:120px;">
           <option value="TODOS">Todos</option>
@@ -711,6 +737,7 @@ td{padding:9px 11px;vertical-align:middle;}
           <option value="GABRIELA">Gabriela González</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Concepto</label>
@@ -797,6 +824,7 @@ td{padding:9px 11px;vertical-align:middle;}
             <option value="GABRIELA">Gabriela González</option>
             <option value="ROSA">Rosa Vallejo</option>
             <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
           </select>
         </div>
         <div class="fg"><label>Hacia</label>
@@ -807,6 +835,7 @@ td{padding:9px 11px;vertical-align:middle;}
             <option value="GABRIELA">Gabriela González</option>
             <option value="ROSA">Rosa Vallejo</option>
             <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
           </select>
         </div>
       </div>
@@ -832,6 +861,7 @@ td{padding:9px 11px;vertical-align:middle;}
           <option value="GABRIELA">Gabriela González</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Apellido y Nombre</label><input type="text" id="dc-nombre" placeholder=""></div>
@@ -2097,8 +2127,8 @@ function renderCreditos(){
           </div>
           <span style="font-size:11px;font-weight:600;color:${estCol[est]};">${estLbl[est]}</span>
           ${est!=='pagada'?`<button class="btn btn-green btn-sm" onclick="abrirCobrarCuota(${v.id},${i})">Cobrar</button>`:
-            `<button class="btn btn-sm" style="background:#e8f8f0;color:var(--green);border:1px solid #a0d8b8;" onclick="generarReciboCredito(ventas.find(x=>x.id===${v.id}),${JSON.stringify(cobroCuota)})"></button>`}
-          ${v.tel&&est!=='pagada'?`<button class="btn btn-sm" style="background:#e8f8f0;color:#009168;border:1px solid #a0d8c0;margin-left:3px;" onclick="waRecordatorio('${v.tel}','${cliNom(v)}',${i+1},${cp.nCuotas},${cp.cuota},'${fechaCuota}')">WA</button>`:''}
+            `<button class="btn btn-sm" style="background:#e8f8f0;color:var(--green);border:1px solid #a0d8b8;" onclick="generarReciboCredito(ventas.find(x=>x.id===${v.id}),${JSON.stringify(cobroCuota)})">Recibo</button><button class="btn btn-sm" style="background:#e8f8f0;color:#009168;border:1px solid #a0d8c0;margin-left:3px;" onclick="compartirReciboCreditoPDF(${v.id},${i})">WA</button>`}
+          `<button class="btn btn-sm" style="background:#e8f8f0;color:#009168;border:1px solid #a0d8c0;margin-left:3px;" onclick="compartirReciboCreditoPDF(${v.id},${i})">WA</button>`
         </div>`;
       }).join('')}
     </div>`;
@@ -2289,7 +2319,7 @@ const SK_CUENTAS = 'rh_cuentas_v1';
 const CAJAS_LABEL = {
   EFECTIVO:'Efectivo', MERCADO_PAGO:'Mercado Pago',
   FLEX:'Prex Argentina', GABRIELA:'Gabriela González',
-  ROSA:'Rosa Vallejo', DOLORES:'Dolores Heredia'
+  ROSA:'Rosa Vallejo', DOLORES:'Dolores Heredia', VARIOS:'Varios / Sin clasificar'
 };
 
 const CAJAS_COBRO = {
@@ -3417,6 +3447,7 @@ function exportarReportePDF() {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
@@ -3444,6 +3475,7 @@ function exportarReportePDF() {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
@@ -3561,6 +3593,7 @@ function imprimirPresPDF(id) {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
@@ -3588,6 +3621,7 @@ function imprimirPresPDF(id) {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
@@ -3687,6 +3721,7 @@ function imprimirReciboPDF(id) {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
@@ -3714,6 +3749,7 @@ function imprimirReciboPDF(id) {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
@@ -4110,6 +4146,7 @@ function exportarLiqPDF() {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
@@ -4137,6 +4174,7 @@ function exportarLiqPDF() {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
@@ -4711,6 +4749,38 @@ function compartirReciboCreditoPDF(vid, cobroId) {
   w.document.close();
   setTimeout(() => { w.print(); }, 500);
 }
+
+// Lista de conceptos de gastos frecuentes
+let gastosConceptos = JSON.parse(localStorage.getItem('rh_gastos_conceptos')||'["Almuerzo","Combustible","Peajes","Proveedor","Flete","Limpieza","Servicios","Publicidad","Material embalaje","Herramientas"]');
+
+function guardarGastosConceptos() {
+  localStorage.setItem('rh_gastos_conceptos', JSON.stringify(gastosConceptos));
+}
+
+function buscarConcepto(val) {
+  const sug = document.getElementById('gasto-conceptos-sug');
+  if (!val || val.length < 2) { sug.style.display='none'; return; }
+  const q = val.toLowerCase();
+  const matches = gastosConceptos.filter(c => c.toLowerCase().includes(q));
+  if (!matches.length) { sug.style.display='none'; return; }
+  sug.style.display='block';
+  sug.innerHTML = matches.map(c => 
+    '<div onclick="selConcepto(\''+c+'\')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);" onmouseover="this.style.background=\'var(--cream2)\'" onmouseout="this.style.background=\'\'">'+c+'</div>'
+  ).join('');
+}
+
+function selConcepto(val) {
+  document.getElementById('g-concepto').value = val;
+  document.getElementById('gasto-conceptos-sug').style.display='none';
+}
+
+function agregarConceptoALista() {
+  const val = document.getElementById('g-concepto').value.trim();
+  if (!val || gastosConceptos.includes(val)) return;
+  gastosConceptos.push(val);
+  guardarGastosConceptos();
+  toast('OK Concepto guardado en lista');
+}
 </script>
 
 <!-- Modal WhatsApp selector -->
@@ -4753,6 +4823,7 @@ function compartirReciboCreditoPDF(vid, cobroId) {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
@@ -4780,6 +4851,7 @@ function compartirReciboCreditoPDF(vid, cobroId) {
           <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
           <option value="ROSA">Rosa Vallejo</option>
           <option value="DOLORES">Dolores Heredia</option>
+          <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
