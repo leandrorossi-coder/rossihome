@@ -3420,7 +3420,7 @@ function exportarReportePDF() {
   w.document.write(`<!-- DOCTYPE --><html><head>
     <meta charset="UTF-8">
     <title>Reporte Rossi Home</title>
-    <style>
+    <sty"+"le>
       body{font-family:Arial,sans-serif;padding:30px;color:#1a1a2e;font-size:13px;}
       h1{color:#0b1a2e;font-size:20px;margin-bottom:4px;}
       .sub{color:#888;font-size:12px;margin-bottom:20px;}
@@ -3435,7 +3435,7 @@ function exportarReportePDF() {
       tr:nth-child(even) td{background:#fafafa;}
       .total{font-weight:700;color:#0b1a2e;}
       @media print{body{padding:15px;}}
-    </style>
+    </sty"+"le>
   </head><body>
     <h1> Reporte de Ventas — Rossi Home</h1>
     <div class="sub">Período: ${periodo} · Generado: ${fmtD(hoy())}</div>
@@ -3636,7 +3636,7 @@ function imprimirPresPDF(id) {
   const w = window.open('','_blank');
   w.document.write(`<!-- DOCTYPE --><html><head>
     <meta charset="UTF-8"><title>Presupuesto Rossi Home</title>
-    <style>
+    <sty"+"le>
       body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:600px;margin:0 auto;}
       .logo{font-size:24px;font-weight:700;color:#0b1a2e;margin-bottom:4px;}
       .logo em{color:#c8922a;font-style:normal;}
@@ -3648,7 +3648,7 @@ function imprimirPresPDF(id) {
       td{padding:8px 10px;border-bottom:1px solid #eee;}
       .footer{margin-top:24px;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:12px;}
       @media print{body{padding:20px;}}
-    </style>
+    </sty"+"le>
   </head><body>
     <div class="logo">Rossi <em>Home</em></div>
     <div class="sub">Presupuesto N° ${p.id} · ${fmtD(p.fecha||hoy())}</div>
@@ -3797,7 +3797,7 @@ function imprimirReciboPDF(id) {
   const w = window.open('','_blank');
   w.document.write(`<!-- DOCTYPE --><html><head>
     <meta charset="UTF-8"><title>Recibo Rossi Home</title>
-    <style>
+    <sty"+"le>
       body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:500px;margin:0 auto;}
       .logo{font-size:24px;font-weight:700;color:#0b1a2e;margin-bottom:4px;}
       .logo em{color:#c8922a;font-style:normal;}
@@ -3807,7 +3807,7 @@ function imprimirReciboPDF(id) {
       .total-row{display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding:10px 0;}
       .footer{margin-top:20px;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:12px;}
       @media print{body{padding:20px;}}
-    </style>
+    </sty"+"le>
   </head><body>
     <div class="logo">Rossi <em>Home</em></div>
     <div class="sub">Recibo de Venta · ${fmtD(v.fecha)}</div>
@@ -4259,7 +4259,7 @@ function exportarLiqPDF() {
   const w = window.open('','_blank');
   w.document.write(`<!-- DOCTYPE --><html><head>
     <meta charset="UTF-8"><title>Liquidación ${vend}</title>
-    <style>
+    <sty"+"le>
       body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:600px;margin:0 auto;font-size:13px;}
       h1{color:#0b1a2e;font-size:20px;margin-bottom:4px;}
       .sub{color:#888;font-size:12px;margin-bottom:24px;}
@@ -4270,7 +4270,7 @@ function exportarLiqPDF() {
       th{background:#0b1a2e;color:#fff;padding:6px 8px;text-align:left;}
       td{padding:5px 8px;border-bottom:1px solid #eee;}
       @media print{body{padding:20px;}}
-    </style>
+    </sty"+"le>
   </head><body>
     <h1> Liquidación — Rossi Home</h1>
     <div class="sub">${vend} · Período: ${fmtD(desde)} al ${fmtD(hasta)} · Generado: ${fmtD(hoy())}</div>
@@ -4866,7 +4866,7 @@ function generarHTMLRecibo(v) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Recibo Rossi Home</title>
-<style>
+<sty"+"le>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; color: #1a1a2e; background: #fff; padding: 20px; max-width: 400px; margin: 0 auto; }
   .logo { font-size: 22px; font-weight: 700; color: #0b1a2e; text-align: center; margin-bottom: 4px; }
@@ -4884,7 +4884,7 @@ function generarHTMLRecibo(v) {
     body { padding: 10px; }
     .no-print { display: none; }
   }
-</style>
+</sty"+"le>
 </head>
 <body>
   <div class="logo">Rossi <em>Home</em></div>
