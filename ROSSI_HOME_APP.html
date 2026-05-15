@@ -3479,7 +3479,7 @@ function exportarReportePDF() {
       </tbody>
     </table>
 
-    <script>window.onload=function(){window.print();}<\/script>
+    <scr"+"ipt>window.onload=function(){window.print();}<\/script>
   
 <!-- Modal Ingreso Manual -->
 <div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
@@ -3665,7 +3665,7 @@ function imprimirPresPDF(id) {
       <p>OK Entrega sin cargo en Exaltación de la Cruz</p>
       <p>${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad} · ${INFO_EMPRESA.wa}</p>
     </div>
-    <script>window.onload=function(){window.print();}<\/script>
+    <scr"+"ipt>window.onload=function(){window.print();}<\/script>
   
 <!-- Modal Ingreso Manual -->
 <div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
@@ -3833,7 +3833,7 @@ function imprimirReciboPDF(id) {
       <p>${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad}</p>
       <p>${INFO_EMPRESA.wa}</p>
     </div>
-    <script>window.onload=function(){window.print();}<\/script>
+    <scr"+"ipt>window.onload=function(){window.print();}<\/script>
   
 <!-- Modal Ingreso Manual -->
 <div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
@@ -4298,7 +4298,7 @@ function exportarLiqPDF() {
     </table>
 
     ${diasPubLista.length ? `<p style="margin-top:16px;font-size:12px;color:#888;">Días con publicación: ${diasPubLista.map(f=>fmtD(f)).join(', ')}</p>` : ''}
-    <script>window.onload=function(){window.print();}<\/script>
+    <scr"+"ipt>window.onload=function(){window.print();}<\/script>
   
 <!-- Modal Ingreso Manual -->
 <div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
@@ -4990,7 +4990,7 @@ function compartirReciboCreditoPDF(vid, cobroId) {
   if (!v) return;
   // Agregar info del cobro específico
   const cobro = v.cpData?.cobros?.find(c => c.id == cobroId);
-  const html = generarHTMLRecibo(v) + (cobro ? '<script>document.querySelector(".footer").insertAdjacentHTML("beforebegin","<div class=\"box\" style=\"margin-top:12px;\"><div class=\"titulo\">Cobro registrado</div><div class=\"row\"><span>Fecha cobro</span><strong>' + fmtD(cobro.fecha) + '</strong></div><div class=\"row\"><span>Monto cobrado</span><strong>$' + fmt(cobro.monto) + '</strong></div></div>");<\/script>' : '');
+  const html = generarHTMLRecibo(v) + (cobro ? '<scr"+"ipt>document.querySelector(".footer").insertAdjacentHTML("beforebegin","<div class=\"box\" style=\"margin-top:12px;\"><div class=\"titulo\">Cobro registrado</div><div class=\"row\"><span>Fecha cobro</span><strong>' + fmtD(cobro.fecha) + '</strong></div><div class=\"row\"><span>Monto cobrado</span><strong>$' + fmt(cobro.monto) + '</strong></div></div>");<\/script>' : '');
   const w = window.open('', '_blank');
   if (!w) { toast('Permiti&oacute; las ventanas emergentes'); return; }
   w.document.write(generarHTMLRecibo(v));
