@@ -43,7 +43,7 @@ body{font-family:'Outfit',sans-serif;background:var(--cream);color:var(--text);m
 .tab.on{color:var(--gold2);border-bottom-color:var(--gold);}
 
 /* PAGE */
-.page{display:none;padding:14px;max-width:800px;margin:0 auto;}
+.page{display:none;padding:14px;max-width:1200px;margin:0 auto;}
 .page.on{display:block;}
 
 /* CARD */
@@ -261,7 +261,9 @@ td{padding:9px 11px;vertical-align:middle;}
               <option value="LINK_MP">Link de Mercado Pago</option>
             </optgroup>
             <optgroup label=" Crédito Personal">
+              <option value="ANT2C">Anticipo + 2 cuotas (Lista)</option>
               <option value="AHORRO">Plan de Ahorro</option>
+              <option value="ANT2C">Anticipo + 2 cuotas (Lista)</option>
               <option value="AHORRO">Plan de Ahorro</option>
               <option value="CP2">Anticipo + CP 2 cuotas</option>
               <option value="CP3">Anticipo + CP 3 cuotas</option>
@@ -984,7 +986,7 @@ td{padding:9px 11px;vertical-align:middle;}
   <div class="modal"><div class="mh"><h3> Presupuesto</h3><span class="mx" onclick="cM('ovl-ver-pres')">X</span></div><div id="ver-pres-content"></div></div>
 </div>
 
-<div cl
+<script>
 function openPrintWindow(htmlContent) {
   var blob = new Blob([htmlContent], {type: 'text/html; charset=utf-8'});
   var url = URL.createObjectURL(blob);
@@ -2406,6 +2408,18 @@ function calcPres1() {
       cuota = `Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`;
       total = `$${fmt(ant+tot)}`;
     }
+    if (pago === 'ANT2C') {
+      const ant = Math.round(precio * ANTICIPO_PCT);
+      const saldo = precio - ant;
+      const cuo = Math.round(saldo / 2);
+      desc = 'Anticipo + 2 cuotas (Lista)';
+      cuota = `Anticipo $${fmt(ant)} + 2x$${fmt(cuo)}`;
+      total = `$${fmt(precio)}`;
+    } else if (pago === 'AHORRO') {
+      desc = 'Plan de Ahorro';
+      cuota = 'Pagos a cuenta libres';
+      total = `$${fmt(precio)}`;
+    }
     return `<tr><td style="padding:5px 8px;font-size:13px;">${desc}</td><td style="padding:5px 8px;font-size:13px;color:var(--muted);">${cuota}</td><td style="padding:5px 8px;font-size:13px;font-weight:600;text-align:right;">$${total.replace('$','')}</td></tr>`;
   }).join('');
 
@@ -3605,10 +3619,20 @@ function imprimirPresPDF(id) {
       } else if (isTC(pago)) {
         const n=TC_N[pago]||1,r=TC_RC[pago]||1,tot=Math.round(p.precio*r),cuo=Math.round(tot/n);
         desc = PAGO_LBL[pago]; cuota = n>1?`${n} cuotas de $${fmt(cuo)}`:''; total=`$${fmt(tot)}`;
+      } else if (pago === 'ANT2C') {
+        const ant=Math.round(p.precio*ANTICIPO_PCT),saldo=p.precio-ant,cuo=Math.round(saldo/2);
+        desc='Anticipo + 2 cuotas (Lista)'; cuota=`Anticipo $${fmt(ant)} + 2x$${fmt(cuo)}`; total=`$${fmt(p.precio)}`;
+      } else if (pago === 'AHORRO') {
+        desc='Plan de Ahorro'; cuota='Pagos a cuenta libres'; total=`$${fmt(p.precio)}`;
       } else if (isCPorL30(pago)) {
         const n=CP_N[pago]||L30_N[pago]||2,ant=Math.round(p.precio*ANTICIPO_PCT),saldo=p.precio-ant;
         const interes=isL30(pago)?0:(CP_INT['mensual']?.[n]||0),tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);
         desc=PAGO_LBL[pago]; cuota=`Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`; total=`$${fmt(ant+tot)}`;
+      } else if (pago === 'ANT2C') {
+        const ant2=Math.round(p.precio*ANTICIPO_PCT),cuo2=Math.round((p.precio-ant2)/2);
+        desc='Anticipo + 2 cuotas'; cuota=`Anticipo $${fmt(ant2)} + 2x$${fmt(cuo2)}`; total=`$${fmt(p.precio)}`;
+      } else if (pago === 'AHORRO') {
+        desc='Plan de Ahorro'; cuota='Pagos a cuenta libres'; total=`$${fmt(p.precio)}`;
       }
       filas += `<tr><td>${desc}</td><td>${cuota}</td><td style="font-weight:700;text-align:right;">$${total.replace('$','')}</td></tr>`;
     });
