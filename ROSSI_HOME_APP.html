@@ -261,6 +261,8 @@ td{padding:9px 11px;vertical-align:middle;}
               <option value="LINK_MP">Link de Mercado Pago</option>
             </optgroup>
             <optgroup label=" Crédito Personal">
+              <option value="AHORRO">Plan de Ahorro</option>
+              <option value="AHORRO">Plan de Ahorro</option>
               <option value="CP2">Anticipo + CP 2 cuotas</option>
               <option value="CP3">Anticipo + CP 3 cuotas</option>
               <option value="CP6">Anticipo + CP 6 cuotas</option>
@@ -717,62 +719,11 @@ td{padding:9px 11px;vertical-align:middle;}
         </select>
       </div>
       <div class="fg"><label>Concepto</label>
-        <select id="g-concepto" onchange="onConceptoGasto()">
-          <option value="">-- Seleccioná --</option>
-          <option value="CEPRAL LUZ LAS LECHUZAS">CEPRAL LUZ LAS LECHUZAS</option>
-          <option value="CEPRAL LUZ EXALTACION">CEPRAL LUZ EXALTACION</option>
-          <option value="CEPRAL LUZ LOCAL PARADA ROBLES">CEPRAL LUZ LOCAL PARADA ROBLES</option>
-          <option value="CEPRAL INTERNET EXALTACION">CEPRAL INTERNET EXALTACION</option>
-          <option value="CEPRAL INTERNET LOCAL PARADA ROBLES">CEPRAL INTERNET LOCAL PARADA ROBLES</option>
-          <option value="CEPRAL INTERNET LAS LECHUZAS">CEPRAL INTERNET LAS LECHUZAS</option>
-          <option value="CEPRAL TELEFONO 471876 EXALTACION">CEPRAL TELEFONO 471876 EXALTACION</option>
-          <option value="CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES">CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES</option>
-          <option value="CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES">CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES</option>
-          <option value="CEPRAL TELEFONO 478687 LAS LECHUZAS">CEPRAL TELEFONO 478687 LAS LECHUZAS</option>
-          <option value="CEPRAL LUZ PORTON LAS LECHUZAS">CEPRAL LUZ PORTON LAS LECHUZAS</option>
-          <option value="COLEGIO IMDP">COLEGIO IMDP</option>
-          <option value="CANDI TCC LUZ">CANDI TCC LUZ</option>
-          <option value="CANDI FONOAUDIOLOGIA SOL STAMATI">CANDI FONOAUDIOLOGIA SOL STAMATI</option>
-          <option value="TERAPIA OCUPACIONAL MAGDALENA">TERAPIA OCUPACIONAL MAGDALENA</option>
-          <option value="EPPIN ACOMPAÑANTE TERAPEUTICO">EPPIN ACOMPAÑANTE TERAPEUTICO</option>
-          <option value="ESTACION DE SERVICIO SHELL">ESTACION DE SERVICIO SHELL</option>
-          <option value="ESTACION DE SERVICIO YPF">ESTACION DE SERVICIO YPF</option>
-          <option value="ESTACION DE SERVICIO AXION">ESTACION DE SERVICIO AXION</option>
-          <option value="ESTACION DE SERVICIO PUMA">ESTACION DE SERVICIO PUMA</option>
-          <option value="ESTACION DE SERVICIO GNC SIN BANDERA">ESTACION DE SERVICIO GNC SIN BANDERA</option>
-          <option value="AGUSTIN ROSSI">AGUSTIN ROSSI</option>
-          <option value="JOSEFINA ROSSI">JOSEFINA ROSSI</option>
-          <option value="VICTORIA KINDERKNECHDT">VICTORIA KINDERKNECHDT</option>
-          <option value="KIOSCO">KIOSCO</option>
-          <option value="MCDONALDS">MCDONALDS</option>
-          <option value="CINE">CINE</option>
-          <option value="SUPERMERCADO">SUPERMERCADO</option>
-          <option value="VERDULERIA">VERDULERIA</option>
-          <option value="CARNICERIA">CARNICERIA</option>
-          <option value="IGLESIA">IGLESIA</option>
-          <option value="UBER VIAJES">UBER VIAJES</option>
-          <option value="UBER ONE">UBER ONE</option>
-          <option value="DIDI">DIDI</option>
-          <option value="DISNEY PLUS">DISNEY PLUS</option>
-          <option value="HBO">HBO</option>
-          <option value="YOUTUBE PREMIUM">YOUTUBE PREMIUM</option>
-          <option value="DIRECTV">DIRECTV</option>
-          <option value="CASA RONALD">CASA RONALD</option>
-          <option value="CANVA">CANVA</option>
-          <option value="PIXEL CUT">PIXEL CUT</option>
-          <option value="CHAT GPT">CHAT GPT</option>
-          <option value="CLAUDE">CLAUDE</option>
-          <option value="ALBERTO TEJO">ALBERTO TEJO</option>
-          <option value="MERCADO LIBRE">MERCADO LIBRE</option>
-          <option value="MERCADO LIBRE MELI">MERCADO LIBRE MELI</option>
-          <option value="STARBUCKS">STARBUCKS</option>
-          <option value="REMISERIA">REMISERIA</option>
-          <option value="SUBE">SUBE</option>
-          <option value="FARMACIA">FARMACIA</option>
-          <option value="PEAJES">PEAJES</option>
-          <option value="LEANDRO ROSSI">LEANDRO ROSSI</option>
-          <option value="OTRO">Otro (escribir)</option>
-        </select>
+        <div style="position:relative;">
+          <input type="text" id="g-concepto" placeholder="Escribí o buscá un concepto..." oninput="buscarConcepto(this.value)" autocomplete="off" style="width:100%;">
+          <div id="gasto-conceptos-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="agregarConceptoALista()" style="margin-top:4px;font-size:11px;">+ Guardar en lista</button>
       </div>
       <div class="fg" id="blk-g-otro" style="display:none;"><label>Concepto personalizado</label><input type="text" id="g-otro" placeholder="Escribí el concepto"></div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="g-monto" placeholder="0" min="0"></div>
@@ -2096,7 +2047,7 @@ function renderCreditos(){
               <div style="font-size:11px;color:var(--muted);">${cp.anticipoPagado?`Cobrado ${fmtD(cobros.find(c=>c.tipo==='anticipo')?.fecha||'')} · ${PAGO_LBL[cobros.find(c=>c.tipo==='anticipo')?.medio]||''}`:`Previsto: ${fmtD(cp.fechaAnticipo)}`}</div>
             </div>
           </div>
-          ${!cp.anticipoPagado?`<button class="btn btn-gold btn-sm" onclick="abrirCobrarAnticipo(${v.id})">Cobrar</button>`:`<span style="font-size:11px;font-weight:700;color:var(--green);">OK Cobrado</span>`}
+          ${!cp.anticipoPagado?`<button class="btn btn-gold btn-sm" onclick="abrirCobrarAnticipo(${v.id})">Cobrar</button>`:`<div style='display:flex;gap:4px;align-items:center;'><span style='font-size:11px;font-weight:700;color:var(--green);'>OK Cobrado</span><button class='btn btn-sm' style='background:#e8f8f0;color:#009168;border:1px solid #a0d8c0;' onclick='compartirReciboCreditoPDF(${v.id},"anticipo")'>WA</button></div>`}
         </div>
       </div>
 
@@ -2884,7 +2835,7 @@ function saldosCaja() {
 
 function renderCaja() {
   const saldos = saldosCaja();
-  const total = Object.entries(saldos).filter(([k])=>k!=='ROSA'&&k!=='GABRIELA').reduce((s,[,v])=>s+v,0);
+  const total = Object.entries(saldos).filter(([k])=>k!=='ROSA'&&k!=='GABRIELA'&&k!=='VARIOS').reduce((s,[,v])=>s+v,0);
 
   // Resumen cajas
   document.getElementById('caja-resumen').innerHTML = `
@@ -2995,9 +2946,8 @@ function onConceptoGasto() {
 }
 
 async function guardarGasto() {
-  const concepto = document.getElementById('g-concepto').value;
-  const conceptoFinal = concepto === 'OTRO' ? document.getElementById('g-otro').value.trim() : concepto;
-  if (!conceptoFinal) { toast('! Seleccioná o escribí un concepto'); return; }
+  const conceptoFinal = document.getElementById('g-concepto').value.trim();
+  if (!conceptoFinal) { toast('! Escribí un concepto'); return; }
   const monto = parseFloat(document.getElementById('g-monto').value)||0;
   if (!monto) { toast('! Ingresá un monto'); return; }
   movCaja.unshift({
@@ -5005,7 +4955,7 @@ function compartirReciboCreditoPDF(vid, cobroId) {
 }
 
 // Autocompletado gastos
-let gastosConceptos = JSON.parse(localStorage.getItem('rh_gastos_conceptos')||'["Almuerzo","Combustible","Peajes","Proveedor","Flete","Limpieza","Servicios","Publicidad","Material embalaje"]');
+let gastosConceptos = JSON.parse(localStorage.getItem('rh_gastos_conceptos')||JSON.stringify(["CEPRAL LUZ LAS LECHUZAS", "CEPRAL LUZ EXALTACION", "CEPRAL LUZ LOCAL PARADA ROBLES", "CEPRAL INTERNET EXALTACION", "CEPRAL INTERNET LOCAL PARADA ROBLES", "CEPRAL INTERNET LAS LECHUZAS", "CEPRAL TELEFONO 471876 EXALTACION", "CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478687 LAS LECHUZAS", "CEPRAL LUZ PORTON LAS LECHUZAS", "COLEGIO IMDP", "CANDI TCC LUZ", "CANDI FONOAUDIOLOGIA SOL STAMATI", "TERAPIA OCUPACIONAL MAGDALENA", "EPPIN ACOMPAÑANTE TERAPEUTICO", "ESTACION DE SERVICIO SHELL", "ESTACION DE SERVICIO YPF", "ESTACION DE SERVICIO AXION", "ESTACION DE SERVICIO PUMA", "ESTACION DE SERVICIO GNC SIN BANDERA", "AGUSTIN ROSSI", "JOSEFINA ROSSI", "VICTORIA KINDERKNECHDT", "KIOSCO", "MCDONALDS", "CINE", "SUPERMERCADO", "VERDULERIA", "CARNICERIA", "IGLESIA", "UBER VIAJES", "UBER ONE", "DIDI", "DISNEY PLUS", "HBO", "YOUTUBE PREMIUM", "DIRECTV", "CASA RONALD", "CANVA", "PIXEL CUT", "CHAT GPT", "CLAUDE", "ALBERTO TEJO", "MERCADO LIBRE", "MERCADO LIBRE MELI", "STARBUCKS", "REMISERIA", "SUBE", "FARMACIA", "PEAJES", "LEANDRO ROSSI", "OTRO"]));
 
 function buscarConcepto(val) {
   const sug = document.getElementById('gasto-conceptos-sug');
