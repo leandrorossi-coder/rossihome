@@ -397,7 +397,7 @@ td{padding:9px 11px;vertical-align:middle;}
           <div class="ac" id="prod-ac"></div>
         </div>
       </div>
-      <div class="fg"><label>Precio de venta ($)</label><input type="number" id="f-precio" placeholder="0" min="0" oninput="recalc()"></div>
+      <div class="fg"><label>Precio de venta ($)</label><input type="number" id="f-precio" placeholder="0" min="0" oninput="this.value=this.value.replace(',','.');recalc()"></div>
       <input type="number" id="f-costo" style="display:none;" min="0">
       <div class="sec" style="margin-top:15px;">Datos del cliente</div>
       <div style="margin-bottom:10px;">
@@ -984,9 +984,7 @@ td{padding:9px 11px;vertical-align:middle;}
   <div class="modal"><div class="mh"><h3> Presupuesto</h3><span class="mx" onclick="cM('ovl-ver-pres')">X</span></div><div id="ver-pres-content"></div></div>
 </div>
 
-<div class="toast" id="toast"></div>
-
-<script>
+<div cl
 function openPrintWindow(htmlContent) {
   var blob = new Blob([htmlContent], {type: 'text/html; charset=utf-8'});
   var url = URL.createObjectURL(blob);
@@ -1423,7 +1421,8 @@ const isEFTRANSF = p => p==='EFECTIVO' || (p&&p.startsWith('TRANSF'));
 function onPago() {
   const p = document.getElementById('f-pago').value;
   document.getElementById('blk-tc').style.display = (isTC(p)&&p!=='TC1') ? 'block' : 'none';
-  document.getElementById('blk-cp').style.display = isCPorL30(p) ? 'block' : 'none';
+  document.getElementById('blk-cp').style.display = (isCPorL30(p) && p !== 'AHORRO') ? 'block' : 'none';
+  document.getElementById('blk-ahorro-venta').style.display = p === 'AHORRO' ? 'block' : 'none';
 
   // Si es efectivo o transferencia y hay precio de lista cargado, calcular contado
   if (isEFTRANSF(p)) {
@@ -1576,7 +1575,7 @@ async function guardar() {
     obs:     document.getElementById('f-obs').value.trim(),
     pagosDetalle,
     estado:  'pendiente',
-    ahorroData: pago==='AHORRO' ? {montoFinal: precio, pagos: []} : undefined,
+    ahorroData: pago==='AHORRO' ? {montoFinal: parseFloat(document.getElementById('ahorro-monto-pactado').value)||precio, pagos: []} : undefined,
     cuotasPagadas:{}
   };
 
@@ -1611,7 +1610,10 @@ async function guardar() {
     document.getElementById('btn-guardar').textContent='OK Guardar Venta';
     toast('OK Venta actualizada');
   } else {
-    ventas.unshift({id:Date.now(),...base});
+    const nuevaVenta = {id:Date.now(),...base};
+    ventas.unshift(nuevaVenta);
+    actualizarMaestroClientes(nuevaVenta);
+    guardarClientes();
     toast('OK Venta guardada');
   }
   await guardarVentas();
@@ -1731,6 +1733,7 @@ function renderVentas() {
   } else {
     lista=filtroVend==='TODAS'?ventas:ventas.filter(v=>v.vendedora===filtroVend);
   }
+  lista = [...lista].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
   document.getElementById('cnt-ventas').textContent=`${lista.length} registros`;
 
   // Stats — sin ganancia para no-admin
@@ -2833,6 +2836,18 @@ function saldosCaja() {
   return saldos;
 }
 
+function cajasVisibles() {
+  if (!usuarioActual) return ['EFECTIVO','MERCADO_PAGO','FLEX','GABRIELA','ROSA','DOLORES','VARIOS'];
+  const nombre = usuarioActual.nombre;
+  if (nombre === 'ROSA') return ['ROSA','GABRIELA'];
+  if (nombre === 'GABRIELA') return ['ROSA','GABRIELA'];
+  return ['EFECTIVO','MERCADO_PAGO','FLEX','GABRIELA','ROSA','DOLORES','VARIOS'];
+}
+function puedeGastar() {
+  if (!usuarioActual) return false;
+  const nombre = usuarioActual.nombre;
+  return nombre !== 'ROSA' && nombre !== 'GABRIELA' && esAdmin();
+}
 function renderCaja() {
   const saldos = saldosCaja();
   const total = Object.entries(saldos).filter(([k])=>k!=='ROSA'&&k!=='GABRIELA'&&k!=='VARIOS').reduce((s,[,v])=>s+v,0);
@@ -4808,7 +4823,7 @@ function buildEstadoCell(v) {
   const est = v.estado || 'pendiente';
   const bg = est==='entregado' ? '#1a7a4a' : est==='camino' ? '#c05010' : '#efe9df';
   const color = est!=='pendiente' ? '#fff' : '#1a1a2e';
-  const pe = esAdmin() ? '' : 'pointer-events:none;';
+  const pe = (usuarioActual && usuarioActual.nombre === 'LEANDRO') ? '' : 'pointer-events:none;';
   const opts = ['pendiente','camino','entregado'];
   const labels = {pendiente:'Pendiente', camino:'En camino', entregado:'Entregado'};
   const optHtml = opts.map(o => '<option value="'+o+'"'+(est===o?' selected':'')+'>'+labels[o]+'</option>').join('');
@@ -5184,4 +5199,5 @@ function abrirActualizarMontoPactado(vid) {
   </div>
 </div>
 </body>
-</html>
+</htmlinput[type=text]{text-transform:uppercase;}
+>
