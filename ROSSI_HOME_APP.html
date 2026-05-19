@@ -263,8 +263,6 @@ td{padding:9px 11px;vertical-align:middle;}
             <optgroup label=" Crédito Personal">
               <option value="ANT2C">Anticipo + 2 cuotas (Lista)</option>
               <option value="AHORRO">Plan de Ahorro</option>
-              <option value="ANT2C">Anticipo + 2 cuotas (Lista)</option>
-              <option value="AHORRO">Plan de Ahorro</option>
               <option value="CP2">Anticipo + CP 2 cuotas</option>
               <option value="CP3">Anticipo + CP 3 cuotas</option>
               <option value="CP6">Anticipo + CP 6 cuotas</option>
@@ -3417,10 +3415,10 @@ function exportarReportePDF() {
     porPago[lbl].cant++;
   });
 
-  openPrintWindow(`<!-- DOCTYPE --><html><head>
+  openPrintWindow(`<!DOCTYPE html><html><head>
     <meta charset="UTF-8">
     <title>Reporte Rossi Home</title>
-    <sty"+"le>
+    <style>
       body{font-family:Arial,sans-serif;padding:30px;color:#1a1a2e;font-size:13px;}
       h1{color:#0b1a2e;font-size:20px;margin-bottom:4px;}
       .sub{color:#888;font-size:12px;margin-bottom:20px;}
@@ -3435,7 +3433,7 @@ function exportarReportePDF() {
       tr:nth-child(even) td{background:#fafafa;}
       .total{font-weight:700;color:#0b1a2e;}
       @media print{body{padding:15px;}}
-    </sty"+"le>
+    </style>
   </head><body>
     <h1> Reporte de Ventas — Rossi Home</h1>
     <div class="sub">Período: ${periodo} · Generado: ${fmtD(hoy())}</div>
@@ -3479,129 +3477,8 @@ function exportarReportePDF() {
       </tbody>
     </table>
 
-    <scr"+"ipt>window.onload=function(){window.print();}<\/script>
-  
-<!-- Modal Ingreso Manual -->
-<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
-  <div class="modal">
-    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
-    <div class="mb">
-      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
-      <div class="fg"><label>Caja</label>
-        <select id="ing-caja">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Prex Argentina</option>
-          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
-          <option value="ROSA">Rosa Vallejo</option>
-          <option value="DOLORES">Dolores Heredia</option>
-          <option value="VARIOS">Varios / Sin clasificar</option>
-        </select>
-      </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Editar Movimiento -->
-<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
-  <div class="modal">
-    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="edit-mov-id">
-      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
-      <div class="fg"><label>Caja</label>
-        <select id="edit-mov-caja">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Prex Argentina</option>
-          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
-          <option value="ROSA">Rosa Vallejo</option>
-          <option value="DOLORES">Dolores Heredia</option>
-          <option value="VARIOS">Varios / Sin clasificar</option>
-        </select>
-      </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
-      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Cliente -->
-<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
-  <div class="modal">
-    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="cli-id">
-      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
-      <div class="r2">
-        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
-        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
-      </div>
-      <div class="r2">
-        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
-        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
-      </div>
-      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
-      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Pago Ahorro -->
-<div class="overlay" id="ovl-ahorro" onclick="cM('ovl-ahorro',event)">
-  <div class="modal">
-    <div class="mh"><h3>Pago a Cuenta - Plan Ahorro</h3><span class="mx" onclick="cM('ovl-ahorro')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="ahorro-vid">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;text-align:center;">
-        <div style="background:var(--cream2);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pactado</div>
-          <div style="font-weight:700;font-size:15px;" id="ahorro-pactado-display">$0</div>
-        </div>
-        <div style="background:var(--gbg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pagado</div>
-          <div style="font-weight:700;font-size:15px;color:var(--green);" id="ahorro-pagado-display">$0</div>
-        </div>
-        <div style="background:var(--obg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Resta</div>
-          <div style="font-weight:700;font-size:15px;color:var(--orange);" id="ahorro-restante-display">$0</div>
-        </div>
-      </div>
-      <div class="fg"><label>Monto a pagar ($)</label><input type="number" id="ahorro-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Medio de pago</label>
-        <select id="ahorro-medio">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="TRANSF_MP">Transf. Mercado Pago</option>
-          <option value="TRANSF_FLEX">Transf. Prex Argentina</option>
-          <option value="TRANSF_ROSA">Transf. Rosa</option>
-          <option value="TRANSF_GABRIELA">Transf. Gabriela</option>
-          <option value="QR_MP">QR Mercado Pago</option>
-        </select>
-      </div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="ahorro-obs" placeholder="Opcional"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarPagoAhorro()">OK Registrar Pago</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ahorro')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-</body></html>`);
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
 }
 
 // ---
@@ -3628,11 +3505,6 @@ function imprimirPresPDF(id) {
         const n=CP_N[pago]||L30_N[pago]||2,ant=Math.round(p.precio*ANTICIPO_PCT),saldo=p.precio-ant;
         const interes=isL30(pago)?0:(CP_INT['mensual']?.[n]||0),tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);
         desc=PAGO_LBL[pago]; cuota=`Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`; total=`$${fmt(ant+tot)}`;
-      } else if (pago === 'ANT2C') {
-        const ant2=Math.round(p.precio*ANTICIPO_PCT),cuo2=Math.round((p.precio-ant2)/2);
-        desc='Anticipo + 2 cuotas'; cuota=`Anticipo $${fmt(ant2)} + 2x$${fmt(cuo2)}`; total=`$${fmt(p.precio)}`;
-      } else if (pago === 'AHORRO') {
-        desc='Plan de Ahorro'; cuota='Pagos a cuenta libres'; total=`$${fmt(p.precio)}`;
       }
       filas += `<tr><td>${desc}</td><td>${cuota}</td><td style="font-weight:700;text-align:right;">$${total.replace('$','')}</td></tr>`;
     });
@@ -3642,9 +3514,9 @@ function imprimirPresPDF(id) {
     });
   }
 
-  openPrintWindow(`<!-- DOCTYPE --><html><head>
+  openPrintWindow(`<!DOCTYPE html><html><head>
     <meta charset="UTF-8"><title>Presupuesto Rossi Home</title>
-    <sty"+"le>
+    <style>
       body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:600px;margin:0 auto;}
       .logo{font-size:24px;font-weight:700;color:#0b1a2e;margin-bottom:4px;}
       .logo em{color:#c8922a;font-style:normal;}
@@ -3656,7 +3528,7 @@ function imprimirPresPDF(id) {
       td{padding:8px 10px;border-bottom:1px solid #eee;}
       .footer{margin-top:24px;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:12px;}
       @media print{body{padding:20px;}}
-    </sty"+"le>
+    </style>
   </head><body>
     <div class="logo">Rossi <em>Home</em></div>
     <div class="sub">Presupuesto N° ${p.id} · ${fmtD(p.fecha||hoy())}</div>
@@ -3673,137 +3545,16 @@ function imprimirPresPDF(id) {
       <p>OK Entrega sin cargo en Exaltación de la Cruz</p>
       <p>${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad} · ${INFO_EMPRESA.wa}</p>
     </div>
-    <scr"+"ipt>window.onload=function(){window.print();}<\/script>
-  
-<!-- Modal Ingreso Manual -->
-<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
-  <div class="modal">
-    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
-    <div class="mb">
-      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
-      <div class="fg"><label>Caja</label>
-        <select id="ing-caja">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Prex Argentina</option>
-          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
-          <option value="ROSA">Rosa Vallejo</option>
-          <option value="DOLORES">Dolores Heredia</option>
-          <option value="VARIOS">Varios / Sin clasificar</option>
-        </select>
-      </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Editar Movimiento -->
-<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
-  <div class="modal">
-    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="edit-mov-id">
-      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
-      <div class="fg"><label>Caja</label>
-        <select id="edit-mov-caja">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Prex Argentina</option>
-          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
-          <option value="ROSA">Rosa Vallejo</option>
-          <option value="DOLORES">Dolores Heredia</option>
-          <option value="VARIOS">Varios / Sin clasificar</option>
-        </select>
-      </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
-      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Cliente -->
-<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
-  <div class="modal">
-    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="cli-id">
-      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
-      <div class="r2">
-        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
-        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
-      </div>
-      <div class="r2">
-        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
-        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
-      </div>
-      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
-      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Pago Ahorro -->
-<div class="overlay" id="ovl-ahorro" onclick="cM('ovl-ahorro',event)">
-  <div class="modal">
-    <div class="mh"><h3>Pago a Cuenta - Plan Ahorro</h3><span class="mx" onclick="cM('ovl-ahorro')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="ahorro-vid">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;text-align:center;">
-        <div style="background:var(--cream2);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pactado</div>
-          <div style="font-weight:700;font-size:15px;" id="ahorro-pactado-display">$0</div>
-        </div>
-        <div style="background:var(--gbg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pagado</div>
-          <div style="font-weight:700;font-size:15px;color:var(--green);" id="ahorro-pagado-display">$0</div>
-        </div>
-        <div style="background:var(--obg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Resta</div>
-          <div style="font-weight:700;font-size:15px;color:var(--orange);" id="ahorro-restante-display">$0</div>
-        </div>
-      </div>
-      <div class="fg"><label>Monto a pagar ($)</label><input type="number" id="ahorro-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Medio de pago</label>
-        <select id="ahorro-medio">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="TRANSF_MP">Transf. Mercado Pago</option>
-          <option value="TRANSF_FLEX">Transf. Prex Argentina</option>
-          <option value="TRANSF_ROSA">Transf. Rosa</option>
-          <option value="TRANSF_GABRIELA">Transf. Gabriela</option>
-          <option value="QR_MP">QR Mercado Pago</option>
-        </select>
-      </div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="ahorro-obs" placeholder="Opcional"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarPagoAhorro()">OK Registrar Pago</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ahorro')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-</body></html>`);
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
 }
 
 // ---
 function imprimirReciboPDF(id) {
   const v = ventas.find(x=>x.id===id); if(!v) return;
-  openPrintWindow(`<!-- DOCTYPE --><html><head>
+  openPrintWindow(`<!DOCTYPE html><html><head>
     <meta charset="UTF-8"><title>Recibo Rossi Home</title>
-    <sty"+"le>
+    <style>
       body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:500px;margin:0 auto;}
       .logo{font-size:24px;font-weight:700;color:#0b1a2e;margin-bottom:4px;}
       .logo em{color:#c8922a;font-style:normal;}
@@ -3813,7 +3564,7 @@ function imprimirReciboPDF(id) {
       .total-row{display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding:10px 0;}
       .footer{margin-top:20px;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:12px;}
       @media print{body{padding:20px;}}
-    </sty"+"le>
+    </style>
   </head><body>
     <div class="logo">Rossi <em>Home</em></div>
     <div class="sub">Recibo de Venta · ${fmtD(v.fecha)}</div>
@@ -3839,129 +3590,8 @@ function imprimirReciboPDF(id) {
       <p>${INFO_EMPRESA.dir}, ${INFO_EMPRESA.localidad}</p>
       <p>${INFO_EMPRESA.wa}</p>
     </div>
-    <scr"+"ipt>window.onload=function(){window.print();}<\/script>
-  
-<!-- Modal Ingreso Manual -->
-<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
-  <div class="modal">
-    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
-    <div class="mb">
-      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
-      <div class="fg"><label>Caja</label>
-        <select id="ing-caja">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Prex Argentina</option>
-          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
-          <option value="ROSA">Rosa Vallejo</option>
-          <option value="DOLORES">Dolores Heredia</option>
-          <option value="VARIOS">Varios / Sin clasificar</option>
-        </select>
-      </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Editar Movimiento -->
-<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
-  <div class="modal">
-    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="edit-mov-id">
-      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
-      <div class="fg"><label>Caja</label>
-        <select id="edit-mov-caja">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Prex Argentina</option>
-          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
-          <option value="ROSA">Rosa Vallejo</option>
-          <option value="DOLORES">Dolores Heredia</option>
-          <option value="VARIOS">Varios / Sin clasificar</option>
-        </select>
-      </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
-      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Cliente -->
-<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
-  <div class="modal">
-    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="cli-id">
-      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
-      <div class="r2">
-        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
-        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
-      </div>
-      <div class="r2">
-        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
-        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
-      </div>
-      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
-      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Pago Ahorro -->
-<div class="overlay" id="ovl-ahorro" onclick="cM('ovl-ahorro',event)">
-  <div class="modal">
-    <div class="mh"><h3>Pago a Cuenta - Plan Ahorro</h3><span class="mx" onclick="cM('ovl-ahorro')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="ahorro-vid">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;text-align:center;">
-        <div style="background:var(--cream2);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pactado</div>
-          <div style="font-weight:700;font-size:15px;" id="ahorro-pactado-display">$0</div>
-        </div>
-        <div style="background:var(--gbg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pagado</div>
-          <div style="font-weight:700;font-size:15px;color:var(--green);" id="ahorro-pagado-display">$0</div>
-        </div>
-        <div style="background:var(--obg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Resta</div>
-          <div style="font-weight:700;font-size:15px;color:var(--orange);" id="ahorro-restante-display">$0</div>
-        </div>
-      </div>
-      <div class="fg"><label>Monto a pagar ($)</label><input type="number" id="ahorro-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Medio de pago</label>
-        <select id="ahorro-medio">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="TRANSF_MP">Transf. Mercado Pago</option>
-          <option value="TRANSF_FLEX">Transf. Prex Argentina</option>
-          <option value="TRANSF_ROSA">Transf. Rosa</option>
-          <option value="TRANSF_GABRIELA">Transf. Gabriela</option>
-          <option value="QR_MP">QR Mercado Pago</option>
-        </select>
-      </div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="ahorro-obs" placeholder="Opcional"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarPagoAhorro()">OK Registrar Pago</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ahorro')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-</body></html>`);
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
 }
 
 // ===
@@ -4261,9 +3891,9 @@ function exportarLiqPDF() {
   const pubVend = publicaciones[vend] || {};
   const diasPubLista = Object.keys(pubVend).filter(f => f >= desde && f <= hasta && pubVend[f]);
 
-  openPrintWindow(`<!-- DOCTYPE --><html><head>
+  openPrintWindow(`<!DOCTYPE html><html><head>
     <meta charset="UTF-8"><title>Liquidación ${vend}</title>
-    <sty"+"le>
+    <style>
       body{font-family:Arial,sans-serif;padding:40px;color:#1a1a2e;max-width:600px;margin:0 auto;font-size:13px;}
       h1{color:#0b1a2e;font-size:20px;margin-bottom:4px;}
       .sub{color:#888;font-size:12px;margin-bottom:24px;}
@@ -4274,7 +3904,7 @@ function exportarLiqPDF() {
       th{background:#0b1a2e;color:#fff;padding:6px 8px;text-align:left;}
       td{padding:5px 8px;border-bottom:1px solid #eee;}
       @media print{body{padding:20px;}}
-    </sty"+"le>
+    </style>
   </head><body>
     <h1> Liquidación — Rossi Home</h1>
     <div class="sub">${vend} · Período: ${fmtD(desde)} al ${fmtD(hasta)} · Generado: ${fmtD(hoy())}</div>
@@ -4302,129 +3932,8 @@ function exportarLiqPDF() {
     </table>
 
     ${diasPubLista.length ? `<p style="margin-top:16px;font-size:12px;color:#888;">Días con publicación: ${diasPubLista.map(f=>fmtD(f)).join(', ')}</p>` : ''}
-    <scr"+"ipt>window.onload=function(){window.print();}<\/script>
-  
-<!-- Modal Ingreso Manual -->
-<div class="overlay" id="ovl-ingreso" onclick="cM('ovl-ingreso',event)">
-  <div class="modal">
-    <div class="mh"><h3>+ Ingreso Manual</h3><span class="mx" onclick="cM('ovl-ingreso')">X</span></div>
-    <div class="mb">
-      <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
-      <div class="fg"><label>Caja</label>
-        <select id="ing-caja">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Prex Argentina</option>
-          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
-          <option value="ROSA">Rosa Vallejo</option>
-          <option value="DOLORES">Dolores Heredia</option>
-          <option value="VARIOS">Varios / Sin clasificar</option>
-        </select>
-      </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarIngreso()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ingreso')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Editar Movimiento -->
-<div class="overlay" id="ovl-edit-mov" onclick="cM('ovl-edit-mov',event)">
-  <div class="modal">
-    <div class="mh"><h3>Editar Movimiento</h3><span class="mx" onclick="cM('ovl-edit-mov')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="edit-mov-id">
-      <div class="fg"><label>Fecha</label><input type="date" id="edit-mov-fecha"></div>
-      <div class="fg"><label>Caja</label>
-        <select id="edit-mov-caja">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="MERCADO_PAGO">Mercado Pago</option>
-          <option value="FLEX">Prex Argentina</option>
-          <option value="GABRIELA">Gabriela Gonz&#225;lez</option>
-          <option value="ROSA">Rosa Vallejo</option>
-          <option value="DOLORES">Dolores Heredia</option>
-          <option value="VARIOS">Varios / Sin clasificar</option>
-        </select>
-      </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="edit-mov-monto" min="0"></div>
-      <div class="fg"><label>Concepto</label><input type="text" id="edit-mov-concepto"></div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="edit-mov-obs"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarEditMovCaja()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-edit-mov')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Cliente -->
-<div class="overlay" id="ovl-cliente" onclick="cM('ovl-cliente',event)">
-  <div class="modal">
-    <div class="mh"><h3 id="cli-modal-titulo">Nuevo Cliente</h3><span class="mx" onclick="cM('ovl-cliente')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="cli-id">
-      <div class="fg"><label>C&#243;digo</label><input type="text" id="cli-codigo" placeholder="Ej: ROS001" style="font-family:monospace;"></div>
-      <div class="r2">
-        <div class="fg"><label>Apellido</label><input type="text" id="cli-apellido" placeholder="" oninput="generarCodigoCliente()"></div>
-        <div class="fg"><label>Nombre</label><input type="text" id="cli-nombre" placeholder=""></div>
-      </div>
-      <div class="r2">
-        <div class="fg"><label>DNI</label><input type="text" id="cli-dni" placeholder=""></div>
-        <div class="fg"><label>Tel&#233;fono</label><input type="text" id="cli-tel" placeholder=""></div>
-      </div>
-      <div class="fg"><label>Direcci&#243;n</label><input type="text" id="cli-dir" placeholder=""></div>
-      <div class="fg"><label>Observaciones</label><input type="text" id="cli-obs" placeholder=""></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarCliente()">OK Guardar</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-cliente')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Pago Ahorro -->
-<div class="overlay" id="ovl-ahorro" onclick="cM('ovl-ahorro',event)">
-  <div class="modal">
-    <div class="mh"><h3>Pago a Cuenta - Plan Ahorro</h3><span class="mx" onclick="cM('ovl-ahorro')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="ahorro-vid">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;text-align:center;">
-        <div style="background:var(--cream2);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pactado</div>
-          <div style="font-weight:700;font-size:15px;" id="ahorro-pactado-display">$0</div>
-        </div>
-        <div style="background:var(--gbg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pagado</div>
-          <div style="font-weight:700;font-size:15px;color:var(--green);" id="ahorro-pagado-display">$0</div>
-        </div>
-        <div style="background:var(--obg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Resta</div>
-          <div style="font-weight:700;font-size:15px;color:var(--orange);" id="ahorro-restante-display">$0</div>
-        </div>
-      </div>
-      <div class="fg"><label>Monto a pagar ($)</label><input type="number" id="ahorro-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Medio de pago</label>
-        <select id="ahorro-medio">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="TRANSF_MP">Transf. Mercado Pago</option>
-          <option value="TRANSF_FLEX">Transf. Prex Argentina</option>
-          <option value="TRANSF_ROSA">Transf. Rosa</option>
-          <option value="TRANSF_GABRIELA">Transf. Gabriela</option>
-          <option value="QR_MP">QR Mercado Pago</option>
-        </select>
-      </div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="ahorro-obs" placeholder="Opcional"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarPagoAhorro()">OK Registrar Pago</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ahorro')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-</body></html>`);
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
 }
 
 // ===
@@ -4863,13 +4372,13 @@ function generarHTMLRecibo(v) {
   const cobradas = cuotas.filter(c => c.pagada);
   const pendientes = cuotas.filter(c => !c.pagada);
   
-  return `<!-- DOCTYPE -->
+  return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Recibo Rossi Home</title>
-<sty"+"le>
+<style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; color: #1a1a2e; background: #fff; padding: 20px; max-width: 400px; margin: 0 auto; }
   .logo { font-size: 22px; font-weight: 700; color: #0b1a2e; text-align: center; margin-bottom: 4px; }
@@ -4887,7 +4396,7 @@ function generarHTMLRecibo(v) {
     body { padding: 10px; }
     .no-print { display: none; }
   }
-</sty"+"le>
+</style>
 </head>
 <body>
   <div class="logo">Rossi <em>Home</em></div>
@@ -4932,45 +4441,6 @@ function generarHTMLRecibo(v) {
     <p>Gracias por su compra</p>
   </div>
 
-<!-- Modal Pago Ahorro -->
-<div class="overlay" id="ovl-ahorro" onclick="cM('ovl-ahorro',event)">
-  <div class="modal">
-    <div class="mh"><h3>Pago a Cuenta - Plan Ahorro</h3><span class="mx" onclick="cM('ovl-ahorro')">X</span></div>
-    <div class="mb">
-      <input type="hidden" id="ahorro-vid">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;text-align:center;">
-        <div style="background:var(--cream2);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pactado</div>
-          <div style="font-weight:700;font-size:15px;" id="ahorro-pactado-display">$0</div>
-        </div>
-        <div style="background:var(--gbg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Pagado</div>
-          <div style="font-weight:700;font-size:15px;color:var(--green);" id="ahorro-pagado-display">$0</div>
-        </div>
-        <div style="background:var(--obg);border-radius:8px;padding:10px;">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Resta</div>
-          <div style="font-weight:700;font-size:15px;color:var(--orange);" id="ahorro-restante-display">$0</div>
-        </div>
-      </div>
-      <div class="fg"><label>Monto a pagar ($)</label><input type="number" id="ahorro-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Medio de pago</label>
-        <select id="ahorro-medio">
-          <option value="EFECTIVO">Efectivo</option>
-          <option value="TRANSF_MP">Transf. Mercado Pago</option>
-          <option value="TRANSF_FLEX">Transf. Prex Argentina</option>
-          <option value="TRANSF_ROSA">Transf. Rosa</option>
-          <option value="TRANSF_GABRIELA">Transf. Gabriela</option>
-          <option value="QR_MP">QR Mercado Pago</option>
-        </select>
-      </div>
-      <div class="fg"><label>Observaci&#243;n</label><input type="text" id="ahorro-obs" placeholder="Opcional"></div>
-      <div style="display:flex;gap:8px;margin-top:12px;">
-        <button class="btn btn-gold" style="flex:1;" onclick="guardarPagoAhorro()">OK Registrar Pago</button>
-        <button class="btn btn-ghost" onclick="cM('ovl-ahorro')">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
 </body>
 </html>`;
 }
@@ -4987,7 +4457,7 @@ function compartirReciboCreditoPDF(vid, cobroId) {
   if (!v) return;
   // Agregar info del cobro específico
   const cobro = v.cpData?.cobros?.find(c => c.id == cobroId);
-  const html = generarHTMLRecibo(v) + (cobro ? '<scr"+"ipt>document.querySelector(".footer").insertAdjacentHTML("beforebegin","<div class=\"box\" style=\"margin-top:12px;\"><div class=\"titulo\">Cobro registrado</div><div class=\"row\"><span>Fecha cobro</span><strong>' + fmtD(cobro.fecha) + '</strong></div><div class=\"row\"><span>Monto cobrado</span><strong>$' + fmt(cobro.monto) + '</strong></div></div>");<\/script>' : '');
+  const html = generarHTMLRecibo(v) + (cobro ? '<script>document.querySelector(".footer").insertAdjacentHTML("beforebegin","<div class=\"box\" style=\"margin-top:12px;\"><div class=\"titulo\">Cobro registrado</div><div class=\"row\"><span>Fecha cobro</span><strong>' + fmtD(cobro.fecha) + '</strong></div><div class=\"row\"><span>Monto cobrado</span><strong>$' + fmt(cobro.monto) + '</strong></div></div>");<\/script>' : '');
   const w = window.open('', '_blank');
   if (!w) { toast('Permiti&oacute; las ventanas emergentes'); return; }
   openPrintWindow(generarHTMLRecibo(v));
@@ -5223,5 +4693,4 @@ function abrirActualizarMontoPactado(vid) {
   </div>
 </div>
 </body>
-</htmlinput[type=text]{text-transform:uppercase;}
->
+</html>
