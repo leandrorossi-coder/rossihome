@@ -178,7 +178,20 @@ td{padding:9px 11px;vertical-align:middle;}
 .toast{position:fixed;bottom:16px;right:16px;background:var(--navy);color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:var(--sh2);transform:translateY(80px);opacity:0;transition:.3s;z-index:9999;border-left:3px solid var(--gold);}
 .toast.on{transform:translateY(0);opacity:1;}
 
-@media(max-width:560px){.r2,.r3{grid-template-columns:1fr;}.stats{grid-template-columns:1fr 1fr;}.page{padding:10px;}}
+@media(max-width:560px){
+  .r2,.r3{grid-template-columns:1fr;}
+  .stats{grid-template-columns:1fr 1fr;}
+  .page{padding:10px;}
+  .btn-row{flex-direction:column;}
+  .btn-row .btn{width:100%;text-align:center;}
+  table{font-size:11px;}
+  thead th{padding:6px 6px;}
+  td{padding:7px 6px;}
+  .cat-grid{grid-template-columns:1fr 1fr !important;}
+  .fab-calc{bottom:70px !important;}
+  .hdr{padding:0 10px;}
+  .tabs .tab{padding:9px 10px;font-size:10px;}
+}
 
 /* STOCK BADGES */
 .b-stock-ok{background:#e6f5ee;color:#1a7a4a;}
@@ -293,7 +306,6 @@ td{padding:9px 11px;vertical-align:middle;}
               <option value="LINK_MP">Link de Mercado Pago</option>
             </optgroup>
             <optgroup label=" Crédito Personal">
-              <option value="ANT2C">Anticipo + 2 cuotas (Lista)</option>
               <option value="AHORRO">Plan de Ahorro</option>
               <option value="CP2">Anticipo + CP 2 cuotas</option>
               <option value="CP3">Anticipo + CP 3 cuotas</option>
@@ -430,6 +442,18 @@ td{padding:9px 11px;vertical-align:middle;}
         </div>
       </div>
       <div class="fg"><label>Precio de venta ($)</label><input type="number" id="f-precio" placeholder="0" min="0" oninput="this.value=this.value.replace(',','.');recalc()"></div>
+      <div class="fg"><label>Descuento ($)</label><input type="number" id="f-descuento" placeholder="0" min="0" oninput="recalc()"></div>
+      <div class="r2">
+        <div class="fg"><label>Fecha entrega estimada</label><input type="date" id="f-fecha-entrega"></div>
+        <div class="fg"><label>Estado entrega</label>
+          <select id="f-estado-entrega">
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="camino">🚚 En camino</option>
+            <option value="entregado">✅ Entregado</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>N° Venta</label><input type="text" id="f-nro-venta" readonly style="background:var(--cream2);color:var(--muted);"></div>
       <input type="number" id="f-costo" style="display:none;" min="0">
       <div class="sec" style="margin-top:15px;">Datos del cliente</div>
       <div style="margin-bottom:10px;">
@@ -467,6 +491,15 @@ td{padding:9px 11px;vertical-align:middle;}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
       <div class="pills" id="pills-vend" style="margin-bottom:0;"></div>
       <div id="ventas-acciones" style="display:flex;gap:6px;"></div>
+    </div>
+    <div style="margin-bottom:8px;">
+      <input type="text" id="ventas-buscar" placeholder="🔍 Buscar por producto o cliente..." oninput="renderVentas()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
+    </div>
+    <div class="pills" id="pills-estado-entrega">
+      <button class="pill on" data-estado="TODOS" onclick="setFiltroEstadoEntrega('TODOS',this)">Todos</button>
+      <button class="pill" data-estado="pendiente" onclick="setFiltroEstadoEntrega('pendiente',this)">⏳ Pendiente</button>
+      <button class="pill" data-estado="camino" onclick="setFiltroEstadoEntrega('camino',this)">🚚 En camino</button>
+      <button class="pill" data-estado="entregado" onclick="setFiltroEstadoEntrega('entregado',this)">✅ Entregado</button>
     </div>
     <div class="stats" id="stats-ventas"></div>
     <div class="card">
@@ -756,6 +789,91 @@ td{padding:9px 11px;vertical-align:middle;}
     </div>
   </div>
 
+
+  <!-- PEDIDOS A PROVEEDORES -->
+  <div class="page" id="pg-pedidos">
+    <div class="card">
+      <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2>📦 Pedidos a Proveedores</h2>
+        <button class="btn btn-gold btn-sm" onclick="abrirNuevoPedido()">+ Nuevo Pedido</button>
+      </div>
+      <div class="cb">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <select id="ped-filtro-estado" onchange="renderPedidos()" style="flex:1;min-width:140px;">
+            <option value="TODOS">Todos los estados</option>
+            <option value="solicitado">Solicitado</option>
+            <option value="confirmado">Confirmado</option>
+            <option value="en_camino">En camino</option>
+            <option value="recibido">Recibido</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+          <input type="text" id="ped-filtro-prov" placeholder="Filtrar por proveedor..." oninput="renderPedidos()" style="flex:2;min-width:160px;padding:8px;border:1.5px solid var(--border);border-radius:9px;">
+        </div>
+        <div id="pedidos-lista"></div>
+        <div class="empty" id="empty-pedidos" style="display:none;"><div class="empty-ico">📦</div><p>Sin pedidos</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MI LOCAL -->
+  <div class="page" id="pg-milocal">
+    <div class="card">
+      <div class="ch"><h2>🏪 Mi Local</h2></div>
+      <div class="cb">
+        <div class="sec">Datos del local</div>
+        <div class="fg"><label>Nombre</label><input type="text" id="ml-nombre"></div>
+        <div class="r2">
+          <div class="fg"><label>Dirección</label><input type="text" id="ml-dir"></div>
+          <div class="fg"><label>Localidad</label><input type="text" id="ml-loc"></div>
+        </div>
+        <div class="r2">
+          <div class="fg"><label>Teléfono</label><input type="text" id="ml-tel"></div>
+          <div class="fg"><label>WhatsApp</label><input type="text" id="ml-wa"></div>
+        </div>
+        <div class="r2">
+          <div class="fg"><label>Instagram</label><input type="text" id="ml-ig"></div>
+          <div class="fg"><label>Horario de atención</label><input type="text" id="ml-horario"></div>
+        </div>
+        <div class="fg"><label>Google Maps (link)</label><input type="text" id="ml-maps" placeholder="https://maps.google.com/..."></div>
+        <button class="btn btn-gold" onclick="guardarMiLocal()">OK Guardar datos</button>
+
+        <div class="sec" style="margin-top:18px;">Fotos del local</div>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-block;">
+          + Agregar fotos
+          <input type="file" accept="image/*" multiple style="display:none;" onchange="agregarFotosLocal(event)">
+        </label>
+        <div class="foto-grid" id="ml-fotos-grid"></div>
+
+        <div class="sec" style="margin-top:18px;">Acciones</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-blue btn-sm" onclick="abrirMapsLocal()">📍 Abrir en Maps</button>
+          <button class="btn btn-gold btn-sm" onclick="generarPublicacionVisitanos()">📣 Generar Visitanos</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><h2>📋 Registro de actividad</h2></div>
+      <div class="cb">
+        <div id="activity-log-list" style="max-height:300px;overflow-y:auto;font-size:12px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><h2>💬 Plantillas WhatsApp</h2></div>
+      <div class="cb">
+        <div id="plantillas-wa-list"></div>
+        <button class="btn btn-gold btn-sm" style="margin-top:10px;" onclick="abrirNuevaPlantilla()">+ Nueva plantilla</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><h2>🎯 Metas del mes</h2></div>
+      <div class="cb">
+        <div id="metas-list"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- CLIENTES -->
   <div class="page" id="pg-clientes">
@@ -1102,6 +1220,139 @@ td{padding:9px 11px;vertical-align:middle;}
   <div class="modal"><div class="mh"><h3> Presupuesto</h3><span class="mx" onclick="cM('ovl-ver-pres')">X</span></div><div id="ver-pres-content"></div></div>
 </div>
 
+<!-- Floating calculator button -->
+<button id="fab-calc" onclick="abrirCalculadora()" title="Calculadora rápida" style="position:fixed;bottom:80px;left:16px;background:var(--gold);color:#fff;border:none;border-radius:50%;width:52px;height:52px;font-size:22px;cursor:pointer;box-shadow:var(--sh2);z-index:400;display:none;">💰</button>
+
+<!-- Modal Calculadora -->
+<div class="overlay" id="ovl-calc" onclick="cM('ovl-calc',event)">
+  <div class="modal" style="max-width:420px;">
+    <div class="mh"><h3>💰 Calculadora Rápida</h3><span class="mx" onclick="cM('ovl-calc')">X</span></div>
+    <div class="mb">
+      <div class="r2">
+        <div class="fg"><label>Costo ($)</label><input type="number" id="calc-costo" min="0" oninput="recalcCalc()"></div>
+        <div class="fg"><label>Margen %</label><input type="number" id="calc-margen" value="40" min="0" oninput="recalcCalc()"></div>
+      </div>
+      <div class="fg"><label>Cuotas CP</label>
+        <select id="calc-cuotas" onchange="recalcCalc()">
+          <option value="2">2</option><option value="3">3</option>
+          <option value="6" selected>6</option><option value="9">9</option><option value="12">12</option>
+        </select>
+      </div>
+      <div id="calc-result" class="ibox" style="margin-top:8px;font-size:13px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Pedido -->
+<div class="overlay" id="ovl-pedido" onclick="cM('ovl-pedido',event)">
+  <div class="modal" style="max-width:480px;">
+    <div class="mh"><h3 id="ped-titulo">Nuevo Pedido</h3><span class="mx" onclick="cM('ovl-pedido')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="ped-id">
+      <div class="r2">
+        <div class="fg"><label>Fecha</label><input type="date" id="ped-fecha"></div>
+        <div class="fg"><label>Estado</label>
+          <select id="ped-estado">
+            <option value="solicitado">Solicitado</option>
+            <option value="confirmado">Confirmado</option>
+            <option value="en_camino">En camino</option>
+            <option value="recibido">Recibido</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>Proveedor</label><input type="text" id="ped-prov"></div>
+      <div class="fg"><label>Producto</label><input type="text" id="ped-producto"></div>
+      <div class="r2">
+        <div class="fg"><label>Cantidad</label><input type="number" id="ped-cant" min="1" value="1"></div>
+        <div class="fg"><label>Precio unitario ($)</label><input type="number" id="ped-precio" min="0"></div>
+      </div>
+      <div class="fg"><label>Fecha estimada llegada</label><input type="date" id="ped-fecha-est"></div>
+      <div class="fg"><label>Notas</label><textarea id="ped-notas"></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-pedido')">Cancelar</button>
+        <button class="btn btn-gold" onclick="guardarPedido()">OK Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Plantilla WA -->
+<div class="overlay" id="ovl-plantilla" onclick="cM('ovl-plantilla',event)">
+  <div class="modal" style="max-width:460px;">
+    <div class="mh"><h3>💬 Plantilla WhatsApp</h3><span class="mx" onclick="cM('ovl-plantilla')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="pl-id">
+      <div class="fg"><label>Nombre</label><input type="text" id="pl-nombre"></div>
+      <div class="fg"><label>Texto (variables: {nombre}, {producto}, {precio}, {cuotas}, {valor_cuota})</label>
+        <textarea id="pl-texto" rows="4"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-plantilla')">Cancelar</button>
+        <button class="btn btn-gold" onclick="guardarPlantilla()">OK Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Arqueo de Caja -->
+<div class="overlay" id="ovl-arqueo" onclick="cM('ovl-arqueo',event)">
+  <div class="modal" style="max-width:420px;">
+    <div class="mh"><h3>🧮 Arqueo de Caja</h3><span class="mx" onclick="cM('ovl-arqueo')">X</span></div>
+    <div class="mb">
+      <div class="fg"><label>Caja</label>
+        <select id="arq-caja">
+          <option value="EFECTIVO">Efectivo</option>
+          <option value="MERCADO_PAGO">Mercado Pago</option>
+          <option value="FLEX">Prex Argentina</option>
+          <option value="GABRIELA">Gabriela González</option>
+          <option value="ROSA">Rosa Vallejo</option>
+          <option value="DOLORES">Dolores Heredia</option>
+        </select>
+      </div>
+      <div class="fg"><label>Saldo del sistema ($)</label><input type="text" id="arq-sistema" readonly style="background:var(--cream2);"></div>
+      <div class="fg"><label>Saldo contado real ($)</label><input type="number" id="arq-real" oninput="recalcArqueo()"></div>
+      <div class="fg"><label>Diferencia</label><input type="text" id="arq-dif" readonly style="background:var(--cream2);font-weight:700;"></div>
+      <div class="fg"><label>Notas</label><input type="text" id="arq-notas"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-arqueo')">Cancelar</button>
+        <button class="btn btn-gold" onclick="guardarArqueo()">OK Guardar arqueo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Meta -->
+<div class="overlay" id="ovl-meta" onclick="cM('ovl-meta',event)">
+  <div class="modal" style="max-width:380px;">
+    <div class="mh"><h3>🎯 Meta de vendedor</h3><span class="mx" onclick="cM('ovl-meta')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="meta-vend">
+      <div class="fg"><label>Vendedor</label><input type="text" id="meta-vend-label" readonly style="background:var(--cream2);"></div>
+      <div class="fg"><label>Monto meta ($)</label><input type="number" id="meta-monto" min="0"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-meta')">Cancelar</button>
+        <button class="btn btn-gold" onclick="guardarMeta()">OK Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Bulk Price Update -->
+<div class="overlay" id="ovl-bulkprice" onclick="cM('ovl-bulkprice',event)">
+  <div class="modal" style="max-width:380px;">
+    <div class="mh"><h3>+ % Actualizar precios</h3><span class="mx" onclick="cM('ovl-bulkprice')">X</span></div>
+    <div class="mb">
+      <div class="fg"><label>Proveedor (vacío = todos)</label><input type="text" id="bp-prov"></div>
+      <div class="fg"><label>% a aplicar</label><input type="number" id="bp-pct" value="10" step="0.1"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-bulkprice')">Cancelar</button>
+        <button class="btn btn-gold" onclick="aplicarBulkPrice()">OK Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 function openPrintWindow(htmlContent) {
   var blob = new Blob([htmlContent], {type: 'text/html; charset=utf-8'});
@@ -1255,14 +1506,15 @@ const USERS_DEFAULT = {
 
 // Tabs por rol
 const TABS_POR_ROL = {
-  admin:    ['venta','ventas','creditos','precios','catalogo','presupuestos','caja','reportes','liquidaciones','clientes','admin'],
-  local:    ['venta','ventas','creditos','precios','catalogo','presupuestos','caja','clientes'],
+  admin:    ['venta','ventas','creditos','precios','catalogo','presupuestos','caja','pedidos','reportes','liquidaciones','clientes','milocal','admin'],
+  local:    ['venta','ventas','creditos','precios','catalogo','presupuestos','caja','pedidos','clientes'],
   vendedor: ['venta','ventas'],
 };
 const TAB_LABELS = {
   venta:'+ Nueva Venta', ventas:' Ventas',
   creditos:' Créditos', precios:' Lista de Precios', catalogo:' Catálogo',
-  presupuestos:' Presupuestos', caja:' Caja', reportes:' Reportes', liquidaciones:' Liquidaciones', clientes:' Clientes', admin:' Admin'
+  presupuestos:' Presupuestos', caja:' Caja', reportes:' Reportes', liquidaciones:' Liquidaciones', clientes:' Clientes', admin:' Admin',
+  pedidos:' Pedidos', milocal:' Mi Local'
 };
 
 // ===
@@ -1283,6 +1535,36 @@ let editFotos   = []; // fotos temporales en el modal de producto
 let editFotoPrincipal = 0;
 let usuarioActual = null; // { nombre, rol }
 let catalogoView = 'grid'; // 'grid' | 'list'
+// === Nuevos estados ===
+let pedidos = [];
+let activityLog = [];
+let metas = {}; // { 'YYYY-MM': { vendedora: monto } }
+let plantillasWA = [];
+let miLocal = { nombre:'ROSSI HOME', dir:'Los Nogales 278, Barrio Olmo Viejo', loc:'Parada Robles', tel:'', wa:'+54 9 2323 478504', ig:'', horario:'Lunes a sábados 9:00 a 13:00 y 16:00 a 20:00', maps:'', fotos:[] };
+let configEmpresa = { ...miLocal };
+let arqueos = []; // {fecha, caja, sistema, real, dif, notas}
+let saldoInicialCaja = {}; // {caja: monto}
+let filtroEstadoEntrega = 'TODOS';
+let nroVentaCounter = 0;
+const SK_PEDIDOS='rh_ped_v1', SK_ACTIVIDAD='rh_act_v1', SK_METAS='rh_metas_v1', SK_PLANTILLAS='rh_plant_v1', SK_MILOCAL='rh_milocal_v1', SK_ARQUEOS='rh_arq_v1', SK_NROVENTA='rh_nroventa_v1';
+
+function obtenerProximoNroVenta(){
+  const max = ventas.reduce((m,v)=> Math.max(m, parseInt(v.nroVenta||0)||0), 0);
+  return Math.max(nroVentaCounter, max+1);
+}
+function logActividad(accion){
+  try{
+    activityLog.unshift({fecha:new Date().toISOString(), usuario: usuarioActual?.nombre||'?', accion});
+    if(activityLog.length>200) activityLog = activityLog.slice(0,200);
+    sSet(SK_ACTIVIDAD, activityLog);
+  }catch(e){}
+}
+function setFiltroEstadoEntrega(estado, btn){
+  filtroEstadoEntrega = estado;
+  document.querySelectorAll('#pills-estado-entrega .pill').forEach(p=>p.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  renderVentas();
+}
 
 // ===
 // STORAGE
@@ -1311,7 +1593,7 @@ function programarGuardado() {
 async function guardarEnScript() {
   try {
     mostrarSync('Guardando en Drive…', false);
-    const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, version:1 };
+    const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, version:2 };
     const resp = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action:'guardar', ...datos })
@@ -1345,6 +1627,14 @@ async function leerDeScript() {
     if (d.configLiq) configLiq = {...configLiq, ...d.configLiq};
     if (d.clientes && d.clientes.length > 0) clientes = d.clientes;
     if (d.categorias && d.categorias.length > 0) categorias = d.categorias;
+    if (d.pedidos) pedidos = d.pedidos;
+    if (d.activityLog) activityLog = d.activityLog;
+    if (d.metas) metas = d.metas;
+    if (d.plantillasWA) plantillasWA = d.plantillasWA;
+    if (d.miLocal) miLocal = {...miLocal, ...d.miLocal};
+    if (d.arqueos) arqueos = d.arqueos;
+    if (d.saldoInicialCaja) saldoInicialCaja = d.saldoInicialCaja;
+    if (d.nroVentaCounter) nroVentaCounter = d.nroVentaCounter;
     mostrarSync('OK Drive conectado', false);
     // Importar clientes de ventas existentes si el maestro esta vacio
     if (clientes.length === 0 && ventas.length > 0) {
@@ -1376,8 +1666,26 @@ async function cargarDatos() {
   const lq=await sGet(SK_LIQ); if(lq) liquidaciones=lq;
   const pb=await sGet(SK_PUB); if(pb) publicaciones=pb;
   const cl=await sGet(SK_CFGLIQ); if(cl) configLiq={...configLiq,...cl};
+  const pd=await sGet(SK_PEDIDOS); if(pd) pedidos=pd;
+  const al=await sGet(SK_ACTIVIDAD); if(al) activityLog=al;
+  const mt=await sGet(SK_METAS); if(mt) metas=mt;
+  const pl=await sGet(SK_PLANTILLAS); if(pl&&pl.length) plantillasWA=pl;
+  const ml=await sGet(SK_MILOCAL); if(ml) miLocal={...miLocal,...ml};
+  const aq=await sGet(SK_ARQUEOS); if(aq) arqueos=aq;
+  const nv=await sGet(SK_NROVENTA); if(nv) nroVentaCounter=nv;
   // Leer de Drive (fuente de verdad)
   await leerDeScript();
+  // Cargar plantillas por defecto si vacío
+  if(!plantillasWA||!plantillasWA.length){ plantillasWA = plantillasDefault(); sSet(SK_PLANTILLAS, plantillasWA); }
+}
+function plantillasDefault(){
+  return [
+    {id:1, nombre:'Consulta precio', texto:'Hola {nombre}! El precio de {producto} es ${precio} al contado.'},
+    {id:2, nombre:'Presupuesto cuotas', texto:'Hola {nombre}! {producto}: ${precio} contado o {cuotas} cuotas de ${valor_cuota}.'},
+    {id:3, nombre:'Recordatorio cuota', texto:'Hola {nombre}, te recordamos que tenés una cuota de ${precio} pendiente.'},
+    {id:4, nombre:'Confirmación venta', texto:'Hola {nombre}! Confirmamos tu compra de {producto} por ${precio}.'},
+    {id:5, nombre:'Consulta disponibilidad', texto:'Hola {nombre}! {producto} está disponible. ¿Te interesa?'}
+  ];
 }
 
 // ===
@@ -1514,6 +1822,10 @@ function iniciarApp() {
 
   renderPills();
   renderVentas();
+  // Mostrar botón flotante calculadora
+  const fab = document.getElementById('fab-calc'); if(fab) fab.style.display='block';
+  // Inicializar nro de venta
+  const nv = document.getElementById('f-nro-venta'); if(nv) nv.value = obtenerProximoNroVenta();
 }
 
 // ===
@@ -1535,6 +1847,8 @@ function goTab(n) {
   if (n==='liquidaciones')   renderLiquidaciones();
   if (n==='clientes')        renderClientes();
   if (n==='admin')         renderAdmin();
+  if (n==='pedidos')       renderPedidos();
+  if (n==='milocal')       renderMiLocal();
 }
 
 // ===
@@ -1635,10 +1949,12 @@ function onCuotaManual() {
 
 function recalc() {
   const p      = document.getElementById('f-pago').value;
-  const precio = parseFloat(document.getElementById('f-precio').value)||0;
-  if (isTC(p) && p!=='TC1' && precio>0) {
-    const n=TC_N[p],r=TC_RC[p],total=Math.round(precio*r),cuota=Math.round(total/n);
-    document.getElementById('tc-info').innerHTML=`${n} cuotas de <strong>$${fmt(cuota)}</strong> — Total: $${fmt(total)}`;
+  let precio   = parseFloat(document.getElementById('f-precio').value)||0;
+  const desc   = parseFloat(document.getElementById('f-descuento')?.value)||0;
+  const precioNeto = Math.max(0, precio - desc);
+  if (isTC(p) && p!=='TC1' && precioNeto>0) {
+    const n=TC_N[p],r=TC_RC[p],total=Math.round(precioNeto*r),cuota=Math.round(total/n);
+    document.getElementById('tc-info').innerHTML=`${n} cuotas de <strong>$${fmt(cuota)}</strong> — Total: $${fmt(total)}${desc>0?` (con descuento $${fmt(desc)})`:''}`;
     document.getElementById('blk-tc').style.display='block';
   } else { document.getElementById('blk-tc').style.display='none'; }
 }
@@ -1695,8 +2011,17 @@ async function guardar() {
   const pago = esMixto && pagosVenta.length > 0 ? (pagosVenta.length===1 ? pagosVenta[0].pago : 'MIXTO') : pagoSimple;
   const pagosDetalle = esMixto && pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precio, label: PAGO_LBL[pagoSimple]||pagoSimple}];
 
+  const descuento = parseFloat(document.getElementById('f-descuento')?.value)||0;
+  const fechaEntrega = document.getElementById('f-fecha-entrega')?.value||'';
+  const estadoEntrega = document.getElementById('f-estado-entrega')?.value||'pendiente';
+  const precioFinal = Math.max(0, precio - descuento);
+  // nroVenta autoincrement
+  if (typeof nroVentaCounter === 'undefined') { nroVentaCounter = obtenerProximoNroVenta(); }
+  const nroVenta = document.getElementById('f-nro-venta')?.value || nroVentaCounter;
+
   const base = {
-    fecha,vendedora:vend,producto:prod,precio,costo,pago,
+    fecha,vendedora:vend,producto:prod,precio:precioFinal,precioBruto:precio,descuento,costo,pago,
+    nroVenta, fechaEntrega, estadoEntrega,
     apellido:document.getElementById('f-apellido').value.trim(),
     nombre:  document.getElementById('f-nombre').value.trim(),
     dni:     document.getElementById('f-dni').value.trim(),
@@ -1704,8 +2029,8 @@ async function guardar() {
     dir:     document.getElementById('f-dir').value.trim(),
     obs:     document.getElementById('f-obs').value.trim(),
     pagosDetalle,
-    estado:  'pendiente',
-    ahorroData: pago==='AHORRO' ? {montoFinal: parseFloat(document.getElementById('ahorro-monto-pactado').value)||precio, pagos: []} : undefined,
+    estado:  estadoEntrega,
+    ahorroData: pago==='AHORRO' ? {montoFinal: parseFloat(document.getElementById('ahorro-monto-pactado')?.value)||precioFinal, pagos: []} : undefined,
     cuotasPagadas:{}
   };
 
@@ -1738,13 +2063,16 @@ async function guardar() {
     editVentaId=null;
     document.getElementById('frm-titulo').textContent='🛒 Nueva Venta';
     document.getElementById('btn-guardar').textContent='OK Guardar Venta';
+    logActividad('Editó venta #'+(base.nroVenta||''));
     toast('OK Venta actualizada');
   } else {
     const nuevaVenta = {id:Date.now(),...base};
     ventas.unshift(nuevaVenta);
+    nroVentaCounter = (parseInt(nroVenta)||0) + 1;
     actualizarMaestroClientes(nuevaVenta);
     guardarClientes();
-    toast('OK Venta guardada');
+    logActividad('Nueva venta #'+nroVenta+' — $'+fmt(precioFinal));
+    toast('OK Venta guardada #'+nroVenta);
   }
   await guardarVentas();
   limpiar();
@@ -1755,12 +2083,14 @@ function limpiar() {
   editVentaId=null;
   document.getElementById('frm-titulo').textContent='🛒 Nueva Venta';
   document.getElementById('btn-guardar').textContent='OK Guardar Venta';
-  ['f-fecha','f-pago','f-prod','f-precio','f-costo',
+  ['f-fecha','f-pago','f-prod','f-precio','f-costo','f-descuento','f-fecha-entrega',
    'cp-lista','cp-ant','cp-fecha-ant','cp-fecha1',
    'f-apellido','f-nombre','f-dni','f-tel','f-dir','f-obs'].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
     if(id==='f-fecha') el.value=hoy(); else el.value='';
   });
+  const ee=document.getElementById('f-estado-entrega'); if(ee)ee.value='pendiente';
+  const nv=document.getElementById('f-nro-venta'); if(nv) nv.value=obtenerProximoNroVenta();
   // Restaurar vendedor al usuario actual
   if(usuarioActual) {
     const sel=document.getElementById('f-vend');
@@ -1830,8 +2160,10 @@ async function marcarCuota(vid,idx,pagar) {
 async function eliminarVenta(id) {
   if(!esAdmin()){toast('Sin permiso');return;}
   if(!confirm('¿Eliminás esta venta?'))return;
+  const vd=ventas.find(v=>v.id===id);
   ventas=ventas.filter(v=>v.id!==id);
   await guardarVentas(); cM('ovl-det'); renderPills(); renderVentas(); renderCreditos();
+  logActividad('Eliminó venta '+(vd?'#'+(vd.nroVenta||'')+' '+(vd.producto||''):''));
   toast('Venta eliminada');
 }
 
@@ -4895,6 +5227,788 @@ function abrirActualizarMontoPactado(vid) {
   v.ahorroData.montoFinal = parseFloat(nuevo);
   guardarVentas().then(() => { renderCreditos(); toast('OK Monto actualizado'); });
 }
+
+// ════════════════════════════════════════════════════════════
+// MEJORAS — Calculadora, Pedidos, Mi Local, Plantillas, etc.
+// ════════════════════════════════════════════════════════════
+
+// ── Calculadora rápida ──
+function abrirCalculadora(){
+  document.getElementById('ovl-calc').classList.add('on');
+  recalcCalc();
+}
+function recalcCalc(){
+  const costo = parseFloat(document.getElementById('calc-costo').value)||0;
+  const margen = parseFloat(document.getElementById('calc-margen').value)||40;
+  const n = parseInt(document.getElementById('calc-cuotas').value)||6;
+  if(!costo){ document.getElementById('calc-result').innerHTML='Ingresá un costo'; return; }
+  const contado = Math.round(costo*(1+margen/100));
+  const tc = Math.round(contado*1.15);
+  const anticipo = Math.round(contado*0.5);
+  const cpRC = CP_RC['CP'+n] || (1 + 0.07*n);
+  const totalCP = Math.round(contado*cpRC);
+  const cuotaCP = Math.round((totalCP-anticipo)/n);
+  document.getElementById('calc-result').innerHTML = `
+    <div><strong>Contado:</strong> $${fmt(contado)}</div>
+    <div><strong>TC (+15%):</strong> $${fmt(tc)}</div>
+    <div><strong>CP anticipo (50%):</strong> $${fmt(anticipo)}</div>
+    <div><strong>Cuota CP ${n}x:</strong> $${fmt(cuotaCP)}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px;">Total CP: $${fmt(totalCP)}</div>`;
+}
+
+// ── Pedidos a proveedores ──
+async function guardarPedidosData(){ await sSet(SK_PEDIDOS, pedidos); programarGuardado(); }
+function abrirNuevoPedido(){
+  document.getElementById('ped-titulo').textContent='Nuevo Pedido';
+  document.getElementById('ped-id').value='';
+  document.getElementById('ped-fecha').value=hoy();
+  document.getElementById('ped-estado').value='solicitado';
+  ['ped-prov','ped-producto','ped-cant','ped-precio','ped-fecha-est','ped-notas'].forEach(id=>{const e=document.getElementById(id); if(e&&id!=='ped-cant')e.value=''; });
+  document.getElementById('ped-cant').value=1;
+  document.getElementById('ovl-pedido').classList.add('on');
+}
+function editarPedido(id){
+  const p = pedidos.find(x=>x.id===id); if(!p) return;
+  document.getElementById('ped-titulo').textContent='Editar Pedido';
+  document.getElementById('ped-id').value=p.id;
+  document.getElementById('ped-fecha').value=p.fecha||hoy();
+  document.getElementById('ped-estado').value=p.estado||'solicitado';
+  document.getElementById('ped-prov').value=p.proveedor||'';
+  document.getElementById('ped-producto').value=p.producto||'';
+  document.getElementById('ped-cant').value=p.cantidad||1;
+  document.getElementById('ped-precio').value=p.precioUnit||0;
+  document.getElementById('ped-fecha-est').value=p.fechaEstimada||'';
+  document.getElementById('ped-notas').value=p.notas||'';
+  document.getElementById('ovl-pedido').classList.add('on');
+}
+async function guardarPedido(){
+  const id = document.getElementById('ped-id').value;
+  const data = {
+    id: id?parseInt(id):Date.now(),
+    fecha: document.getElementById('ped-fecha').value||hoy(),
+    proveedor: document.getElementById('ped-prov').value.trim(),
+    producto: document.getElementById('ped-producto').value.trim(),
+    cantidad: parseInt(document.getElementById('ped-cant').value)||1,
+    precioUnit: parseFloat(document.getElementById('ped-precio').value)||0,
+    estado: document.getElementById('ped-estado').value,
+    fechaEstimada: document.getElementById('ped-fecha-est').value||'',
+    notas: document.getElementById('ped-notas').value||''
+  };
+  if(!data.producto){ toast('Ingresá producto'); return; }
+  if(id){ const i=pedidos.findIndex(p=>p.id==id); if(i>=0)pedidos[i]=data; }
+  else pedidos.unshift(data);
+  await guardarPedidosData();
+  cM('ovl-pedido'); renderPedidos();
+  logActividad('Pedido '+(id?'editado':'creado')+': '+data.producto);
+  toast('OK Pedido guardado');
+}
+async function eliminarPedido(id){
+  if(!confirm('¿Eliminar este pedido?')) return;
+  pedidos = pedidos.filter(p=>p.id!==id);
+  await guardarPedidosData(); renderPedidos(); toast('Pedido eliminado');
+}
+async function cambiarEstadoPedido(id, estado){
+  const p = pedidos.find(x=>x.id===id); if(!p) return;
+  p.estado = estado;
+  await guardarPedidosData(); renderPedidos();
+  logActividad('Pedido '+p.producto+' → '+estado);
+  toast('Estado actualizado');
+}
+function renderPedidos(){
+  const fEst = document.getElementById('ped-filtro-estado').value;
+  const fProv = (document.getElementById('ped-filtro-prov').value||'').toLowerCase();
+  let lista = pedidos;
+  if(fEst!=='TODOS') lista = lista.filter(p=>p.estado===fEst);
+  if(fProv) lista = lista.filter(p=>(p.proveedor||'').toLowerCase().includes(fProv));
+  const cont = document.getElementById('pedidos-lista');
+  const empty = document.getElementById('empty-pedidos');
+  if(!lista.length){ cont.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  const colors = {solicitado:'#6e7a8a',confirmado:'#1a5fb4',en_camino:'#c07a00',recibido:'#1a7a4a',cancelado:'#b02020'};
+  const labels = {solicitado:'Solicitado',confirmado:'Confirmado',en_camino:'En camino',recibido:'Recibido',cancelado:'Cancelado'};
+  cont.innerHTML = lista.map(p=>{
+    const total = (p.cantidad||1)*(p.precioUnit||0);
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;border-left:4px solid ${colors[p.estado]||'#999'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <div style="font-weight:600;">${p.producto}</div>
+          <div style="font-size:12px;color:var(--muted);">${p.proveedor||'—'} · ${p.cantidad}u × $${fmt(p.precioUnit)} = <strong>$${fmt(total)}</strong></div>
+          <div style="font-size:11px;color:var(--muted);">${fmtD(p.fecha)}${p.fechaEstimada?' → '+fmtD(p.fechaEstimada):''}</div>
+          ${p.notas?`<div style="font-size:11px;color:var(--muted);font-style:italic;">${p.notas}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+          <span class="badge" style="background:${colors[p.estado]};color:#fff;">${labels[p.estado]}</span>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            ${p.estado!=='recibido'?`<button class="btn btn-green btn-sm" onclick="cambiarEstadoPedido(${p.id},'recibido')">Recibido</button>`:''}
+            <button class="btn btn-blue btn-sm" onclick="editarPedido(${p.id})">Ed</button>
+            ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarPedido(${p.id})">X</button>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Mi Local ──
+async function guardarMiLocal(){
+  miLocal.nombre = document.getElementById('ml-nombre').value;
+  miLocal.dir = document.getElementById('ml-dir').value;
+  miLocal.loc = document.getElementById('ml-loc').value;
+  miLocal.tel = document.getElementById('ml-tel').value;
+  miLocal.wa = document.getElementById('ml-wa').value;
+  miLocal.ig = document.getElementById('ml-ig').value;
+  miLocal.horario = document.getElementById('ml-horario').value;
+  miLocal.maps = document.getElementById('ml-maps').value;
+  await sSet(SK_MILOCAL, miLocal);
+  programarGuardado();
+  toast('OK Datos guardados');
+}
+function agregarFotosLocal(event){
+  const files = event.target.files; if(!files||!files.length) return;
+  let pending = files.length;
+  for(let i=0;i<files.length;i++){
+    comprimirImagen(files[i], dataUrl=>{
+      (miLocal.fotos = miLocal.fotos||[]).push(dataUrl);
+      if(--pending===0){ renderFotosLocal(); sSet(SK_MILOCAL, miLocal); programarGuardado(); }
+    });
+  }
+  event.target.value='';
+}
+function borrarFotoLocal(i){
+  miLocal.fotos.splice(i,1); renderFotosLocal();
+  sSet(SK_MILOCAL, miLocal); programarGuardado();
+}
+function renderFotosLocal(){
+  const grid = document.getElementById('ml-fotos-grid'); if(!grid) return;
+  grid.innerHTML = (miLocal.fotos||[]).map((f,i)=>`<div class="foto-thumb"><img src="${f}"><button class="ft-del" onclick="borrarFotoLocal(${i})">X</button></div>`).join('');
+}
+function abrirMapsLocal(){
+  if(miLocal.maps){ window.open(miLocal.maps,'_blank'); }
+  else toast('Sin link de Maps');
+}
+function generarPublicacionVisitanos(){
+  const txt = `🏪 ${miLocal.nombre}\n📍 ${miLocal.dir}, ${miLocal.loc}\n⏰ ${miLocal.horario}\n📞 ${miLocal.wa}\n\n¡Visitanos!`;
+  navigator.clipboard?.writeText(txt);
+  toast('📋 Texto copiado al portapapeles');
+}
+function renderMiLocal(){
+  if(!esAdmin()) return;
+  document.getElementById('ml-nombre').value = miLocal.nombre||'';
+  document.getElementById('ml-dir').value = miLocal.dir||'';
+  document.getElementById('ml-loc').value = miLocal.loc||'';
+  document.getElementById('ml-tel').value = miLocal.tel||'';
+  document.getElementById('ml-wa').value = miLocal.wa||'';
+  document.getElementById('ml-ig').value = miLocal.ig||'';
+  document.getElementById('ml-horario').value = miLocal.horario||'';
+  document.getElementById('ml-maps').value = miLocal.maps||'';
+  renderFotosLocal();
+  renderActivityLog();
+  renderPlantillas();
+  renderMetas();
+}
+function renderActivityLog(){
+  const el = document.getElementById('activity-log-list'); if(!el) return;
+  if(!activityLog.length){ el.innerHTML='<div style="color:var(--muted);padding:10px;">Sin actividad registrada</div>'; return; }
+  el.innerHTML = activityLog.slice(0,50).map(a=>{
+    const f = new Date(a.fecha).toLocaleString('es-AR');
+    return `<div style="padding:6px 8px;border-bottom:1px solid var(--border);"><strong>${a.usuario}</strong> · ${a.accion}<div style="font-size:10px;color:var(--muted);">${f}</div></div>`;
+  }).join('');
+}
+
+// ── Plantillas WhatsApp ──
+async function guardarPlantillasData(){ await sSet(SK_PLANTILLAS, plantillasWA); programarGuardado(); }
+function abrirNuevaPlantilla(){
+  document.getElementById('pl-id').value='';
+  document.getElementById('pl-nombre').value='';
+  document.getElementById('pl-texto').value='';
+  document.getElementById('ovl-plantilla').classList.add('on');
+}
+function editarPlantilla(id){
+  const p = plantillasWA.find(x=>x.id===id); if(!p) return;
+  document.getElementById('pl-id').value=p.id;
+  document.getElementById('pl-nombre').value=p.nombre;
+  document.getElementById('pl-texto').value=p.texto;
+  document.getElementById('ovl-plantilla').classList.add('on');
+}
+async function guardarPlantilla(){
+  const id = document.getElementById('pl-id').value;
+  const nombre = document.getElementById('pl-nombre').value.trim();
+  const texto = document.getElementById('pl-texto').value.trim();
+  if(!nombre||!texto){ toast('Completá nombre y texto'); return; }
+  if(id){ const i=plantillasWA.findIndex(p=>p.id==id); if(i>=0)plantillasWA[i]={id:parseInt(id),nombre,texto}; }
+  else plantillasWA.push({id:Date.now(),nombre,texto});
+  await guardarPlantillasData(); cM('ovl-plantilla'); renderPlantillas(); toast('OK Plantilla guardada');
+}
+async function eliminarPlantilla(id){
+  if(!confirm('¿Eliminar plantilla?')) return;
+  plantillasWA = plantillasWA.filter(p=>p.id!==id);
+  await guardarPlantillasData(); renderPlantillas();
+}
+function copiarPlantilla(id){
+  const p = plantillasWA.find(x=>x.id===id); if(!p) return;
+  navigator.clipboard?.writeText(p.texto);
+  toast('📋 Plantilla copiada');
+}
+function renderPlantillas(){
+  const el = document.getElementById('plantillas-wa-list'); if(!el) return;
+  if(!plantillasWA.length){ el.innerHTML='<div style="color:var(--muted);">Sin plantillas</div>'; return; }
+  el.innerHTML = plantillasWA.map(p=>`
+    <div style="background:var(--cream2);border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+        <strong>${p.nombre}</strong>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-sm" onclick="copiarPlantilla(${p.id})">Copiar</button>
+          <button class="btn btn-blue btn-sm" onclick="editarPlantilla(${p.id})">Ed</button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarPlantilla(${p.id})">X</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;white-space:pre-wrap;">${p.texto}</div>
+    </div>`).join('');
+}
+
+// ── Metas ──
+function mesActual(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function abrirMeta(vend){
+  document.getElementById('meta-vend').value = vend;
+  document.getElementById('meta-vend-label').value = vend;
+  const m = mesActual();
+  document.getElementById('meta-monto').value = (metas[m]&&metas[m][vend])||0;
+  document.getElementById('ovl-meta').classList.add('on');
+}
+async function guardarMeta(){
+  const vend = document.getElementById('meta-vend').value;
+  const monto = parseFloat(document.getElementById('meta-monto').value)||0;
+  const m = mesActual();
+  if(!metas[m]) metas[m] = {};
+  metas[m][vend] = monto;
+  await sSet(SK_METAS, metas); programarGuardado();
+  cM('ovl-meta'); renderMetas(); toast('OK Meta guardada');
+}
+function renderMetas(){
+  const el = document.getElementById('metas-list'); if(!el) return;
+  const m = mesActual();
+  const vendedoras = ['CAROLINA','SUSANA','ROCIO','ORIANA','STELLA','ADRIAN','VALENTINO','CECILIA','ROMINA','LOCAL PARADA ROBLES'];
+  const mesNum = m;
+  el.innerHTML = vendedoras.map(v=>{
+    const meta = (metas[mesNum]&&metas[mesNum][v])||0;
+    const vendido = ventas.filter(x=>x.vendedora===v && (x.fecha||'').startsWith(mesNum)).reduce((s,x)=>s+(x.precio||0),0);
+    const pct = meta?Math.min(100,Math.round(vendido/meta*100)):0;
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+        <strong>${v}</strong>
+        <span>$${fmt(vendido)} / $${fmt(meta)} (${pct}%)</span>
+      </div>
+      <div style="background:var(--cream2);border-radius:6px;height:12px;overflow:hidden;">
+        <div style="background:var(--gold);height:100%;width:${pct}%;transition:.3s;"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:4px;font-size:10px;" onclick="abrirMeta('${v}')">Editar meta</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Arqueo de caja ──
+function abrirArqueo(){
+  document.getElementById('arq-caja').value='EFECTIVO';
+  document.getElementById('arq-real').value='';
+  document.getElementById('arq-notas').value='';
+  actualizarArqueoSistema();
+  document.getElementById('ovl-arqueo').classList.add('on');
+}
+function actualizarArqueoSistema(){
+  try{
+    const caja = document.getElementById('arq-caja').value;
+    const saldos = saldosCaja();
+    const s = saldos[caja]||0;
+    document.getElementById('arq-sistema').value = '$'+fmt(s);
+    recalcArqueo();
+  }catch(e){}
+}
+function recalcArqueo(){
+  const caja = document.getElementById('arq-caja').value;
+  const sis = (saldosCaja()[caja]||0);
+  const real = parseFloat(document.getElementById('arq-real').value)||0;
+  const dif = real - sis;
+  const el = document.getElementById('arq-dif');
+  el.value = (dif>=0?'+':'')+'$'+fmt(dif);
+  el.style.color = dif===0?'var(--green)':(dif>0?'var(--orange)':'var(--red)');
+}
+async function guardarArqueo(){
+  const caja = document.getElementById('arq-caja').value;
+  const sistema = saldosCaja()[caja]||0;
+  const real = parseFloat(document.getElementById('arq-real').value)||0;
+  arqueos.unshift({fecha:hoy(), caja, sistema, real, dif:real-sistema, notas:document.getElementById('arq-notas').value});
+  await sSet(SK_ARQUEOS, arqueos); programarGuardado();
+  cM('ovl-arqueo'); logActividad('Arqueo de '+caja+' dif:$'+fmt(real-sistema));
+  toast('OK Arqueo registrado');
+}
+
+// ── Bulk price update ──
+function abrirBulkPrice(){
+  document.getElementById('bp-prov').value='';
+  document.getElementById('bp-pct').value=10;
+  document.getElementById('ovl-bulkprice').classList.add('on');
+}
+async function aplicarBulkPrice(){
+  const prov = (document.getElementById('bp-prov').value||'').toLowerCase().trim();
+  const pct = parseFloat(document.getElementById('bp-pct').value)||0;
+  if(!pct){ toast('Ingresá un %'); return; }
+  let n=0;
+  productos.forEach(p=>{
+    if(!prov || (p.proveedor||'').toLowerCase().includes(prov)){
+      p.precio = Math.round((p.precio||0)*(1+pct/100));
+      n++;
+    }
+  });
+  await guardarProds(); cM('ovl-bulkprice'); renderPrecios();
+  logActividad('Actualizó precios +'+pct+'% ('+n+' prod)');
+  toast(`OK ${n} productos actualizados`);
+}
+
+// ── Exportar lista de precios CSV ──
+function exportarListaPrecios(){
+  if(!productos.length){ toast('Sin productos'); return; }
+  const h=['Producto','Proveedor','Categoria','Costo','Contado','TC','Margen%'];
+  const rows = productos.map(p=>{
+    const contado = Math.round((p.precio||0)*0.9);
+    const margen = (p.costo>0 && p.precio>0) ? Math.round((p.precio-p.costo)/p.precio*100) : '';
+    return [`"${(p.nombre||'').replace(/"/g,'""')}"`, p.proveedor||'', p.categoria||'', p.costo||0, contado, p.precio||0, margen].join(';');
+  });
+  const csv='﻿'+h.join(';')+'\n'+rows.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`RossiHome_ListaPrecios_${hoy()}.csv`;
+  a.click(); toast('OK Lista exportada');
+}
+
+// ── Exportar ventas CSV (filtered) ──
+function exportarVentasCSV(){
+  const lista = ventasFiltradasActuales();
+  if(!lista.length){ toast('Sin ventas'); return; }
+  const h=['NroVenta','Fecha','Vendedor','Producto','Precio','Descuento','Pago','Cliente','EstadoEntrega','FechaEntrega'];
+  const rows = lista.map(v=>[v.nroVenta||'',v.fecha,v.vendedora,`"${(v.producto||'').replace(/"/g,'""')}"`,v.precio,v.descuento||0,PAGO_LBL[v.pago]||v.pago,cliNom(v),v.estadoEntrega||'',v.fechaEntrega||''].join(';'));
+  const csv='﻿'+h.join(';')+'\n'+rows.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`RossiHome_Ventas_${hoy()}.csv`;
+  a.click(); toast('OK CSV exportado');
+}
+function ventasFiltradasActuales(){
+  const { rol, nombre } = usuarioActual;
+  let lista;
+  if(rol===ROLES.VENDEDOR) lista=ventas.filter(v=>v.vendedora===nombre);
+  else if(rol===ROLES.LOCAL){ const b=ventas.filter(v=>v.vendedora!=='DISTRIBUIDORA'); lista=filtroVend==='TODAS'?b:b.filter(v=>v.vendedora===filtroVend); }
+  else lista=filtroVend==='TODAS'?ventas:ventas.filter(v=>v.vendedora===filtroVend);
+  if(filtroEstadoEntrega && filtroEstadoEntrega!=='TODOS') lista = lista.filter(v=>(v.estadoEntrega||'pendiente')===filtroEstadoEntrega);
+  const q = (document.getElementById('ventas-buscar')?.value||'').toLowerCase();
+  if(q) lista = lista.filter(v=> (v.producto||'').toLowerCase().includes(q) || cliNom(v).toLowerCase().includes(q));
+  return lista;
+}
+
+// ── Cambiar estado de entrega ciclo ──
+async function ciclarEstadoEntrega(id){
+  const v = ventas.find(x=>x.id===id); if(!v) return;
+  const ord = ['pendiente','camino','entregado'];
+  const cur = v.estadoEntrega||'pendiente';
+  v.estadoEntrega = ord[(ord.indexOf(cur)+1)%ord.length];
+  await guardarVentas(); renderVentas();
+  logActividad('Venta #'+(v.nroVenta||v.id)+' → '+v.estadoEntrega);
+}
+
+// ── WhatsApp helper ──
+function waUrl(tel, msg){
+  const t = (tel||'').replace(/\D/g,'');
+  return `https://wa.me/549${t}?text=${encodeURIComponent(msg||'')}`;
+}
+function waCliente(tel, msg){
+  if(!tel){ toast('Sin teléfono'); return; }
+  window.open(waUrl(tel,msg), '_blank');
+}
+function waRecordatorioMora(vid, idx){
+  const v = ventas.find(x=>x.id===vid); if(!v||!v.cpData) return;
+  const cp = v.cpData;
+  const monto = cp.cuota;
+  const fechas = buildFechasCuotas(cp);
+  const msg = `Hola ${cliNom(v)}, te recordamos la cuota ${idx+1}/${cp.nCuotas} de $${fmt(monto)} (vencida el ${fmtD(fechas[idx])}). ${miLocal.nombre||'Rossi Home'}`;
+  waCliente(v.tel, msg);
+}
+
+// ── Exportar morosos ──
+function exportarMorosos(){
+  const h = hoy();
+  const filas = [];
+  ventas.forEach(v=>{
+    if(!v.cpData) return;
+    const cp = v.cpData;
+    const fechas = buildFechasCuotas(cp);
+    fechas.forEach((f,i)=>{
+      const est = estadoCuotaCP(cp, i);
+      if(est==='vencida'){
+        const dias = difD(h, f);
+        filas.push([cliNom(v), v.tel||'', v.producto, i+1, cp.cuota, f, dias].join(';'));
+      }
+    });
+  });
+  if(!filas.length){ toast('Sin morosos'); return; }
+  const csv = '﻿'+'Cliente;Tel;Producto;NroCuota;Monto;Vencimiento;DiasMora\n'+filas.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`RossiHome_Morosos_${hoy()}.csv`;
+  a.click(); toast('OK '+filas.length+' morosos exportados');
+}
+
+// ── Override renderVentas to apply filters and add row delete + change status ──
+const _renderVentasOrig = renderVentas;
+renderVentas = function(){
+  if(!usuarioActual)return;
+  const { rol, nombre } = usuarioActual;
+  let lista;
+  if(rol===ROLES.VENDEDOR){ lista=ventas.filter(v=>v.vendedora===nombre); }
+  else if(rol===ROLES.LOCAL){
+    const base=ventas.filter(v=>v.vendedora!=='DISTRIBUIDORA');
+    lista=filtroVend==='TODAS'?base:base.filter(v=>v.vendedora===filtroVend);
+  } else {
+    lista=filtroVend==='TODAS'?ventas:ventas.filter(v=>v.vendedora===filtroVend);
+  }
+  if(filtroEstadoEntrega && filtroEstadoEntrega!=='TODOS') lista = lista.filter(v=>(v.estadoEntrega||'pendiente')===filtroEstadoEntrega);
+  const q = (document.getElementById('ventas-buscar')?.value||'').toLowerCase();
+  if(q) lista = lista.filter(v=> (v.producto||'').toLowerCase().includes(q) || cliNom(v).toLowerCase().includes(q));
+  lista = [...lista].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+  document.getElementById('cnt-ventas').textContent=`${lista.length} registros`;
+
+  const total = lista.reduce((s,v)=>s+(v.precio||0),0);
+  if(esAdmin()){
+    document.getElementById('stats-ventas').innerHTML=`
+      <div class="stat"><div class="stat-l">Total ventas</div><div class="stat-v">${lista.length}</div></div>
+      <div class="stat"><div class="stat-l">Facturado período</div><div class="stat-v" style="font-size:15px;">$${fmt(total)}</div></div>`;
+  } else {
+    document.getElementById('stats-ventas').innerHTML=`
+      <div class="stat"><div class="stat-l">Mis ventas</div><div class="stat-v">${lista.length}</div></div>
+      <div class="stat"><div class="stat-l">Total período</div><div class="stat-v" style="font-size:15px;">$${fmt(total)}</div></div>`;
+  }
+
+  const tbody=document.getElementById('tbody-ventas');
+  if(!lista.length){ tbody.innerHTML=''; document.getElementById('empty-ventas').style.display='block'; return; }
+  document.getElementById('empty-ventas').style.display='none';
+
+  // Asegurar botón CSV en acciones
+  const accs = document.getElementById('ventas-acciones');
+  if(accs && !document.getElementById('btn-export-csv-ventas')){
+    accs.insertAdjacentHTML('beforeend', `<button id="btn-export-csv-ventas" class="btn btn-ghost btn-sm" onclick="exportarVentasCSV()">⬇ CSV</button>`);
+  }
+
+  const estLabel = {pendiente:'⏳',camino:'🚚',entregado:'✅'};
+  tbody.innerHTML=lista.map((v,i)=>{
+    const cuotas=buildCuotas(v),pend=cuotas.filter(c=>!c.pagada).length;
+    const puedeEditar=esLocal();
+    const ee = v.estadoEntrega||'pendiente';
+    return`<tr>
+      <td style="color:var(--muted);font-size:11px;">${v.nroVenta||(lista.length-i)}</td>
+      <td style="white-space:nowrap;font-size:12px;">${fmtD(v.fecha)}</td>
+      <td style="font-size:12px;">${v.vendedora}</td>
+      <td style="max-width:150px;font-size:13px;">${v.producto}</td>
+      <td style="font-weight:600;white-space:nowrap;">$${fmt(v.precio)}${v.descuento?`<br><span style="font-size:10px;color:var(--orange);">-$${fmt(v.descuento)}</span>`:''}</td>
+      <td>${v.pagosDetalle&&v.pagosDetalle.length>1
+        ? v.pagosDetalle.map(p=>`<span class="badge ${PAGO_BADGE[p.pago]||'b-ef'}" style="font-size:10px;margin:1px;">${p.label}</span>`).join(' ')
+        : `<span class="badge ${PAGO_BADGE[v.pago]||'b-ef'}">${PAGO_LBL[v.pago]||v.pago}</span>`
+      }${isCPorL30(v.pago)&&pend>0?`<br><span style="font-size:10px;color:var(--orange);">${pend}c pend.</span>`:''}</td>
+      <td style="font-size:12px;color:var(--muted);">${cliNom(v)}${v.tel?` <a href="${waUrl(v.tel,'')}" target="_blank" style="text-decoration:none;">💬</a>`:''}</td>
+      <td><button class="btn btn-ghost btn-sm" title="Cambiar estado" onclick="ciclarEstadoEntrega(${v.id})" style="font-size:11px;">${estLabel[ee]} ${ee}</button></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="verDetalle(${v.id})">Ver</button>
+        ${puedeEditar?`<button class="btn btn-blue btn-sm" style="margin-left:3px;" onclick="editarVenta(${v.id})">Ed</button>`:''}
+        ${esAdmin()?`<button class="btn btn-ghost btn-sm" style="margin-left:3px;" onclick="imprimirReciboPDF(${v.id})">PDF</button>`:''}
+        ${esAdmin()?`<button class="btn btn-danger btn-sm" style="margin-left:3px;" onclick="eliminarVenta(${v.id})">🗑</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+};
+
+// ── Override renderPrecios to add buttons + margin column ──
+const _renderPreciosOrig = renderPrecios;
+renderPrecios = function(){
+  // Asegurar botones en topbar lista de precios
+  const topBar = document.querySelector('#pg-precios > div:first-child');
+  if(topBar && !document.getElementById('btn-bulk-price')){
+    topBar.insertAdjacentHTML('beforeend',
+      `<button id="btn-bulk-price" class="btn btn-blue btn-sm" onclick="abrirBulkPrice()">+ % Actualizar</button>
+       <button id="btn-export-lista" class="btn btn-ghost btn-sm" onclick="exportarListaPrecios()">⬇ Exportar</button>`);
+  }
+  _renderPreciosOrig();
+  // Re-render with margins added
+  const q=(document.getElementById('precio-q').value||'').toLowerCase();
+  let lista=productos;
+  if(q)lista=lista.filter(p=>p.nombre.toLowerCase().includes(q)||(p.proveedor||'').toLowerCase().includes(q));
+  if(!lista.length) return;
+  const cont=document.getElementById('lista-precios');
+  const puedeEditar=esLocal();
+  cont.innerHTML=lista.map(p=>{
+    const contado = Math.round((p.precio||0)*0.9);
+    const tc = p.precio||0;
+    const cpAnt = Math.round(contado*0.5);
+    const margen = (p.costo>0 && p.precio>0) ? Math.round((p.precio-p.costo)/p.precio*100) : null;
+    const foto = p.fotos && p.fotos.length ? p.fotos[p.fotoPrincipal||0] : null;
+    return `
+    <div class="prod-fila" style="flex-wrap:wrap;align-items:center;">
+      <div class="pf-thumb">${foto?`<img src="${foto}">`:'📷'}</div>
+      <div style="flex:1;min-width:150px;">
+        <div class="pf-nom" style="font-size:13px;font-weight:500;">${p.nombre}</div>
+        <div class="pf-prov">${p.proveedor||''}${p.categoria?` · <span style="color:var(--gold);font-size:10px;">${p.categoria}</span>`:''}${margen!==null?` · <span style="color:var(--green);font-size:10px;">Margen ${margen}%</span>`:''}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">Contado</div><div style="font-weight:700;color:var(--green);font-size:13px;">$${fmt(contado)}</div></div>
+        <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">TC/Lista</div><div style="font-size:13px;">$${fmt(tc)}</div></div>
+        <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">CP Ant.</div><div style="font-size:13px;">$${fmt(cpAnt)}</div></div>
+        ${puedeEditar?`<div style="display:flex;gap:5px;margin-left:4px;">
+          <button class="btn btn-blue btn-sm" onclick="editarProd(${p.id})">Ed</button>
+          ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProd(${p.id})">X</button>`:''}
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+};
+
+// ── Override renderClientes to add WA + outstanding ──
+const _renderClientesOrig = renderClientes;
+renderClientes = function(){
+  const buscar = (document.getElementById('cli-buscar')?.value||'').toLowerCase();
+  let lista = clientes;
+  if (buscar) {
+    lista = lista.filter(c =>
+      (c.apellido||'').toLowerCase().includes(buscar) ||
+      (c.nombre||'').toLowerCase().includes(buscar) ||
+      (c.codigo||'').toLowerCase().includes(buscar) ||
+      (c.dni||'').includes(buscar)
+    );
+  }
+  lista = [...lista].sort((a,b) => (a.apellido||'').localeCompare(b.apellido||''));
+  const empty = document.getElementById('empty-clientes');
+  const cont = document.getElementById('clientes-lista');
+  if (!lista.length) { cont.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  const catColors = {VIP:'#fff0cc',Regular:'#e3f0ff',Inactivo:'#f0f0f0',Moroso:'#fdeaea'};
+  const catText = {VIP:'#a07000',Regular:'#1a5fb4',Inactivo:'#6e7a8a',Moroso:'#b02020'};
+
+  cont.innerHTML = lista.map(c => {
+    const cVentas = ventas.filter(v => (c.dni && v.dni===c.dni) || ((v.apellido||'').toUpperCase()===(c.apellido||'').toUpperCase() && (v.nombre||'').toUpperCase()===(c.nombre||'').toUpperCase()));
+    const ultima = cVentas.reduce((m,v)=> (!m || v.fecha>m) ? v.fecha : m, '');
+    let pendiente = 0;
+    cVentas.forEach(v=>{
+      if(v.cpData){
+        const cp = v.cpData;
+        const fechas = buildFechasCuotas(cp);
+        fechas.forEach((f,i)=>{ if(estadoCuotaCP(cp,i)!=='pagada') pendiente += cp.cuota||0; });
+        // anticipo
+        const cobros = cp.cobros||[];
+        if(!cobros.find(x=>x.tipo==='anticipo')) pendiente += cp.anticipo||0;
+      }
+    });
+    const cat = c.categoria||'';
+    return `
+    <div class="prod-fila" style="flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
+        <div style="font-weight:600;font-size:13px;">${c.apellido||''} ${c.nombre||''}${cat?` <span class="badge" style="background:${catColors[cat]||'#eee'};color:${catText[cat]||'#666'};">${cat}</span>`:''}</div>
+        <div style="font-size:11px;color:var(--muted);">
+          <span style="font-family:monospace;background:var(--cream2);padding:2px 6px;border-radius:4px;">${c.codigo||''}</span>
+          ${c.dni?' · DNI '+c.dni:''}${c.tel?' · '+c.tel:''}
+        </div>
+        ${c.dir?`<div style="font-size:11px;color:var(--muted);">${c.dir}</div>`:''}
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;">
+          ${cVentas.length} compras${ultima?' · última '+fmtD(ultima):''}${pendiente>0?` · <span style="color:var(--red);">Pendiente: $${fmt(pendiente)}</span>`:''}
+        </div>
+        ${c.notas?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;">📝 ${c.notas}</div>`:''}
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">
+        ${c.tel?`<a class="btn btn-green btn-sm" href="${waUrl(c.tel,'Hola '+c.nombre+'!')}" target="_blank" style="text-decoration:none;">💬 WA</a>`:''}
+        <button class="btn btn-blue btn-sm" onclick="editarCliente('${c.id}')">Ed</button>
+        ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarCliente('${c.id}')">X</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+};
+
+// ── Extender guardarCliente para categoria y notas ──
+const _guardarClienteOrig = guardarCliente;
+guardarCliente = async function(){
+  const apellido = document.getElementById('cli-apellido').value.trim();
+  if (!apellido) { toast('Ingresá el apellido'); return; }
+  const id = document.getElementById('cli-id').value;
+  const cliente = {
+    id: id || Date.now(),
+    codigo: document.getElementById('cli-codigo').value.trim().toUpperCase(),
+    apellido,
+    nombre: document.getElementById('cli-nombre').value.trim(),
+    dni: document.getElementById('cli-dni').value.trim(),
+    tel: document.getElementById('cli-tel').value.trim(),
+    dir: document.getElementById('cli-dir').value.trim(),
+    obs: document.getElementById('cli-obs').value.trim(),
+    categoria: document.getElementById('cli-categoria')?.value||'',
+    notas: document.getElementById('cli-notas')?.value||''
+  };
+  if (id) {
+    const idx = clientes.findIndex(x => x.id == id);
+    if (idx >= 0) clientes[idx] = cliente;
+  } else {
+    clientes.unshift(cliente);
+  }
+  await guardarClientes();
+  cM('ovl-cliente'); renderClientes();
+  toast('OK Cliente guardado');
+};
+
+const _editarClienteOrig = editarCliente;
+editarCliente = function(id){
+  _editarClienteOrig(id);
+  const c = clientes.find(x => x.id == id); if(!c) return;
+  const cat = document.getElementById('cli-categoria'); if(cat) cat.value = c.categoria||'';
+  const not = document.getElementById('cli-notas'); if(not) not.value = c.notas||'';
+};
+
+const _abrirNuevoClienteOrig = abrirNuevoCliente;
+abrirNuevoCliente = function(){
+  _abrirNuevoClienteOrig();
+  const cat = document.getElementById('cli-categoria'); if(cat) cat.value='';
+  const not = document.getElementById('cli-notas'); if(not) not.value='';
+};
+
+// Agregar campos categoría y notas dinámicamente al modal cliente si no existen
+(function injectCliExtras(){
+  const modal = document.querySelector('#ovl-cliente .mb');
+  if(!modal || document.getElementById('cli-categoria')) return;
+  const obs = document.getElementById('cli-obs').closest('.fg');
+  obs.insertAdjacentHTML('afterend', `
+    <div class="fg"><label>Categoría</label>
+      <select id="cli-categoria">
+        <option value="">—</option>
+        <option value="VIP">VIP</option>
+        <option value="Regular">Regular</option>
+        <option value="Inactivo">Inactivo</option>
+        <option value="Moroso">Moroso</option>
+      </select>
+    </div>
+    <div class="fg"><label>Notas / contacto</label><textarea id="cli-notas" rows="2" placeholder="Log de interacciones..."></textarea></div>
+  `);
+})();
+
+// ── Override renderCreditos to add days overdue + WA + risk badge ──
+// We hook by wrapping
+const _renderCreditosOrig = renderCreditos;
+renderCreditos = function(){
+  _renderCreditosOrig();
+  // Inyectar acciones extra (riesgo badge + WA buttons) en cada cuota vencida
+  try{
+    const h = hoy();
+    document.querySelectorAll('#cred-list .cuota.vencida').forEach(el=>{
+      // ya procesado?
+      if(el.dataset.mora) return;
+      el.dataset.mora='1';
+      // Buscar fecha en el span
+      const txt = el.textContent;
+      const m = txt.match(/(\d{2}\/\d{2}\/\d{2})/);
+      // No tenemos id de venta directo; agregar botón WA genérico con info del card padre
+      const card = el.closest('.cr-card');
+      if(card && !card.dataset.riesgo){
+        card.dataset.riesgo='1';
+        const venc = card.querySelectorAll('.cuota.vencida').length;
+        let badge = '';
+        if(venc===0) badge='<span class="badge" style="background:var(--gbg);color:var(--green);">Al día</span>';
+        else if(venc===1) badge='<span class="badge" style="background:var(--obg);color:var(--orange);">1 vencida</span>';
+        else badge='<span class="badge" style="background:var(--rbg);color:var(--red);">'+venc+'+ vencidas</span>';
+        const head = card.querySelector('div, h3');
+        if(head) head.insertAdjacentHTML('beforeend',' '+badge);
+      }
+    });
+    // Agregar botón "Exportar morosos" si no existe
+    const pageEl = document.getElementById('pg-creditos');
+    if(pageEl && !document.getElementById('btn-export-morosos')){
+      const pills = pageEl.querySelector('.pills');
+      if(pills) pills.insertAdjacentHTML('afterend', `<div style="text-align:right;margin-bottom:8px;"><button id="btn-export-morosos" class="btn btn-ghost btn-sm" onclick="exportarMorosos()">⬇ Exportar morosos</button></div>`);
+    }
+  }catch(e){}
+};
+
+// ── Override renderAdmin to add company config + activity log + plantillas ──
+const _renderAdminOrig = renderAdmin;
+renderAdmin = function(){
+  _renderAdminOrig();
+  if(!esAdmin()) return;
+  const cb = document.querySelector('#pg-admin .cb');
+  if(cb && !document.getElementById('admin-empresa-config')){
+    cb.insertAdjacentHTML('beforeend', `
+      <div class="sec" style="margin-top:18px;">Configuración de empresa</div>
+      <div id="admin-empresa-config">
+        <div class="r2">
+          <div class="fg"><label>Nombre</label><input type="text" id="emp-nombre"></div>
+          <div class="fg"><label>WhatsApp</label><input type="text" id="emp-wa"></div>
+        </div>
+        <div class="fg"><label>Dirección</label><input type="text" id="emp-dir"></div>
+        <div class="fg"><label>Localidad</label><input type="text" id="emp-loc"></div>
+        <button class="btn btn-gold btn-sm" onclick="guardarEmpresaConfig()">OK Guardar empresa</button>
+      </div>
+      <div class="sec" style="margin-top:18px;">Acciones rápidas</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-blue btn-sm" onclick="goTab('milocal')">🏪 Mi Local</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirArqueo()">🧮 Arqueo caja</button>
+      </div>
+    `);
+  }
+  // poblar campos empresa
+  const en = document.getElementById('emp-nombre'); if(en){
+    en.value = miLocal.nombre||'';
+    document.getElementById('emp-wa').value = miLocal.wa||'';
+    document.getElementById('emp-dir').value = miLocal.dir||'';
+    document.getElementById('emp-loc').value = miLocal.loc||'';
+  }
+};
+async function guardarEmpresaConfig(){
+  miLocal.nombre = document.getElementById('emp-nombre').value;
+  miLocal.wa = document.getElementById('emp-wa').value;
+  miLocal.dir = document.getElementById('emp-dir').value;
+  miLocal.loc = document.getElementById('emp-loc').value;
+  await sSet(SK_MILOCAL, miLocal); programarGuardado();
+  logActividad('Actualizó configuración de empresa');
+  toast('OK Empresa guardada');
+}
+
+// ── Inyectar botón Arqueo en página de caja ──
+(function injectArqueoBtn(){
+  const obs = new MutationObserver(()=>{
+    const pg = document.getElementById('pg-caja');
+    if(!pg || document.getElementById('btn-arqueo')) return;
+    const btnBar = pg.querySelector('.cb > div[style*="display:flex"][style*="gap:8px"]') ||
+                   pg.querySelector('[onclick="abrirGasto()"]')?.parentElement;
+    if(btnBar){
+      btnBar.insertAdjacentHTML('beforeend',
+        `<button id="btn-arqueo" class="btn btn-ghost" onclick="abrirArqueo()">🧮 Arqueo</button>
+         <button id="btn-export-caja" class="btn btn-ghost" onclick="exportarCajaCSV()">⬇ CSV</button>`);
+      obs.disconnect();
+    }
+  });
+  obs.observe(document.body, {childList:true,subtree:true});
+})();
+
+function exportarCajaCSV(){
+  if(!movCaja||!movCaja.length){ toast('Sin movimientos'); return; }
+  const h=['Fecha','Tipo','Caja','Concepto','Monto','Obs'];
+  const rows = movCaja.map(m=>[m.fecha,m.tipo||'',m.caja||'',`"${(m.concepto||'').replace(/"/g,'""')}"`, m.monto||0, `"${(m.obs||'').replace(/"/g,'""')}"`].join(';'));
+  const csv = '﻿'+h.join(';')+'\n'+rows.join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`RossiHome_Caja_${hoy()}.csv`;
+  a.click(); toast('OK CSV exportado');
+}
+
+// Update arq-caja onchange
+document.addEventListener('change', e=>{
+  if(e.target && e.target.id==='arq-caja') actualizarArqueoSistema();
+});
+
+// ── Cycle status pill render after init ──
+window.addEventListener('load', ()=>{
+  // garantizar botón flotante si ya hay sesión
+  if(usuarioActual){ const fab=document.getElementById('fab-calc'); if(fab) fab.style.display='block'; }
+});
+
 </script>
 
 <!-- Modal WhatsApp selector -->
