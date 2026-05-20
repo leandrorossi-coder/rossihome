@@ -1880,6 +1880,7 @@ function goTab(n) {
   if (n==='admin')         renderAdmin();
   if (n==='pedidos')       renderPedidos();
   if (n==='milocal')       renderMiLocal();
+  if (n==='financiero' && !Object.keys(cotizaciones).length) actualizarDolar();
 }
 
 // ===
@@ -6194,12 +6195,7 @@ function calcConversion() {
   res.innerHTML = `$${fmt(pesos)} = <strong>USD ${(pesos/rate).toFixed(2)}</strong> <span style="font-size:13px;color:var(--muted);">(dólar ${tipo} $${fmt(rate)})</span>`;
 }
 
-// Auto-actualizar dólar cuando se abre el panel
-const _origGoTab = goTab;
-function goTab(t) {
-  _origGoTab(t);
-  if(t==='financiero' && !Object.keys(cotizaciones).length) actualizarDolar();
-}
+// goTab ya maneja el panel financiero directamente
 
 
 </script>
