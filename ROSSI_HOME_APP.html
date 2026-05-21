@@ -6600,6 +6600,8 @@ function renderScrapingResultados(prods, srcUrl){
   const cont = document.getElementById('scrap-resultados');
   if(!prods.length){ cont.innerHTML='<div class="ibox">No se encontraron productos en el sitio.</div>'; return; }
   document.getElementById('scrap-msg').textContent = `${prods.length} productos encontrados`;
+  const btnTodos = document.getElementById('btn-importar-todos');
+  if(btnTodos) btnTodos.style.display = '';
   cont.innerHTML = prods.map((p,i)=>`
     <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;">
       <div style="display:flex;gap:10px;align-items:flex-start;">
@@ -6642,6 +6644,42 @@ async function importarProdScrap(idx){
   toast(`"${p.nombre}" importado`);
   const btn = document.querySelector(`#scrap-resultados > div:nth-child(${idx+1}) button`);
   if(btn){ btn.textContent='✓ Importado'; btn.disabled=true; btn.style.opacity='.5'; }
+}
+
+async function importarTodosScrap(){
+  const prods = window._scrapProds; if(!prods||!prods.length) return;
+  const provId = parseInt(document.getElementById('ovl-scraping').dataset.provId||0);
+  const prov = proveedores.find(x=>x.id===provId);
+  const margen = prov?.margen||40;
+  const btn = document.getElementById('btn-importar-todos');
+  if(btn){ btn.disabled=true; btn.textContent='Importando...'; }
+  let importados = 0, saltados = 0;
+  const maxId = ()=> Math.max(0,...productos.map(x=>x.id));
+  for(const p of prods){
+    // Saltar si ya existe un producto con el mismo nombre y proveedor
+    const existe = productos.find(x=>
+      x.nombre.toUpperCase()===p.nombre.toUpperCase() &&
+      (x.proveedor||'')===(prov?.nombre||'')
+    );
+    if(existe){ saltados++; continue; }
+    const costo = p.precio||0;
+    const precio = costo>0 ? Math.round(costo*(1+margen/100)) : 0;
+    productos.push({
+      id: maxId()+1,
+      nombre: p.nombre,
+      proveedor: prov?.nombre||'',
+      costo, precio,
+      categoria: p.categoria||'',
+      favorito: false,
+      fotos: p.foto?[p.foto]:[],
+      fotoPrincipal: 0
+    });
+    importados++;
+  }
+  await guardarProds();
+  if(btn){ btn.textContent=`✓ ${importados} importados`; btn.style.opacity='.6'; }
+  toast(`${importados} productos importados${saltados?`, ${saltados} ya existían`:''}`);
+  cM('ovl-scraping');
 }
 
 // ── Override renderClientes to add WA + outstanding ──
@@ -7362,7 +7400,10 @@ function calcContadoTC() {
           <div style="font-weight:700;font-size:15px;" id="scrap-prov-nombre"></div>
           <div style="font-size:11px;color:var(--muted);text-transform:none;" id="scrap-url-display"></div>
         </div>
-        <div style="font-size:12px;color:var(--navy);font-weight:600;" id="scrap-msg"></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-size:12px;color:var(--navy);font-weight:600;" id="scrap-msg"></div>
+          <button id="btn-importar-todos" class="btn btn-gold btn-sm" onclick="importarTodosScrap()" style="display:none;">⬇ Importar Todos</button>
+        </div>
       </div>
       <div id="scrap-resultados" style="flex:1;min-height:100px;"></div>
     </div>
