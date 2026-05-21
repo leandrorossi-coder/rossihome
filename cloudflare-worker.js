@@ -73,11 +73,15 @@ async function handleScrape(url, headers) {
   try {
     const u = new URL(url);
 
-    // 1. WooCommerce REST API (pública, sin auth, lista todos los productos)
+    // 1. WooCommerce Store API (pública, sin auth, disponible en WooCommerce 3.6+)
+    const storeRes = await intentarWooStoreAPI(u.origin, headers);
+    if (storeRes) return storeRes;
+
+    // 2. WooCommerce REST API v3 (requiere auth, pero probamos igual)
     const wooRes = await intentarWooAPI(u.origin, headers);
     if (wooRes) return wooRes;
 
-    // 2. Tiendanube API
+    // 3. Tiendanube API
     const tnRes = await intentarTiendanubeAPI(url, headers);
     if (tnRes) return tnRes;
 
@@ -114,6 +118,45 @@ async function handleScrape(url, headers) {
   } catch(e) {
     return json({ ok: false, error: e.message }, headers);
   }
+}
+
+// WooCommerce Store API — pública sin autenticación (WooCommerce Blocks / Headless)
+async function intentarWooStoreAPI(origin, headers) {
+  const productos = [];
+  for (let page = 1; page <= 10; page++) {
+    try {
+      const apiUrl = `${origin}/wp-json/wc/store/v1/products?per_page=100&page=${page}`;
+      const resp = await fetch(apiUrl, {
+        headers: { ...FETCH_HEADERS, 'Accept': 'application/json' },
+        redirect: 'follow',
+      });
+      if (!resp.ok) break;
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.includes('json')) break;
+      const data = await resp.json();
+      if (!Array.isArray(data) || !data.length) break;
+      for (const p of data) {
+        const nombre = limpiar(p.name || '');
+        if (!nombre) continue;
+        // precio viene como string "1234.56" o con HTML
+        const precioStr = limpiar(p.prices?.price || p.price_html || '0');
+        const precio = parsePrecioAR(precioStr.replace(/[^\d.,]/g, ''));
+        const foto = p.images?.[0]?.src || null;
+        productos.push({
+          nombre,
+          precio,
+          descripcion: limpiar(p.short_description || '').slice(0, 200),
+          foto,
+          url: p.permalink || origin,
+          sku: p.sku || '',
+          categoria: p.categories?.[0]?.name || '',
+        });
+      }
+      if (data.length < 100) break;
+    } catch(e) { break; }
+  }
+  if (!productos.length) return null;
+  return json({ ok: true, productos, total: productos.length, platform: 'WooCommerce Store API' }, headers);
 }
 
 // WooCommerce REST API pública (no requiere clave si el sitio lo permite)
