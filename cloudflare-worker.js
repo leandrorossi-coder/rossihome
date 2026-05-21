@@ -281,36 +281,39 @@ function extraerShopify(html, baseUrl) {
 // ── WooCommerce ──────────────────────────────────────────────────────────────
 function extraerWooCommerce(html, baseUrl) {
   const prods = [];
-  const patterns = [
-    /<li[^>]*class="[^"]*\bproduct\b[^"]*"[^>]*>([\s\S]*?)<\/li>/gi,
-    /<article[^>]*class="[^"]*\bproduct\b[^"]*"[^>]*>([\s\S]*?)<\/article>/gi,
-    /<div[^>]*class="[^"]*\bproduct[-_](?:item|card|thumb)\b[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
-  ];
-  for (const re of patterns) {
-    const matches = [...html.matchAll(re)];
-    if (matches.length < 2) continue;
-    for (const m of matches) {
-      const bloque = m[1];
-      const nombre = (
-        textoClase(bloque, 'woocommerce-loop-product__title') ||
-        textoClase(bloque, 'product-title') ||
-        textoClase(bloque, 'product_title') ||
-        textoClase(bloque, 'product-name') ||
-        textoTag(bloque, 'h2') ||
-        textoTag(bloque, 'h3')
-      );
-      if (!nombre || nombre.length < 2) continue;
-      const precioBloque = textoClase(bloque, 'woocommerce-Price-amount') || textoClase(bloque, 'price') || '';
-      pushProd(prods, {
-        nombre: limpiar(nombre),
-        precio: precioTexto(precioBloque) || precioHtml(bloque),
-        descripcion: limpiar(textoClase(bloque, 'description') || '').slice(0, 200),
-        foto: imgSrc(bloque, baseUrl),
-        url: href(bloque, baseUrl),
-      });
-    }
-    if (prods.length > 0) break;
+
+  // Buscar cada apertura de <li class="...product..."> y tomar chunk fijo
+  // (evita el problema de </li> anidados que cortan el bloque)
+  const liRe = /<li[^>]*class="([^"]*\bproduct\b[^"]*)"[^>]*>/gi;
+  for (const m of html.matchAll(liRe)) {
+    // Saltar el <ul class="products"> que también tiene "product" en la clase
+    if (/\bproducts\b/.test(m[1]) && !/\btype-product\b|\bpost-\d/.test(m[1])) continue;
+    const start = m.index + m[0].length;
+    const bloque = html.slice(start, start + 4000);
+
+    const nombre = (
+      textoClase(bloque, 'woocommerce-loop-product__title') ||
+      textoClase(bloque, 'product-title') ||
+      textoClase(bloque, 'product_title') ||
+      textoClase(bloque, 'product-name') ||
+      textoTag(bloque, 'h2') ||
+      textoTag(bloque, 'h3')
+    );
+    if (!nombre || nombre.length < 2) continue;
+
+    // Precio: WooCommerce envuelve el monto en <bdi>
+    const bdi = bloque.match(/<bdi>([\s\S]*?)<\/bdi>/i);
+    const precioStr = bdi ? limpiar(bdi[1]) : (textoClase(bloque, 'woocommerce-Price-amount') || textoClase(bloque, 'price') || '');
+    const precio = precioTexto(precioStr) || precioHtml(bloque);
+
+    // Imagen: WooCommerce usa data-src (lazy) o src
+    const foto = imgSrc(bloque, baseUrl);
+    const link = href(bloque, baseUrl);
+
+    pushProd(prods, { nombre: limpiar(nombre), precio, foto, url: link, descripcion: '' });
+    if (prods.length >= 100) break;
   }
+
   return prods;
 }
 
