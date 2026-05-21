@@ -229,7 +229,9 @@ td{padding:9px 11px;vertical-align:middle;}
 /* UPPERCASE en campos de texto por defecto */
 input[type=text],textarea{text-transform:uppercase;}
 input[type=text]::placeholder,textarea::placeholder{text-transform:none;}
-.sb input,#precio-q,#cat-q,#cli-buscar,#f-tel-num,#cli-tel-num{text-transform:none;}
+select{text-transform:uppercase;}
+select option{text-transform:uppercase;}
+.sb input,#precio-q,#cat-q,#cli-buscar,#f-tel-num,#cli-tel-num,#prov-web,#prov-email,#f-cliente-buscar,input[type=email],input[type=url],input[type=password]{text-transform:none;}
 </style>
 </head>
 <body>
@@ -276,53 +278,102 @@ input[type=text]::placeholder,textarea::placeholder{text-transform:none;}
   <!-- NUEVA VENTA -->
   <div class="page" id="pg-venta">
   <div class="card">
-    <div class="ch"><h2 id="frm-titulo">🛒 Nueva Venta</h2></div>
+    <div class="ch"><h2 id="frm-titulo">NUEVA VENTA</h2></div>
     <div class="cb">
-      <div class="sec">Datos de la venta</div>
+      <!-- 1. FECHA Y VENDEDOR -->
+      <div class="sec">Fecha y Vendedor</div>
       <div class="r2">
         <div class="fg"><label>Fecha</label><input type="date" id="f-fecha"></div>
         <div class="fg"><label>Vendedor/a</label><select id="f-vend"></select></div>
       </div>
-      <!-- Forma de pago -->
+
+      <!-- 2. BUSQUEDA DE CLIENTE -->
+      <div class="sec">Cliente</div>
+      <div id="blk-cliente-buscar" style="margin-bottom:8px;">
+        <input type="text" id="f-cliente-buscar" placeholder="Buscar cliente existente..." oninput="buscarCliente(this.value)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;text-transform:none;" autocomplete="off">
+        <div id="f-cliente-sugerencias" style="display:none;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:150px;overflow-y:auto;z-index:100;position:relative;"></div>
+      </div>
+
+      <!-- CONSUMIDOR FINAL TOGGLE -->
+      <div style="margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:var(--cream2);padding:10px;border-radius:8px;">
+          <input type="checkbox" id="chk-cons-final" onchange="toggleConsFinal()">
+          <span>CONSUMIDOR FINAL</span>
+        </label>
+      </div>
+
+      <!-- 3. DATOS DEL CLIENTE -->
+      <div id="blk-datos-cliente">
+        <div class="r2">
+          <div class="fg"><label>Apellido</label><input type="text" id="f-apellido"></div>
+          <div class="fg"><label>Nombre</label><input type="text" id="f-nombre"></div>
+        </div>
+        <div class="r2">
+          <div class="fg"><label>DNI</label><input type="text" id="f-dni"></div>
+          <div class="fg">
+            <label>Telefono</label>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span style="background:var(--cream2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--muted);white-space:nowrap;">+54</span>
+              <select id="f-tel-car" style="width:110px;flex-shrink:0;border:1.5px solid var(--border);border-radius:9px;padding:9px 8px;font-size:13px;font-family:'Outfit',sans-serif;color:var(--text);background:var(--cream);outline:none;" onchange="syncTelFull()"></select>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="agregarCaracteristica()" style="white-space:nowrap;flex-shrink:0;">+</button>
+              <input type="text" id="f-tel-num" placeholder="00000000" maxlength="8" oninput="syncTelFull()" style="flex:1;text-transform:none;">
+            </div>
+            <input type="hidden" id="f-tel">
+          </div>
+        </div>
+        <div class="fg"><label>Direccion</label><input type="text" id="f-dir"></div>
+      </div>
+
+      <!-- 4. PRODUCTO Y CANTIDAD -->
+      <div class="sec">Producto</div>
+      <div class="r2">
+        <div class="fg"><label>Cantidad</label><input type="number" id="f-cantidad" placeholder="1" min="1" value="1" oninput="recalc()"></div>
+        <div class="fg"><label>Precio Unitario ($)</label><input type="number" id="f-precio" placeholder="0" min="0" oninput="this.value=this.value.replace(',','.');recalc()"></div>
+      </div>
       <div class="fg">
-        <label>Forma de pago</label>
+        <label>Producto</label>
+        <div class="sb">
+          <span class="sb-ico">🔍</span>
+          <input type="text" id="f-prod" placeholder="Busca o escribi libremente..." autocomplete="off" oninput="buscarProd()">
+          <div class="ac" id="prod-ac"></div>
+        </div>
+      </div>
+      <input type="number" id="f-costo" style="display:none;" min="0">
+
+      <!-- 5. FORMA DE PAGO -->
+      <div class="sec">Forma de Pago</div>
+      <div class="fg">
+        <label>Forma de Pago</label>
         <select id="f-pago" onchange="onPago()">
-            <option value="">Seleccionar…</option>
-            <optgroup label=" Efectivo">
+            <option value="">Seleccionar...</option>
+            <optgroup label="Efectivo">
               <option value="EFECTIVO">Efectivo</option>
               <option value="CHEQUE">Cheque</option>
             </optgroup>
-            <optgroup label=" Transferencia">
-              <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
-              <option value="TRANSF_FLEX">Transferencia → Prex</option>
-              <option value="TRANSF_ROSA">Transferencia → Rosa</option>
-              <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
-              <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
+            <optgroup label="Transferencia">
+              <option value="TRANSF_MP">Transferencia Mercado Pago</option>
+              <option value="TRANSF_FLEX">Transferencia Prex</option>
+              <option value="TRANSF_ROSA">Transferencia Rosa</option>
+              <option value="TRANSF_GABRIELA">Transferencia Gabriela Gonzalez</option>
+              <option value="TRANSF_DOLORES">Transferencia Dolores Heredia</option>
             </optgroup>
-            <optgroup label=" Tarjeta de Crédito">
-              <option value="TC1">TC 1 cuota</option>
-              <option value="TC2">TC 2 cuotas</option>
-              <option value="TC3">TC 3 cuotas</option>
-              <option value="TC6">TC 6 cuotas</option>
-              <option value="TC9">TC 9 cuotas</option>
-              <option value="TC12">TC 12 cuotas</option>
+            <optgroup label="Tarjeta de Credito">
+              <option value="TC1">TC 1 Cuota</option>
+              <option value="TC2">TC 2 Cuotas</option>
+              <option value="TC3">TC 3 Cuotas</option>
+              <option value="TC6">TC 6 Cuotas</option>
+              <option value="TC9">TC 9 Cuotas</option>
+              <option value="TC12">TC 12 Cuotas</option>
             </optgroup>
-            <optgroup label=" Mercado Pago">
-              <option value="DEBITO">Tarjeta de Débito</option>
+            <optgroup label="Mercado Pago">
+              <option value="DEBITO">Tarjeta de Debito</option>
               <option value="PREPAGA">Tarjeta Prepaga</option>
               <option value="QR_MP">QR Mercado Pago</option>
               <option value="LINK_MP">Link de Mercado Pago</option>
             </optgroup>
-            <optgroup label=" Crédito Personal">
+            <optgroup label="Credito Personal">
+              <option value="CUOTAS">Cuotas (Mensual / Quincenal / Semanal)</option>
               <option value="AHORRO">Plan de Ahorro</option>
-              <option value="CP2">Anticipo + CP 2 cuotas</option>
-              <option value="CP3">Anticipo + CP 3 cuotas</option>
-              <option value="CP6">Anticipo + CP 6 cuotas</option>
-              <option value="CP9">Anticipo + CP 9 cuotas</option>
-              <option value="CP12">Anticipo + CP 12 cuotas</option>
-              <option value="L30M">Lista 30d - 1 cuota mensual</option>
-              <option value="L30Q">Lista 30d - 2 cuotas quincenales</option>
-              <option value="L30S">Lista 30d - 4 cuotas semanales</option>
             </optgroup>
           </select>
       </div>
@@ -331,7 +382,7 @@ input[type=text]::placeholder,textarea::placeholder{text-transform:none;}
       <div style="margin-bottom:8px;">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:var(--cream2);padding:10px;border-radius:8px;">
           <input type="checkbox" id="chk-mixto" onchange="toggleMixto()">
-          <span> Pago mixto (múltiples métodos)</span>
+          <span>PAGO MIXTO (multiples metodos)</span>
         </label>
       </div>
 
@@ -340,30 +391,30 @@ input[type=text]::placeholder,textarea::placeholder{text-transform:none;}
         <div id="pagos-lista" style="margin-bottom:8px;"></div>
         <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
           <div class="fg" style="flex:2;margin:0;">
-            <label>Método</label>
+            <label>Metodo</label>
             <select id="f-pago-extra" style="font-size:13px;">
-              <option value="">Seleccionar…</option>
-              <optgroup label=" Efectivo">
+              <option value="">Seleccionar...</option>
+              <optgroup label="Efectivo">
                 <option value="EFECTIVO">Efectivo</option>
                 <option value="CHEQUE">Cheque</option>
               </optgroup>
-              <optgroup label=" Transferencia">
-                <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
-                <option value="TRANSF_FLEX">Transferencia → Prex</option>
-                <option value="TRANSF_ROSA">Transferencia → Rosa</option>
-                <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
-                <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
+              <optgroup label="Transferencia">
+                <option value="TRANSF_MP">Transf. Mercado Pago</option>
+                <option value="TRANSF_FLEX">Transf. Prex</option>
+                <option value="TRANSF_ROSA">Transf. Rosa</option>
+                <option value="TRANSF_GABRIELA">Transf. Gabriela</option>
+                <option value="TRANSF_DOLORES">Transf. Dolores</option>
               </optgroup>
-              <optgroup label=" Tarjeta de Crédito">
-                <option value="TC1">TC 1 cuota</option>
-                <option value="TC2">TC 2 cuotas</option>
-                <option value="TC3">TC 3 cuotas</option>
-                <option value="TC6">TC 6 cuotas</option>
-                <option value="TC9">TC 9 cuotas</option>
-                <option value="TC12">TC 12 cuotas</option>
+              <optgroup label="Tarjeta de Credito">
+                <option value="TC1">TC 1 Cuota</option>
+                <option value="TC2">TC 2 Cuotas</option>
+                <option value="TC3">TC 3 Cuotas</option>
+                <option value="TC6">TC 6 Cuotas</option>
+                <option value="TC9">TC 9 Cuotas</option>
+                <option value="TC12">TC 12 Cuotas</option>
               </optgroup>
-              <optgroup label=" Mercado Pago">
-                <option value="DEBITO">Tarjeta de Débito</option>
+              <optgroup label="Mercado Pago">
+                <option value="DEBITO">Tarjeta de Debito</option>
                 <option value="PREPAGA">Tarjeta Prepaga</option>
                 <option value="QR_MP">QR Mercado Pago</option>
                 <option value="LINK_MP">Link de Mercado Pago</option>
@@ -379,13 +430,14 @@ input[type=text]::placeholder,textarea::placeholder{text-transform:none;}
       </div>
 
       <div id="blk-tc" style="display:none;"><div class="ibox" id="tc-info"></div></div>
+
+      <!-- BLOQUE CREDITO PERSONAL (CUOTAS) -->
       <div id="blk-cp" style="display:none;">
         <div style="background:var(--cream2);border-radius:10px;padding:13px;margin-bottom:9px;">
-          <div class="sec" style="margin-top:0;">Configuración del crédito</div>
-          <!-- Precio de lista y anticipo -->
+          <div class="sec" style="margin-top:0;">Configuracion del Credito</div>
           <div class="r2">
             <div class="fg">
-              <label>Precio de lista ($)</label>
+              <label>Precio de Lista ($)</label>
               <input type="number" id="cp-lista" placeholder="0" min="0" oninput="recalcCP()">
             </div>
             <div class="fg">
@@ -394,31 +446,25 @@ input[type=text]::placeholder,textarea::placeholder{text-transform:none;}
                 <option value="50">50% (default)</option>
                 <option value="40">40%</option>
                 <option value="30">30%</option>
-                <option value="0">Monto libre</option>
+                <option value="0">Sin Anticipo</option>
+                <option value="0_libre">Monto Libre</option>
               </select>
             </div>
           </div>
           <div class="r2">
             <div class="fg">
-              <label>Monto anticipo ($)</label>
+              <label>Monto Anticipo ($)</label>
               <input type="number" id="cp-ant" placeholder="0" min="0" oninput="recalcCP()">
             </div>
             <div class="fg">
-              <label>Fecha pago anticipo</label>
+              <label>Fecha Pago Anticipo</label>
               <input type="date" id="cp-fecha-ant">
             </div>
           </div>
-          <!-- Cuotas -->
           <div class="r3">
             <div class="fg">
-              <label>Cant. cuotas</label>
-              <select id="cp-ncuotas" onchange="recalcCP()">
-                <option value="2">2 cuotas</option>
-                <option value="3">3 cuotas</option>
-                <option value="6">6 cuotas</option>
-                <option value="9">9 cuotas</option>
-                <option value="12">12 cuotas</option>
-              </select>
+              <label>Cant. Cuotas</label>
+              <input type="number" id="cp-ncuotas" placeholder="Ej: 6" min="1" max="60" oninput="recalcCP()" style="font-size:14px;">
             </div>
             <div class="fg">
               <label>Frecuencia</label>
@@ -429,75 +475,68 @@ input[type=text]::placeholder,textarea::placeholder{text-transform:none;}
               </select>
             </div>
             <div class="fg">
-              <label>Fecha 1ra cuota</label>
+              <label>Fecha 1ra Cuota</label>
               <input type="date" id="cp-fecha1">
             </div>
           </div>
-          <!-- Resumen calculado -->
           <div class="ibox" id="cp-resumen" style="display:none;"></div>
           <div class="fg" id="blk-cuota-manual" style="display:none;margin-top:8px;">
-            <label>Valor cuota ($) <span style="font-size:11px;color:var(--muted);">(editable)</span></label>
+            <label>Valor Cuota ($) <span style="font-size:11px;color:var(--muted);">(editable)</span></label>
             <input type="number" id="cp-cuota-manual" placeholder="0" min="0" oninput="onCuotaManual()">
           </div>
         </div>
       </div>
-      <div class="fg">
-        <label>Producto</label>
-        <div class="sb">
-          <span class="sb-ico">🔍</span>
-          <input type="text" id="f-prod" placeholder="Buscá o escribí libremente…" autocomplete="off" oninput="buscarProd()">
-          <div class="ac" id="prod-ac"></div>
-        </div>
-      </div>
-      <div class="r2">
-        <div class="fg"><label>Precio unitario ($)</label><input type="number" id="f-precio" placeholder="0" min="0" oninput="this.value=this.value.replace(',','.');recalc()"></div>
-        <div class="fg"><label>Cantidad</label><input type="number" id="f-cantidad" placeholder="1" min="1" value="1" oninput="recalc()"></div>
-      </div>
-      <div class="fg"><label>Descuento ($)</label><input type="number" id="f-descuento" placeholder="0" min="0" oninput="recalc()"></div>
-      <div class="fg" id="blk-total-venta" style="display:none;"><label>Total</label><input type="text" id="f-total-display" readonly style="background:var(--cream2);font-weight:700;color:var(--navy);"></div>
-      <div class="r2">
-        <div class="fg"><label>Fecha entrega estimada</label><input type="date" id="f-fecha-entrega"></div>
-        <div class="fg"><label>Estado entrega</label>
-          <select id="f-estado-entrega">
-            <option value="pendiente">⏳ Pendiente</option>
-            <option value="camino">🚚 En camino</option>
-            <option value="entregado">✅ Entregado</option>
-          </select>
-        </div>
-      </div>
-      <div class="fg"><label>N° Venta</label><input type="text" id="f-nro-venta" readonly style="background:var(--cream2);color:var(--muted);"></div>
-      <input type="number" id="f-costo" style="display:none;" min="0">
-      <div class="sec" style="margin-top:15px;">Datos del cliente</div>
-      <div style="margin-bottom:10px;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:var(--cream2);padding:10px;border-radius:8px;">
-          <input type="checkbox" id="chk-cons-final" onchange="toggleConsFinal()">
-          <span>Consumidor Final</span>
-        </label>
-      </div>
-      <div id="blk-cliente-buscar" style="margin-bottom:8px;">
-        <input type="text" id="f-cliente-buscar" placeholder="Buscar cliente..." oninput="buscarCliente(this.value)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
-        <div id="f-cliente-sugerencias" style="display:none;background:#fff;border:1px solid var(--border);border-radius:8px;margin-top:4px;max-height:150px;overflow-y:auto;z-index:100;position:relative;"></div>
-      </div>
-      <div id="blk-datos-cliente">
-      <div class="r2">
-        <div class="fg"><label>Apellido</label><input type="text" id="f-apellido"></div>
-        <div class="fg"><label>Nombre</label><input type="text" id="f-nombre"></div>
-      </div>
-      <div class="r3">
-        <div class="fg"><label>DNI</label><input type="text" id="f-dni"></div>
-        <div class="fg">
-          <label>Teléfono</label>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <span style="background:var(--cream2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--muted);white-space:nowrap;">+54</span>
-            <select id="f-tel-car" style="width:110px;flex-shrink:0;border:1.5px solid var(--border);border-radius:9px;padding:9px 8px;font-size:13px;font-family:'Outfit',sans-serif;color:var(--text);background:var(--cream);outline:none;" onchange="syncTelFull()"></select>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="agregarCaracteristica()" style="white-space:nowrap;flex-shrink:0;">+ Car.</button>
-            <input type="text" id="f-tel-num" placeholder="00000000" maxlength="8" oninput="syncTelFull()" style="flex:1;text-transform:none;">
+
+      <!-- BLOQUE PLAN DE AHORRO -->
+      <div id="blk-ahorro-venta" style="display:none;">
+        <div style="background:var(--cream2);border-radius:10px;padding:13px;margin-bottom:9px;">
+          <div class="sec" style="margin-top:0;">CONFIGURACION PLAN DE AHORRO</div>
+          <div class="r2">
+            <div class="fg">
+              <label>Monto Pactado ($)</label>
+              <input type="number" id="ahorro-monto-pactado" placeholder="0" min="0" oninput="recalcAhorro()">
+            </div>
+            <div class="fg">
+              <label>Anticipo (Opcional)</label>
+              <select id="ahorro-pct-ant" onchange="recalcAhorro()">
+                <option value="0">Sin Anticipo</option>
+                <option value="50">50%</option>
+                <option value="40">40%</option>
+                <option value="30">30%</option>
+                <option value="libre">Monto Libre</option>
+              </select>
+            </div>
           </div>
-          <input type="hidden" id="f-tel">
+          <div class="r2" id="blk-ahorro-ant-inputs" style="display:none;">
+            <div class="fg">
+              <label>Monto Anticipo ($)</label>
+              <input type="number" id="ahorro-ant-monto" placeholder="0" min="0" oninput="recalcAhorro()">
+            </div>
+            <div class="fg">
+              <label>Fecha Anticipo</label>
+              <input type="date" id="ahorro-ant-fecha">
+            </div>
+          </div>
+          <div class="ibox" id="ahorro-venta-resumen" style="display:none;"></div>
         </div>
-        <div class="fg"><label>Dirección</label><input type="text" id="f-dir"></div>
       </div>
-      </div><!-- /blk-datos-cliente -->
+
+      <!-- TOTAL Y DESCUENTO -->
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:9px;">
+        <div class="fg" style="flex:1;display:none;" id="blk-total-venta"><label>Total</label><input type="text" id="f-total-display" readonly style="background:var(--cream2);font-weight:700;color:var(--navy);"></div>
+        <div class="fg" style="max-width:160px;flex-shrink:0;"><label>Descuento ($)</label><input type="number" id="f-descuento" placeholder="0" min="0" oninput="recalc()"></div>
+      </div>
+
+      <!-- ESTADO DE ENTREGA -->
+      <div class="fg"><label>Estado de Entrega</label>
+        <select id="f-estado-entrega">
+          <option value="pendiente">Pendiente</option>
+          <option value="camino">En Camino</option>
+          <option value="entregado">Entregado</option>
+        </select>
+      </div>
+
+      <!-- OBSERVACIONES -->
       <div class="fg"><label>Observaciones</label><textarea id="f-obs"></textarea></div>
       <div class="btn-row">
         <button class="btn btn-ghost" onclick="limpiar()">Limpiar</button>
@@ -900,27 +939,51 @@ input[type=text]::placeholder,textarea::placeholder{text-transform:none;}
   </div>
 
 
-  <!-- PEDIDOS A PROVEEDORES -->
+  <!-- PROVEEDORES -->
   <div class="page" id="pg-pedidos">
-    <div class="card">
-      <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
-        <h2>📦 Pedidos a Proveedores</h2>
-        <button class="btn btn-gold btn-sm" onclick="abrirNuevoPedido()">+ Nuevo Pedido</button>
-      </div>
-      <div class="cb">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-          <select id="ped-filtro-estado" onchange="renderPedidos()" style="flex:1;min-width:140px;">
-            <option value="TODOS">Todos los estados</option>
-            <option value="solicitado">Solicitado</option>
-            <option value="confirmado">Confirmado</option>
-            <option value="en_camino">En camino</option>
-            <option value="recibido">Recibido</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-          <input type="text" id="ped-filtro-prov" placeholder="Filtrar por proveedor..." oninput="renderPedidos()" style="flex:2;min-width:160px;padding:8px;border:1.5px solid var(--border);border-radius:9px;">
+    <!-- Tabs internos -->
+    <div style="display:flex;gap:0;margin-bottom:12px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+      <button id="tab-prov-btn" onclick="mostrarTabProv('proveedores')" style="flex:1;padding:11px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:none;cursor:pointer;background:var(--navy);color:var(--gold2);">Proveedores</button>
+      <button id="tab-ped-btn" onclick="mostrarTabProv('pedidos')" style="flex:1;padding:11px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:none;cursor:pointer;background:#fff;color:var(--muted);">Pedidos</button>
+    </div>
+
+    <!-- SECCION PROVEEDORES -->
+    <div id="sec-proveedores">
+      <div class="card">
+        <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Proveedores</h2>
+          <button class="btn btn-gold btn-sm" onclick="abrirNuevoProveedor()">+ Nuevo Proveedor</button>
         </div>
-        <div id="pedidos-lista"></div>
-        <div class="empty" id="empty-pedidos" style="display:none;"><div class="empty-ico">📦</div><p>Sin pedidos</p></div>
+        <div class="cb">
+          <input type="text" id="prov-buscar" placeholder="Buscar proveedor..." oninput="renderProveedores()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);margin-bottom:10px;text-transform:none;">
+          <div id="proveedores-lista"></div>
+          <div class="empty" id="empty-proveedores" style="display:none;"><div class="empty-ico">🏭</div><p>Sin proveedores cargados</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCION PEDIDOS -->
+    <div id="sec-pedidos" style="display:none;">
+      <div class="card">
+        <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Pedidos a Proveedores</h2>
+          <button class="btn btn-gold btn-sm" onclick="abrirNuevoPedido()">+ Nuevo Pedido</button>
+        </div>
+        <div class="cb">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+            <select id="ped-filtro-estado" onchange="renderPedidos()" style="flex:1;min-width:140px;">
+              <option value="TODOS">Todos los estados</option>
+              <option value="solicitado">Solicitado</option>
+              <option value="confirmado">Confirmado</option>
+              <option value="en_camino">En camino</option>
+              <option value="recibido">Recibido</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+            <input type="text" id="ped-filtro-prov" placeholder="Filtrar por proveedor..." oninput="renderPedidos()" style="flex:2;min-width:160px;padding:8px;border:1.5px solid var(--border);border-radius:9px;text-transform:none;">
+          </div>
+          <div id="pedidos-lista"></div>
+          <div class="empty" id="empty-pedidos" style="display:none;"><div class="empty-ico">📦</div><p>Sin pedidos</p></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1648,7 +1711,7 @@ const TAB_LABELS = {
   venta:'+ Nueva Venta', ventas:' Ventas',
   creditos:' Créditos', precios:' Lista de Precios', catalogo:' Catálogo',
   presupuestos:' Presupuestos', caja:' Caja', reportes:' Reportes', liquidaciones:' Liquidaciones', clientes:' Clientes', admin:' Admin',
-  pedidos:' Pedidos', milocal:' Mi Local', financiero:'💵 Financiero'
+  pedidos:'🏭 Proveedores', milocal:' Mi Local', financiero:'💵 Financiero'
 };
 
 // ===
@@ -1671,6 +1734,7 @@ let usuarioActual = null; // { nombre, rol }
 let catalogoView = 'grid'; // 'grid' | 'list'
 // === Nuevos estados ===
 let pedidos = [];
+let proveedores = [];
 let activityLog = [];
 let metas = {}; // { 'YYYY-MM': { vendedora: monto } }
 let plantillasWA = [];
@@ -1680,11 +1744,13 @@ let arqueos = []; // {fecha, caja, sistema, real, dif, notas}
 let saldoInicialCaja = {}; // {caja: monto}
 let filtroEstadoEntrega = 'TODOS';
 let nroVentaCounter = 0;
-const SK_PEDIDOS='rh_ped_v1', SK_ACTIVIDAD='rh_act_v1', SK_METAS='rh_metas_v1', SK_PLANTILLAS='rh_plant_v1', SK_MILOCAL='rh_milocal_v1', SK_ARQUEOS='rh_arq_v1', SK_NROVENTA='rh_nroventa_v1';
+const SK_PEDIDOS='rh_ped_v1', SK_ACTIVIDAD='rh_act_v1', SK_METAS='rh_metas_v1', SK_PLANTILLAS='rh_plant_v1', SK_MILOCAL='rh_milocal_v1', SK_ARQUEOS='rh_arq_v1', SK_NROVENTA='rh_nroventa_v1', SK_PROVEEDORES='rh_prov_v1';
 
 function obtenerProximoNroVenta(){
-  const max = ventas.reduce((m,v)=> Math.max(m, parseInt(v.nroVenta||0)||0), 0);
-  return Math.max(nroVentaCounter, max+1);
+  const usados = new Set(ventas.map(v=>parseInt(v.nroVenta||0)||0));
+  let n = 1;
+  while(usados.has(n)) n++;
+  return n;
 }
 function logActividad(accion){
   try{
@@ -1727,7 +1793,7 @@ function programarGuardado() {
 async function guardarEnScript() {
   try {
     mostrarSync('Guardando en Drive…', false);
-    const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, caracteristicas, version:2 };
+    const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, proveedores, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, caracteristicas, version:2 };
     const resp = await fetch(SCRIPT_URL, {
       method: 'POST',
       body: JSON.stringify({ action:'guardar', ...datos })
@@ -1762,6 +1828,7 @@ async function leerDeScript() {
     if (d.clientes && d.clientes.length > 0) clientes = d.clientes;
     if (d.categorias && d.categorias.length > 0) categorias = d.categorias;
     if (d.pedidos) pedidos = d.pedidos;
+    if (d.proveedores) proveedores = d.proveedores;
     if (d.activityLog) activityLog = d.activityLog;
     if (d.metas) metas = d.metas;
     if (d.plantillasWA) plantillasWA = d.plantillasWA;
@@ -1802,6 +1869,7 @@ async function cargarDatos() {
   const pb=await sGet(SK_PUB); if(pb) publicaciones=pb;
   const cl=await sGet(SK_CFGLIQ); if(cl) configLiq={...configLiq,...cl};
   const pd=await sGet(SK_PEDIDOS); if(pd) pedidos=pd;
+  const mprov=await sGet(SK_PROVEEDORES); if(mprov) proveedores=mprov;
   const al=await sGet(SK_ACTIVIDAD); if(al) activityLog=al;
   const mt=await sGet(SK_METAS); if(mt) metas=mt;
   const pl=await sGet(SK_PLANTILLAS); if(pl&&pl.length) plantillasWA=pl;
@@ -1827,7 +1895,7 @@ function plantillasDefault(){
 // ===
 // TELÉFONO — área + número
 // ===
-let caracteristicas = ['011','02323','02304','02325','02320','0230','02346','02348','0236','0220','0249','0221','0223'];
+let caracteristicas = ['11','2323','0230'];
 
 function poblarSelectCar() {
   ['f-tel-car','cli-tel-car'].forEach(function(selId) {
@@ -1912,7 +1980,7 @@ const PAGO_LBL = {
   TRANSF_ROSA:'Transf. Rosa',TRANSF_DOLORES:'Transf. Dolores',TRANSF_GABRIELA:'Transf. Gabriela',
   TC1:'TC 1c', ANT2C:'Ant+2c', AHORRO:'Plan Ahorro',TC2:'TC 2c',TC3:'TC 3c',TC6:'TC 6c',TC9:'TC 9c',TC12:'TC 12c',
   DEBITO:'Débito',PREPAGA:'Prepaga',QR_MP:'QR MP',LINK_MP:'Link MP',
-  AHORRO:'Plan Ahorro', CP2:'CP 2c',CP3:'CP 3c',CP6:'CP 6c',CP9:'CP 9c',CP12:'CP 12c',
+  CUOTAS:'Cuotas Personales', CP2:'CP 2c',CP3:'CP 3c',CP6:'CP 6c',CP9:'CP 9c',CP12:'CP 12c',
   L30M:'Lista 30d 1c',L30Q:'Lista 30d 2c',L30S:'Lista 30d 4c',
   MIXTO:'Pago mixto', CHEQUE:'Cheque',
 };
@@ -1921,7 +1989,7 @@ const PAGO_BADGE = {
   TRANSF_MP:'b-tr',TRANSF_FLEX:'b-tr',TRANSF_ROSA:'b-tr',TRANSF_DOLORES:'b-tr',TRANSF_GABRIELA:'b-tr',
   TC1:'b-tc', AHORRO:'b-l30',TC2:'b-tc',TC3:'b-tc',TC6:'b-tc',TC9:'b-tc',TC12:'b-tc',
   DEBITO:'b-deb',PREPAGA:'b-deb',QR_MP:'b-mp',LINK_MP:'b-mp',
-  AHORRO:'b-l30', CP2:'b-cp',CP3:'b-cp',CP6:'b-cp',CP9:'b-cp',CP12:'b-cp',
+  CUOTAS:'b-cp', CP2:'b-cp',CP3:'b-cp',CP6:'b-cp',CP9:'b-cp',CP12:'b-cp',
   L30M:'b-l30',L30Q:'b-l30',L30S:'b-l30',
   MIXTO:'b-tr', CHEQUE:'b-ef',
 };
@@ -1934,9 +2002,9 @@ const fmtD = s => { try{ const d=new Date(s+'T12:00'); return d.toLocaleDateStri
 const hoy  = () => new Date().toISOString().split('T')[0];
 const addD = (s,n) => { try { if(!s||s==='undefined') return ''; const d=new Date(s+'T12:00'); if(isNaN(d)) return ''; d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; } catch(e){ return ''; } };
 const difD = (a,b) => Math.round((new Date(a+'T12:00')-new Date(b+'T12:00'))/86400000);
-const isCP = p => p&&p.startsWith('CP');
+const isCP = p => p&&(p.startsWith('CP')||p==='CUOTAS');
 const isL30 = p => p&&p.startsWith('L30');
-const isCPorL30 = p => isCP(p)||isL30(p)||(p==='ANT2C')||(p==='AHORRO');
+const isCPorL30 = p => isCP(p)||isL30(p)||(p==='ANT2C');
 const isTC = p => p&&p.startsWith('TC');
 const paso = f => f==='semanal'?7:f==='quincenal'?15:30;
 const cliNom = v => [v.apellido,v.nombre].filter(Boolean).join(' ')||'—';
@@ -2026,8 +2094,6 @@ function iniciarApp() {
   renderVentas();
   // Mostrar botón flotante calculadora
   const fab = document.getElementById('fab-calc'); if(fab) fab.style.display='block';
-  // Inicializar nro de venta
-  const nv = document.getElementById('f-nro-venta'); if(nv) nv.value = obtenerProximoNroVenta();
   // Poblar select de características telefónicas
   poblarSelectCar();
 }
@@ -2051,7 +2117,7 @@ function goTab(n) {
   if (n==='liquidaciones')   renderLiquidaciones();
   if (n==='clientes')        renderClientes();
   if (n==='admin')         renderAdmin();
-  if (n==='pedidos')       renderPedidos();
+  if (n==='pedidos')       { mostrarTabProv('proveedores'); }
   if (n==='milocal')       renderMiLocal();
   if (n==='financiero' && !Object.keys(cotizaciones).length) actualizarDolar();
 }
@@ -2084,7 +2150,7 @@ function onPago() {
       document.getElementById('cp-lista').value = precio;
     }
     // Setear cantidad de cuotas según forma de pago
-    const n = isL30(p) ? L30_N[p]||1 : (CP_N[p] || 2);
+    const n = isL30(p) ? L30_N[p]||1 : (CP_N[p] || 6);
     document.getElementById('cp-ncuotas').value = n;
     if (isL30(p)) {
       document.getElementById('cp-freq').value = L30_FREQ[p]||'mensual';
@@ -2101,11 +2167,11 @@ function recalcCP() {
   const lista   = parseFloat(document.getElementById('cp-lista').value)||0;
   const pctEl   = document.getElementById('cp-pct-ant').value;
   const antEl   = document.getElementById('cp-ant');
-  const n       = parseInt(document.getElementById('cp-ncuotas').value)||2;
+  const n       = parseInt(document.getElementById('cp-ncuotas').value)||6;
   const freq    = document.getElementById('cp-freq').value;
 
   // Calcular anticipo según porcentaje
-  if (pctEl !== '0' && lista > 0) {
+  if (pctEl !== '0' && pctEl !== '0_libre' && lista > 0) {
     const pct = parseInt(pctEl)/100;
     antEl.value = Math.round(lista * pct);
   }
@@ -2134,10 +2200,28 @@ function recalcCP() {
   if (lista > 0) document.getElementById('f-precio').value = lista;
 }
 
+function recalcAhorro(){
+  const monto = parseFloat(document.getElementById('ahorro-monto-pactado')?.value)||0;
+  const pct = document.getElementById('ahorro-pct-ant')?.value||'0';
+  const blkAnt = document.getElementById('blk-ahorro-ant-inputs');
+  if(blkAnt) blkAnt.style.display = (pct!=='0') ? 'block':'none';
+  if(pct!=='0' && pct!=='libre' && monto>0){
+    const antMonto = document.getElementById('ahorro-ant-monto');
+    if(antMonto){ antMonto.value = Math.round(monto*parseInt(pct)/100); }
+  }
+  const resumen = document.getElementById('ahorro-venta-resumen');
+  if(resumen && monto>0){
+    const ant = parseFloat(document.getElementById('ahorro-ant-monto')?.value)||0;
+    const resta = monto - ant;
+    resumen.style.display='block';
+    resumen.innerHTML = `Monto pactado: <strong>$${fmt(monto)}</strong>${ant>0?` | Anticipo: <strong>$${fmt(ant)}</strong> | Saldo a pagar: <strong>$${fmt(resta)}</strong>`:''}`;
+  } else if(resumen){ resumen.style.display='none'; }
+}
+
 function onCuotaManual() {
   // Cuando el usuario edita la cuota manualmente, actualizar el resumen
   const cuotaManual = parseFloat(document.getElementById('cp-cuota-manual').value)||0;
-  const n = parseInt(document.getElementById('cp-ncuotas').value)||2;
+  const n = parseInt(document.getElementById('cp-ncuotas').value)||6;
   const antEl = document.getElementById('cp-ant');
   const ant = parseFloat(antEl.value)||0;
   const lista = parseFloat(document.getElementById('cp-lista').value)||0;
@@ -2240,8 +2324,7 @@ async function guardar() {
   const estadoEntrega = document.getElementById('f-estado-entrega')?.value||'pendiente';
   const precioFinal = Math.max(0, (precio * cantidad) - descuento);
   // nroVenta autoincrement
-  if (typeof nroVentaCounter === 'undefined') { nroVentaCounter = obtenerProximoNroVenta(); }
-  const nroVenta = document.getElementById('f-nro-venta')?.value || nroVentaCounter;
+  const nroVenta = obtenerProximoNroVenta();
 
   const base = {
     fecha,vendedora:vend,producto:prod,precio:precioFinal,precioBruto:precio,descuento,cantidad,costo,pago,
@@ -2261,7 +2344,7 @@ async function guardar() {
   if (isCPorL30(pago)) {
     const lista    = parseFloat(document.getElementById('cp-lista').value)||precio;
     const ant      = parseFloat(document.getElementById('cp-ant').value)||0;
-    const n        = parseInt(document.getElementById('cp-ncuotas').value)||CP_N[pago]||2;
+    const n        = parseInt(document.getElementById('cp-ncuotas').value)||6;
     const freq     = document.getElementById('cp-freq').value;
     const fechaAnt = document.getElementById('cp-fecha-ant').value||fecha;
     const fecha1   = document.getElementById('cp-fecha1').value||'';
@@ -2309,9 +2392,9 @@ async function guardar() {
 
 function limpiar() {
   editVentaId=null;
-  document.getElementById('frm-titulo').textContent='🛒 Nueva Venta';
+  document.getElementById('frm-titulo').textContent='NUEVA VENTA';
   document.getElementById('btn-guardar').textContent='OK Guardar Venta';
-  ['f-fecha','f-pago','f-prod','f-precio','f-cantidad','f-costo','f-descuento','f-fecha-entrega',
+  ['f-fecha','f-pago','f-prod','f-precio','f-cantidad','f-costo','f-descuento',
    'cp-lista','cp-ant','cp-fecha-ant','cp-fecha1',
    'f-apellido','f-nombre','f-dni','f-tel','f-dir','f-obs'].forEach(id=>{
     const el=document.getElementById(id); if(!el)return;
@@ -2319,13 +2402,18 @@ function limpiar() {
   });
   const ftelNum=document.getElementById('f-tel-num'); if(ftelNum)ftelNum.value='';
   const ee=document.getElementById('f-estado-entrega'); if(ee)ee.value='pendiente';
-  const nv=document.getElementById('f-nro-venta'); if(nv) nv.value=obtenerProximoNroVenta();
   // Restaurar vendedor al usuario actual
   if(usuarioActual) {
     const sel=document.getElementById('f-vend');
     if(sel && !sel.disabled) sel.value=usuarioActual.nombre;
   }
-  ['blk-tc','blk-cp'].forEach(id=>document.getElementById(id).style.display='none');
+  ['blk-tc','blk-cp'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  const blkAhV = document.getElementById('blk-ahorro-venta'); if(blkAhV) blkAhV.style.display='none';
+  const ahorroMonto = document.getElementById('ahorro-monto-pactado'); if(ahorroMonto) ahorroMonto.value='';
+  const ahorroAnt = document.getElementById('ahorro-pct-ant'); if(ahorroAnt) ahorroAnt.value='0';
+  const ahorroAntM = document.getElementById('ahorro-ant-monto'); if(ahorroAntM) ahorroAntM.value='';
+  const blkAntI = document.getElementById('blk-ahorro-ant-inputs'); if(blkAntI) blkAntI.style.display='none';
+  const ahorroVRes = document.getElementById('ahorro-venta-resumen'); if(ahorroVRes) ahorroVRes.style.display='none';
   document.getElementById('prod-ac').classList.remove('on');
 }
 
@@ -3014,7 +3102,7 @@ function onFotosSeleccionadas(event){
       if(pending===0)renderFotosGrid();
     });
   });
-  event.target.value='';
+  setTimeout(()=>{ try{ event.target.value=''; }catch(e){} }, 500);
 }
 function renderFotosGrid(){
   const grid=document.getElementById('ap-fotos-grid');
@@ -3205,7 +3293,7 @@ async function guardarPass(){
 // ===
 function exportarBackup(){
   if(!esAdmin()){toast('Sin permiso');return;}
-  const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, caracteristicas, version:2 };
+  const datos = { ventas, productos, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, proveedores, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, caracteristicas, version:2 };
   const json = JSON.stringify(datos, null, 2);
   const blob = new Blob([json], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -3234,6 +3322,7 @@ async function importarBackup(e){
     if(d.clientes)clientes=d.clientes;
     if(d.categorias&&d.categorias.length>0)categorias=d.categorias;
     if(d.pedidos)pedidos=d.pedidos;
+    if(d.proveedores)proveedores=d.proveedores;
     if(d.activityLog)activityLog=d.activityLog;
     if(d.metas)metas=d.metas;
     if(d.plantillasWA)plantillasWA=d.plantillasWA;
@@ -5824,6 +5913,137 @@ function renderPedidos(){
   }).join('');
 }
 
+// ══════════════════════════════════════════════════════
+// PROVEEDORES
+// ══════════════════════════════════════════════════════
+async function guardarProveedoresData(){ await sSet(SK_PROVEEDORES, proveedores); programarGuardado(); }
+
+function mostrarTabProv(tab){
+  const secProv = document.getElementById('sec-proveedores');
+  const secPed = document.getElementById('sec-pedidos');
+  const btnProv = document.getElementById('tab-prov-btn');
+  const btnPed = document.getElementById('tab-ped-btn');
+  if(tab==='proveedores'){
+    secProv.style.display='block'; secPed.style.display='none';
+    if(btnProv){btnProv.style.background='var(--navy)';btnProv.style.color='var(--gold2)';}
+    if(btnPed){btnPed.style.background='#fff';btnPed.style.color='var(--muted)';}
+    renderProveedores();
+  } else {
+    secProv.style.display='none'; secPed.style.display='block';
+    if(btnProv){btnProv.style.background='#fff';btnProv.style.color='var(--muted)';}
+    if(btnPed){btnPed.style.background='var(--navy)';btnPed.style.color='var(--gold2)';}
+    renderPedidos();
+  }
+}
+
+function calcResumenProv(){
+  const desc = parseFloat(document.getElementById('prov-descuento')?.value)||0;
+  const margen = parseFloat(document.getElementById('prov-margen')?.value)||40;
+  const recTC = parseFloat(document.getElementById('prov-recargo-tc')?.value)||15;
+  const resumen = document.getElementById('prov-calc-resumen');
+  if(!resumen) return;
+  const ejemploCosto = 10000;
+  const costoConDesc = Math.round(ejemploCosto*(1-desc/100));
+  const precioContado = Math.round(costoConDesc*(1+margen/100));
+  const precioTC = Math.round(precioContado*(1+recTC/100));
+  resumen.style.display='block';
+  resumen.innerHTML = `
+    <strong>Ejemplo con costo $${ejemploCosto.toLocaleString('es-AR')}:</strong><br>
+    Costo neto (con ${desc}% desc.): $${costoConDesc.toLocaleString('es-AR')} |
+    Precio contado (margen ${margen}%): $${precioContado.toLocaleString('es-AR')} |
+    Precio TC (+${recTC}%): $${precioTC.toLocaleString('es-AR')}`;
+}
+
+function abrirNuevoProveedor(){
+  document.getElementById('prov-titulo').textContent='Nuevo Proveedor';
+  document.getElementById('prov-id').value='';
+  ['prov-nombre','prov-contacto','prov-tel','prov-email','prov-web','prov-notas'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('prov-descuento').value='';
+  document.getElementById('prov-margen').value='40';
+  document.getElementById('prov-recargo-tc').value='15';
+  document.getElementById('prov-calc-resumen').style.display='none';
+  document.getElementById('ovl-proveedor').classList.add('on');
+}
+
+function editarProveedor(id){
+  const p = proveedores.find(x=>x.id===id); if(!p) return;
+  document.getElementById('prov-titulo').textContent='Editar Proveedor';
+  document.getElementById('prov-id').value=p.id;
+  document.getElementById('prov-nombre').value=p.nombre||'';
+  document.getElementById('prov-contacto').value=p.contacto||'';
+  document.getElementById('prov-tel').value=p.tel||'';
+  document.getElementById('prov-email').value=p.email||'';
+  document.getElementById('prov-web').value=p.web||'';
+  document.getElementById('prov-descuento').value=p.descuento||'';
+  document.getElementById('prov-margen').value=p.margen||'40';
+  document.getElementById('prov-recargo-tc').value=p.recargoTC||'15';
+  document.getElementById('prov-notas').value=p.notas||'';
+  calcResumenProv();
+  document.getElementById('ovl-proveedor').classList.add('on');
+}
+
+async function guardarProveedor(){
+  const nombre = document.getElementById('prov-nombre').value.trim();
+  if(!nombre){toast('Ingresa el nombre del proveedor');return;}
+  const id = document.getElementById('prov-id').value;
+  const data = {
+    id: id?parseInt(id):Date.now(),
+    nombre,
+    contacto: document.getElementById('prov-contacto').value.trim(),
+    tel: document.getElementById('prov-tel').value.trim(),
+    email: document.getElementById('prov-email').value.trim(),
+    web: document.getElementById('prov-web').value.trim(),
+    descuento: parseFloat(document.getElementById('prov-descuento').value)||0,
+    margen: parseFloat(document.getElementById('prov-margen').value)||40,
+    recargoTC: parseFloat(document.getElementById('prov-recargo-tc').value)||15,
+    notas: document.getElementById('prov-notas').value.trim()
+  };
+  if(id){const i=proveedores.findIndex(p=>p.id==id);if(i>=0)proveedores[i]=data;}
+  else proveedores.unshift(data);
+  await guardarProveedoresData();
+  cM('ovl-proveedor'); renderProveedores();
+  toast('OK Proveedor guardado');
+}
+
+async function eliminarProveedor(id){
+  if(!confirm('Eliminar este proveedor?')) return;
+  proveedores = proveedores.filter(p=>p.id!==id);
+  await guardarProveedoresData(); renderProveedores(); toast('Proveedor eliminado');
+}
+
+function renderProveedores(){
+  const q = (document.getElementById('prov-buscar')?.value||'').toLowerCase();
+  let lista = proveedores;
+  if(q) lista = lista.filter(p=>(p.nombre||'').toLowerCase().includes(q)||(p.contacto||'').toLowerCase().includes(q));
+  const cont = document.getElementById('proveedores-lista');
+  const empty = document.getElementById('empty-proveedores');
+  if(!lista.length){if(cont)cont.innerHTML='';if(empty)empty.style.display='block';return;}
+  if(empty)empty.style.display='none';
+  cont.innerHTML = lista.map(p=>{
+    const cDesc = p.descuento>0?`Descuento: <strong>${p.descuento}%</strong>`:'';
+    const cMarg = p.margen?`Margen: <strong>${p.margen}%</strong>`:'';
+    const cTC = p.recargoTC?`Recargo TC: <strong>${p.recargoTC}%</strong>`:'';
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:8px;border-left:4px solid var(--gold);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <div style="font-weight:700;font-size:14px;">${p.nombre}</div>
+          ${p.contacto?`<div style="font-size:12px;color:var(--muted);">${p.contacto}</div>`:''}
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap;">
+            ${[cDesc,cMarg,cTC].filter(Boolean).join(' | ')}
+          </div>
+          ${p.tel||p.email?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${[p.tel,p.email].filter(Boolean).join(' · ')}</div>`:''}
+          ${p.web?`<div style="font-size:11px;margin-top:2px;"><a href="${p.web}" target="_blank" style="color:var(--gold);text-transform:none;">${p.web}</a></div>`:''}
+          ${p.notas?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;">${p.notas}</div>`:''}
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn btn-blue btn-sm" onclick="editarProveedor(${p.id})">Editar</button>
+          ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProveedor(${p.id})">X</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ── Mi Local ──
 async function guardarMiLocal(){
   miLocal.nombre = document.getElementById('ml-nombre').value;
@@ -6219,7 +6439,6 @@ renderPrecios = function(){
   cont.innerHTML=lista.map(p=>{
     const contado = Math.round((p.precio||0)*0.9);
     const tc = p.precio||0;
-    const cpAnt = Math.round(contado*0.5);
     const margen = (p.costo>0 && p.precio>0) ? Math.round((p.precio-p.costo)/p.precio*100) : null;
     const foto = p.fotos && p.fotos.length ? p.fotos[p.fotoPrincipal||0] : null;
     return `
@@ -6232,7 +6451,6 @@ renderPrecios = function(){
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">Contado</div><div style="font-weight:700;color:var(--green);font-size:13px;">$${fmt(contado)}</div></div>
         <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">TC/Lista</div><div style="font-size:13px;">$${fmt(tc)}</div></div>
-        <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">CP Ant.</div><div style="font-size:13px;">$${fmt(cpAnt)}</div></div>
         ${puedeEditar?`<div style="display:flex;gap:5px;margin-left:4px;">
           <button class="btn btn-blue btn-sm" onclick="editarProd(${p.id})">Ed</button>
           ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProd(${p.id})">X</button>`:''}
@@ -6875,6 +7093,36 @@ function calcContadoTC() {
       <div style="display:flex;gap:8px;">
         <button class="btn btn-gold" style="flex:1;" onclick="confirmarActualizarMonto()">OK Actualizar</button>
         <button class="btn btn-ghost" onclick="cM('ovl-ahorro-upd')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo/Editar Proveedor -->
+<div class="overlay" id="ovl-proveedor" onclick="cM('ovl-proveedor',event)">
+  <div class="modal" style="max-width:520px;">
+    <div class="mh"><h3 id="prov-titulo">Nuevo Proveedor</h3><span class="mx" onclick="cM('ovl-proveedor')">X</span></div>
+    <div class="mb">
+      <input type="hidden" id="prov-id">
+      <div class="r2">
+        <div class="fg"><label>Nombre</label><input type="text" id="prov-nombre" placeholder="Ej: El Criollo SA"></div>
+        <div class="fg"><label>Contacto</label><input type="text" id="prov-contacto" placeholder="Nombre del contacto"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Telefono</label><input type="text" id="prov-tel" placeholder=""></div>
+        <div class="fg"><label>Email</label><input type="text" id="prov-email" placeholder="" style="text-transform:none;"></div>
+      </div>
+      <div class="fg"><label>Pagina Web</label><input type="text" id="prov-web" placeholder="https://..." style="text-transform:none;"></div>
+      <div class="r3">
+        <div class="fg"><label>Descuento (%)</label><input type="number" id="prov-descuento" placeholder="0" min="0" max="100" oninput="calcResumenProv()"></div>
+        <div class="fg"><label>Margen Ganancia (%)</label><input type="number" id="prov-margen" placeholder="40" min="0" oninput="calcResumenProv()"></div>
+        <div class="fg"><label>% TC (Recargo)</label><input type="number" id="prov-recargo-tc" placeholder="15" min="0" oninput="calcResumenProv()"></div>
+      </div>
+      <div class="ibox" id="prov-calc-resumen" style="display:none;font-size:12px;"></div>
+      <div class="fg"><label>Notas / Condiciones</label><textarea id="prov-notas" rows="2" placeholder="Condiciones de pago, plazos de entrega..."></textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="cM('ovl-proveedor')">Cancelar</button>
+        <button class="btn btn-gold" onclick="guardarProveedor()">OK Guardar</button>
       </div>
     </div>
   </div>
