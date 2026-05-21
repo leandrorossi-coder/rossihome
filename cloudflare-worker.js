@@ -95,15 +95,17 @@ async function handleScrape(url, headers) {
 
     if (!productos.length) {
       // Mostrar fragmento alrededor de donde deberían estar los productos
+      // Mostrar lo que hay DENTRO del <ul class="products">
       const idx = html.indexOf('class="products ');
-      const idxLi = html.indexOf('<li class="product ');
-      const idxLi2 = html.indexOf('<li class="type-product');
-      const pos = idxLi >= 0 ? idxLi : (idxLi2 >= 0 ? idxLi2 : (idx >= 0 ? idx : 0));
-      const fragmento = pos > 0 ? html.slice(pos, pos + 3000) : html.slice(html.length/2 - 1000, html.length/2 + 2000);
+      const ulStart = idx > 0 ? html.indexOf('>', idx) + 1 : -1;
+      const fragmento = ulStart > 0 ? html.slice(ulStart, ulStart + 4000) : html.slice(224000, 228000);
+      // También buscar cualquier <li> cercano al ul.products
+      const primerLi = html.indexOf('<li', ulStart > 0 ? ulStart : 224000);
+      const liClase = primerLi > 0 ? html.slice(primerLi, primerLi + 300) : 'no li found';
       return json({
         ok: false,
-        error: `WooCommerce detectado | ${html.length} chars | li.product en pos ${idxLi} | ul.products en pos ${idx}`,
-        debug: { htmlLen: html.length, posLiProduct: idxLi, posUlProducts: idx, htmlPreview: fragmento }
+        error: `ul.products en pos ${idx} | primer li en pos ${primerLi} | clase del li: ${liClase.slice(0,150)}`,
+        debug: { htmlLen: html.length, htmlPreview: fragmento }
       }, headers);
     }
 
