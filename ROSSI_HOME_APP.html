@@ -5539,8 +5539,8 @@ function actualizarMaestroClientes(venta) {
   // Buscar si ya existe por DNI o apellido+nombre
   const existe = clientes.find(c =>
     (venta.dni && c.dni === venta.dni) ||
-    (c.apellido.toUpperCase() === (venta.apellido||'').toUpperCase() &&
-     c.nombre.toUpperCase() === (venta.nombre||'').toUpperCase())
+    ((c.apellido||'').toUpperCase() === (venta.apellido||'').toUpperCase() &&
+     (c.nombre||'').toUpperCase() === (venta.nombre||'').toUpperCase())
   );
   if (!existe) {
     const apellido = (venta.apellido||'').toUpperCase();
@@ -6678,7 +6678,7 @@ async function importarTodosScrap(){
   for(const p of prods){
     // Saltar si ya existe un producto con el mismo nombre y proveedor
     const existe = productos.find(x=>
-      x.nombre.toUpperCase()===p.nombre.toUpperCase() &&
+      (x.nombre||'').toUpperCase()===(p.nombre||'').toUpperCase() &&
       (x.proveedor||'')===(prov?.nombre||'')
     );
     if(existe){ saltados++; continue; }
