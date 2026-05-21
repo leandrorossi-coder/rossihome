@@ -85,11 +85,19 @@ async function handleScrape(url, headers) {
     const tnRes = await intentarTiendanubeAPI(url, headers);
     if (tnRes) return tnRes;
 
-    // 3. Fetch HTML con headers de navegador real
-    const resp = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow' });
+    // 4. Fetch HTML con headers de navegador real
+    const htmlHeaders = { ...FETCH_HEADERS, 'Referer': 'https://www.google.com/', 'Sec-Fetch-Site': 'cross-site' };
+    let resp = await fetch(url, { headers: htmlHeaders, redirect: 'follow' });
+
+    // Si 403, intentar con URL alternativa /shop o /tienda
+    if (!resp.ok && resp.status === 403) {
+      const altUrl = u.origin + '/shop/';
+      const resp2 = await fetch(altUrl, { headers: htmlHeaders, redirect: 'follow' });
+      if (resp2.ok) resp = resp2;
+    }
 
     if (!resp.ok) {
-      return json({ ok: false, error: `El sitio respondió HTTP ${resp.status}. El servidor bloquea bots. Probá con una URL de categoría específica.` }, headers);
+      return json({ ok: false, error: `HTTP ${resp.status}: el sitio bloquea scraping. Intentá con la URL de una categoría específica (ej: /categoria/sillas/).` }, headers);
     }
 
     const html = await resp.text();
@@ -123,13 +131,23 @@ async function handleScrape(url, headers) {
 // WooCommerce Store API — pública sin autenticación (WooCommerce Blocks / Headless)
 async function intentarWooStoreAPI(origin, headers) {
   const productos = [];
+  const apiHeaders = {
+    ...FETCH_HEADERS,
+    'Accept': 'application/json',
+    'Referer': origin + '/',
+    'Origin': origin,
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+  };
   for (let page = 1; page <= 10; page++) {
     try {
       const apiUrl = `${origin}/wp-json/wc/store/v1/products?per_page=100&page=${page}`;
-      const resp = await fetch(apiUrl, {
-        headers: { ...FETCH_HEADERS, 'Accept': 'application/json' },
-        redirect: 'follow',
-      });
+      let resp = await fetch(apiUrl, { headers: apiHeaders, redirect: 'follow' });
+      // Retry con per_page menor si falla
+      if (!resp.ok && resp.status === 403) {
+        resp = await fetch(`${origin}/wp-json/wc/store/v1/products?per_page=20&page=${page}`, { headers: apiHeaders, redirect: 'follow' });
+      }
       if (!resp.ok) break;
       const ct = resp.headers.get('content-type') || '';
       if (!ct.includes('json')) break;
@@ -167,7 +185,7 @@ async function intentarWooAPI(origin, headers) {
     try {
       const apiUrl = `${origin}/wp-json/wc/v3/products?per_page=100&page=${page}&status=publish`;
       const resp = await fetch(apiUrl, {
-        headers: { ...FETCH_HEADERS, 'Accept': 'application/json' },
+        headers: { ...FETCH_HEADERS, 'Accept': 'application/json', 'Referer': origin+'/', 'Origin': origin },
         redirect: 'follow',
       });
       if (!resp.ok) break;
