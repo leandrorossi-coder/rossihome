@@ -631,6 +631,12 @@ select option{text-transform:uppercase;}
       <select id="cat-cat" onchange="renderCatalogo()" style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
         <option value="">Todas las categorias</option>
       </select>
+      <select id="cat-subcat" onchange="renderCatalogo()" style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
+        <option value="">Todas las subcategorías</option>
+      </select>
+      <select id="cat-marca" onchange="renderCatalogo()" style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
+        <option value="">Todas las marcas</option>
+      </select>
       <select id="cat-stock" onchange="renderCatalogo()" style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
         <option value="">Todo el stock</option>
         <option value="disponible">Disponible</option>
@@ -1318,9 +1324,19 @@ select option{text-transform:uppercase;}
         <div class="fg"><label>Precio Mayorista ($)</label><input type="number" id="ap-pmayor" min="0" placeholder="Opcional"></div>
         <div class="fg"><label>Costo ($)</label><input type="number" id="ap-costo" min="0"></div>
         <div class="fg"><label>Categoría</label>
-          <select id="ap-cat" style="font-size:13px;">
+          <select id="ap-cat" style="font-size:13px;" onchange="poblarSelectSubcat('')">
             <option value="">Sin categoría</option>
           </select>
+        </div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Subcategoría</label>
+          <select id="ap-subcat" style="font-size:13px;">
+            <option value="">Sin subcategoría</option>
+          </select>
+        </div>
+        <div class="fg"><label>Marca</label>
+          <input type="text" id="ap-marca" placeholder="Ej: Samsung, Drean...">
         </div>
       </div>
       <div class="r2">
@@ -1359,13 +1375,18 @@ select option{text-transform:uppercase;}
 
 <!-- Modal Categorías -->
 <div class="overlay" id="ovl-categorias" onclick="cM('ovl-categorias',event)">
-  <div class="modal" style="max-width:400px;">
-    <div class="mh"><h3>Categorías</h3><span class="mx" onclick="cM('ovl-categorias')">X</span></div>
+  <div class="modal" style="max-width:460px;">
+    <div class="mh"><h3>Categorías y Subcategorías</h3><span class="mx" onclick="cM('ovl-categorias')">X</span></div>
     <div class="mb">
       <div id="cat-lista-modal" style="margin-bottom:12px;"></div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
         <input type="text" id="cat-nueva-input" placeholder="Nueva categoría..." style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--cream);">
-        <button class="btn btn-gold btn-sm" onclick="agregarCategoria()">Agregar</button>
+        <button class="btn btn-gold btn-sm" onclick="agregarCategoria()">+ Cat</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <select id="cat-parent-sel" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-size:13px;background:var(--cream);"><option value="">Elige categoría...</option></select>
+        <input type="text" id="subcat-nueva-input" placeholder="Nueva subcategoría..." style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--cream);">
+        <button class="btn btn-blue btn-sm" onclick="agregarSubcategoria()">+ Sub</button>
       </div>
     </div>
   </div>
@@ -1767,7 +1788,14 @@ let usuarios    = {...USERS_DEFAULT};
 let movCaja     = []; // movimientos de caja
 let datosCuentas = {}; // datos bancarios por caja
 let clientes    = []; // maestro de clientes
-let categorias  = ['Dormitorio','Living','Cocina','Baño','Jardín','Oficina']; // categorías de productos
+let categorias  = [
+  {id:1,nombre:'Dormitorio',subcategorias:[]},
+  {id:2,nombre:'Living',subcategorias:[]},
+  {id:3,nombre:'Cocina',subcategorias:[]},
+  {id:4,nombre:'Baño',subcategorias:[]},
+  {id:5,nombre:'Jardín',subcategorias:[]},
+  {id:6,nombre:'Oficina',subcategorias:[]},
+]; // categorías de productos
 let filtroVend  = 'TODAS';
 let filtroCred  = 'todas';
 let editVentaId = null;
@@ -1789,6 +1817,7 @@ let saldoInicialCaja = {}; // {caja: monto}
 let filtroEstadoEntrega = 'TODOS';
 let nroVentaCounter = 0;
 const SK_PEDIDOS='rh_ped_v1', SK_ACTIVIDAD='rh_act_v1', SK_METAS='rh_metas_v1', SK_PLANTILLAS='rh_plant_v1', SK_MILOCAL='rh_milocal_v1', SK_ARQUEOS='rh_arq_v1', SK_NROVENTA='rh_nroventa_v1', SK_PROVEEDORES='rh_prov_v1';
+const SK_CATEGORIAS = 'rh_cat_v2';
 
 function obtenerProximoNroVenta(){
   return Math.max(0, ...ventas.map(v => parseInt(v.nroVenta||0)||0)) + 1;
@@ -1921,6 +1950,7 @@ async function guardarVentas()  { await sSet('rh_v', ventas);   programarGuardad
 async function guardarProds()   { await sSet('rh_p', productos); programarGuardado(); }
 async function guardarUsers()   { await sSet('rh_u', usuarios);  }
 async function guardarPresupuestos() { await sSet('rh_pres', presupuestos); programarGuardado(); }
+async function guardarCategorias(){ await sSet(SK_CATEGORIAS, categorias); programarGuardado(); }
 
 async function cargarDatos() {
   // Cache local primero (instantáneo)
@@ -1943,6 +1973,11 @@ async function cargarDatos() {
   const ml=await sGet(SK_MILOCAL); if(ml) miLocal={...miLocal,...ml};
   const aq=await sGet(SK_ARQUEOS); if(aq) arqueos=aq;
   const nv=await sGet(SK_NROVENTA); if(nv) nroVentaCounter=nv;
+  const cats=await sGet(SK_CATEGORIAS); if(cats&&cats.length>0) categorias=cats;
+  // Migrate old string format
+  if(categorias.length>0 && typeof categorias[0]==='string'){
+    categorias=categorias.map((c,i)=>({id:Date.now()+i,nombre:c,subcategorias:[]}));
+  }
   // Leer de Drive (fuente de verdad)
   await leerDeScript();
   // Reparar nroVenta duplicados (corrige ventas con números repetidos)
@@ -3385,7 +3420,7 @@ function renderPrecios(){
       <div class="pf-thumb">${foto?`<img src="${foto}">`:'📷'}</div>
       <div style="flex:1;min-width:150px;">
         <div class="pf-nom" style="font-size:13px;font-weight:500;">${p.nombre}</div>
-        <div class="pf-prov">${p.proveedor||''}${p.categoria?` · <span style="color:var(--gold);font-size:10px;">${p.categoria}</span>`:''}</div>
+        <div class="pf-prov">${esAdmin()||esLocal()?`${p.proveedor||''} `:''}${p.marca?`<strong style="font-size:10px;">${p.marca}</strong> `:''} ${p.categoria?`<span style="color:var(--gold);font-size:10px;">${p.categoria}${p.subcategoria?` > ${p.subcategoria}`:''}</span>`:''}</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div style="text-align:right;">
@@ -3400,10 +3435,11 @@ function renderPrecios(){
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">Mayorista</div>
           <div style="font-weight:700;color:var(--navy);font-size:14px;">$${fmt(p.pMayor)}</div>
         </div>`:''}
-        ${puedeEditar?`<div style="display:flex;gap:5px;margin-left:4px;">
-          <button class="btn btn-blue btn-sm" onclick="editarProd(${p.id})">Ed</button>
+        <div style="display:flex;gap:5px;margin-left:4px;">
+          <button class="btn btn-wa btn-sm" style="font-size:10px;padding:2px 7px;" onclick="compartirProducto(${p.id})" title="Compartir">WA</button>
+          ${puedeEditar?`<button class="btn btn-blue btn-sm" onclick="editarProd(${p.id})">Ed</button>`:''}
           ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProd(${p.id})">X</button>`:''}
-        </div>`:''}
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -3411,7 +3447,19 @@ function renderPrecios(){
 function poblarSelectCat(selectedVal){
   const sel=document.getElementById('ap-cat');
   if(!sel)return;
-  sel.innerHTML='<option value="">Sin categoría</option>'+categorias.map(c=>`<option value="${c}"${c===selectedVal?' selected':''}>${c}</option>`).join('');
+  sel.innerHTML='<option value="">Sin categoría</option>'+categorias.map(c=>{
+    const nombre=typeof c==='string'?c:(c.nombre||'');
+    return `<option value="${nombre}"${nombre===selectedVal?' selected':''}>${nombre}</option>`;
+  }).join('');
+  poblarSelectSubcat('');
+}
+function poblarSelectSubcat(selectedVal){
+  const catVal=document.getElementById('ap-cat')?.value||'';
+  const sel=document.getElementById('ap-subcat');
+  if(!sel)return;
+  const cat=categorias.find(c=>(typeof c==='string'?c:(c.nombre||''))===catVal);
+  const subs=(cat&&typeof cat==='object')?cat.subcategorias||[]:[];
+  sel.innerHTML='<option value="">Sin subcategoría</option>'+subs.map(s=>`<option value="${s.nombre||s}"${(s.nombre||s)===selectedVal?' selected':''}>${s.nombre||s}</option>`).join('');
 }
 function abrirAddProd(){
   if(!esLocal()){toast('Sin permiso');return;}
@@ -3422,6 +3470,8 @@ function abrirAddProd(){
   const ap_stock=document.getElementById('ap-stock'); if(ap_stock)ap_stock.value='disponible';
   const ap_dest=document.getElementById('ap-destacado'); if(ap_dest)ap_dest.checked=false;
   poblarSelectCat('');
+  poblarSelectSubcat('');
+  const ap_marc=document.getElementById('ap-marca'); if(ap_marc)ap_marc.value='';
   renderFotosGrid();
   document.getElementById('ovl-prod').classList.add('on');
 }
@@ -3442,6 +3492,8 @@ function editarProd(id){
   const ap_st=document.getElementById('ap-stock'); if(ap_st)ap_st.value=p.stock||'disponible';
   const ap_dest=document.getElementById('ap-destacado'); if(ap_dest)ap_dest.checked=!!p.destacado;
   poblarSelectCat(p.categoria||'');
+  poblarSelectSubcat(p.subcategoria||'');
+  const ap_marc=document.getElementById('ap-marca'); if(ap_marc)ap_marc.value=p.marca||'';
   renderFotosGrid();
   document.getElementById('ovl-prod').classList.add('on');
 }
@@ -3458,6 +3510,8 @@ async function guardarProd(){
     costo:parseFloat(document.getElementById('ap-costo').value)||0,
     desc:document.getElementById('ap-desc').value.trim(),
     categoria:document.getElementById('ap-cat').value||'',
+    subcategoria:document.getElementById('ap-subcat')?.value||'',
+    marca:document.getElementById('ap-marca')?.value.trim()||'',
     stock:document.getElementById('ap-stock').value||'disponible',
     destacado:document.getElementById('ap-destacado').checked,
     etiquetas,
@@ -3479,6 +3533,26 @@ async function eliminarProd(id){
   if(!confirm('¿Eliminás este producto?'))return;
   productos=productos.filter(p=>p.id!==id);
   await guardarProds(); renderPrecios(); if(document.getElementById('pg-catalogo').classList.contains('on'))renderCatalogo(); toast('Producto eliminado');
+}
+function compartirProducto(id) {
+  const p = productos.find(x=>x.id===id);
+  if(!p) return;
+  const local = miLocal.nombre||'Rossi Home';
+  const precio = p.precio ? `\n💰 Precio: *$${fmt(p.precio)}*` : '';
+  const pmayor = (esAdmin()||esLocal()) && p.pMayor ? `\n💼 Mayorista: *$${fmt(p.pMayor)}*` : '';
+  const stock = p.stock==='disponible'?'✅ Disponible':p.stock==='por_pedido'?'📦 Por pedido':'⚠ Consultar stock';
+  const desc = p.desc ? `\n\n${p.desc}` : '';
+  const marca = p.marca ? ` | ${p.marca}` : '';
+  const cat = p.categoria ? ` | ${p.categoria}${p.subcategoria?' > '+p.subcategoria:''}` : '';
+  const texto = `*${local}*\n\n*${p.nombre}*${marca}${cat}${precio}${pmayor}\n${stock}${desc}\n\n_Consultá disponibilidad y más info_`;
+  const wa = miLocal.wa ? miLocal.wa.replace(/\D/g,'') : '';
+  // Try Web Share API first
+  if(navigator.share){
+    navigator.share({title: p.nombre, text: texto}).catch(()=>{});
+    return;
+  }
+  // Fallback to WhatsApp
+  window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank');
 }
 
 // ===
@@ -3553,6 +3627,8 @@ function toggleCatView(){
 function renderCatalogo(){
   const q=(document.getElementById('cat-q').value||'').toLowerCase();
   const catF=(document.getElementById('cat-cat').value||'');
+  const subcatF=(document.getElementById('cat-subcat')?.value||'');
+  const marcaF=(document.getElementById('cat-marca')?.value||'');
   const stockF=(document.getElementById('cat-stock').value||'');
   const destF=document.getElementById('cat-dest').checked;
   const fotoF=document.getElementById('cat-foto').checked;
@@ -3561,12 +3637,44 @@ function renderCatalogo(){
   const sel=document.getElementById('cat-cat');
   if(sel){
     const cur=sel.value;
-    sel.innerHTML='<option value="">Todas las categorías</option>'+categorias.map(c=>`<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
+    sel.innerHTML='<option value="">Todas las categorías</option>'+categorias.map(c=>{
+      const nombre=typeof c==='string'?c:(c.nombre||'');
+      return `<option value="${nombre}"${nombre===cur?' selected':''}>${nombre}</option>`;
+    }).join('');
+  }
+  // Poblar select subcategorías según categoría seleccionada
+  const selSub=document.getElementById('cat-subcat');
+  if(selSub){
+    const curSub=selSub.value;
+    const catObj=catF?categorias.find(c=>(typeof c==='string'?c:(c.nombre||''))===catF):null;
+    const subs=catObj&&typeof catObj==='object'?catObj.subcategorias||[]:[];
+    if(subs.length){
+      selSub.innerHTML='<option value="">Todas las subcategorías</option>'+subs.map(s=>{const n=s.nombre||s;return `<option value="${n}"${n===curSub?' selected':''}>${n}</option>`;}).join('');
+      selSub.style.display='';
+    } else {
+      selSub.innerHTML='<option value="">Todas las subcategorías</option>';
+      selSub.style.display='none';
+    }
+  }
+  // Poblar select marcas
+  const selMarca=document.getElementById('cat-marca');
+  if(selMarca){
+    const curMarca=selMarca.value;
+    const marcas=[...new Set(productos.map(p=>p.marca||'').filter(Boolean))].sort();
+    if(marcas.length){
+      selMarca.innerHTML='<option value="">Todas las marcas</option>'+marcas.map(m=>`<option value="${m}"${m===curMarca?' selected':''}>${m}</option>`).join('');
+      selMarca.style.display='';
+    } else {
+      selMarca.innerHTML='<option value="">Todas las marcas</option>';
+      selMarca.style.display='none';
+    }
   }
 
   let lista=productos;
-  if(q)lista=lista.filter(p=>(p.nombre+' '+(p.proveedor||'')+(p.categoria||'')+(p.etiquetas||[]).join(' ')).toLowerCase().includes(q));
+  if(q)lista=lista.filter(p=>(p.nombre+' '+(p.proveedor||'')+(p.categoria||'')+(p.marca||'')+(p.etiquetas||[]).join(' ')).toLowerCase().includes(q));
   if(catF)lista=lista.filter(p=>p.categoria===catF);
+  if(subcatF)lista=lista.filter(p=>(p.subcategoria||'')===subcatF);
+  if(marcaF)lista=lista.filter(p=>(p.marca||'')===marcaF);
   if(stockF)lista=lista.filter(p=>(p.stock||'disponible')===stockF);
   if(destF)lista=lista.filter(p=>p.destacado);
   if(fotoF)lista=lista.filter(p=>p.fotos&&p.fotos.length>0);
@@ -3630,35 +3738,77 @@ function renderCatalogo(){
 // ===
 function abrirCategoriasModal(){
   renderCategoriasModal();
+  // Populate parent selector for subcategories
+  const ps=document.getElementById('cat-parent-sel');
+  if(ps) ps.innerHTML='<option value="">Elige categoría...</option>'+categorias.map((c,i)=>`<option value="${i}">${typeof c==='string'?c:c.nombre}</option>`).join('');
   document.getElementById('ovl-categorias').classList.add('on');
 }
 function renderCategoriasModal(){
   const cont=document.getElementById('cat-lista-modal');
   if(!cont)return;
-  cont.innerHTML=categorias.map((c,i)=>`
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-bottom:1px solid var(--border);">
-      <span style="font-size:13px;">${c}</span>
-      <button class="btn btn-danger btn-sm" onclick="eliminarCategoria(${i})">X</button>
-    </div>`).join('');
-  if(!categorias.length)cont.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px;">Sin categorías personalizadas</div>';
+  if(!categorias.length){cont.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px;">Sin categorías</div>';return;}
+  cont.innerHTML=categorias.map((c,i)=>{
+    const nombre=typeof c==='string'?c:c.nombre;
+    const subs=(typeof c==='object'&&c.subcategorias)||[];
+    return `<div style="background:var(--cream2);border-radius:8px;padding:7px 10px;margin-bottom:7px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:13px;font-weight:600;">${nombre}</span>
+        <button class="btn btn-danger btn-sm" onclick="eliminarCategoria(${i})">X</button>
+      </div>
+      ${subs.length?`<div style="padding-left:12px;margin-top:4px;">${subs.map((s,j)=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;border-top:1px solid var(--border);">
+          <span style="font-size:12px;color:var(--muted);">→ ${s.nombre||s}</span>
+          <button class="btn btn-danger btn-sm" style="font-size:10px;padding:1px 5px;" onclick="eliminarSubcategoria(${i},${j})">X</button>
+        </div>`).join('')}</div>`:``}
+    </div>`;
+  }).join('');
 }
 function agregarCategoria(){
   const inp=document.getElementById('cat-nueva-input');
   const val=(inp.value||'').trim();
   if(!val){toast('! Ingresá el nombre');return;}
-  if(categorias.includes(val)){toast('Ya existe');return;}
-  categorias.push(val);
+  const existeNombre=categorias.some(c=>(typeof c==='string'?c:c.nombre)===val);
+  if(existeNombre){toast('Ya existe');return;}
+  categorias.push({id:Date.now(),nombre:val,subcategorias:[]});
   inp.value='';
   renderCategoriasModal();
-  programarGuardado();
+  const ps=document.getElementById('cat-parent-sel');
+  if(ps) ps.innerHTML='<option value="">Elige categoría...</option>'+categorias.map((c,i)=>`<option value="${i}">${typeof c==='string'?c:c.nombre}</option>`).join('');
+  guardarCategorias();
   toast('OK Categoría agregada');
 }
+function agregarSubcategoria(){
+  const pIdx=parseInt(document.getElementById('cat-parent-sel').value);
+  const inp=document.getElementById('subcat-nueva-input');
+  const val=(inp.value||'').trim();
+  if(isNaN(pIdx)||pIdx<0||pIdx>=categorias.length){toast('! Elegí una categoría');return;}
+  if(!val){toast('! Ingresá el nombre');return;}
+  const cat=categorias[pIdx];
+  if(typeof cat==='string'){categorias[pIdx]={id:Date.now(),nombre:cat,subcategorias:[{id:Date.now()+1,nombre:val}]};}
+  else{
+    if(!cat.subcategorias)cat.subcategorias=[];
+    if(cat.subcategorias.some(s=>(s.nombre||s)===val)){toast('Ya existe');return;}
+    cat.subcategorias.push({id:Date.now(),nombre:val});
+  }
+  inp.value='';
+  renderCategoriasModal();
+  guardarCategorias();
+  toast('OK Subcategoría agregada');
+}
 function eliminarCategoria(i){
-  if(!confirm('¿Eliminás esta categoría?'))return;
+  if(!confirm('¿Eliminás esta categoría y sus subcategorías?'))return;
   categorias.splice(i,1);
   renderCategoriasModal();
-  programarGuardado();
+  guardarCategorias();
   toast('Categoría eliminada');
+}
+function eliminarSubcategoria(ci,si){
+  if(!confirm('¿Eliminás esta subcategoría?'))return;
+  const cat=categorias[ci];
+  if(cat&&cat.subcategorias)cat.subcategorias.splice(si,1);
+  renderCategoriasModal();
+  guardarCategorias();
+  toast('Subcategoría eliminada');
 }
 
 // ===
@@ -3760,6 +3910,7 @@ async function importarBackup(e){
       sSet(SK_MILOCAL, miLocal),
       sSet(SK_ARQUEOS, arqueos),
       sSet(SK_NROVENTA, nroVentaCounter),
+      sSet(SK_CATEGORIAS, categorias),
     ]);
     await guardarEnScript();
     const info=document.getElementById('backup-info');
@@ -6881,7 +7032,7 @@ renderPrecios = function(){
       <div class="pf-thumb">${foto?`<img src="${foto}">`:'📷'}</div>
       <div style="flex:1;min-width:150px;">
         <div class="pf-nom" style="font-size:13px;font-weight:500;">${p.nombre}</div>
-        <div class="pf-prov">${p.proveedor||''}${p.categoria?` · <span style="color:var(--gold);font-size:10px;">${p.categoria}</span>`:''}${margen!==null?` · <span style="color:var(--green);font-size:10px;">Margen ${margen}%</span>`:''}</div>
+        <div class="pf-prov">${esAdmin()||esLocal()?`${p.proveedor||''} `:''}${p.marca?`<strong style="font-size:10px;">${p.marca}</strong> `:''} ${p.categoria?`<span style="color:var(--gold);font-size:10px;">${p.categoria}${p.subcategoria?` > ${p.subcategoria}`:''}</span>`:''} ${margen!==null?` · <span style="color:var(--green);font-size:10px;">Margen ${margen}%</span>`:''}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">Contado</div><div style="font-weight:700;color:var(--green);font-size:13px;">$${fmt(contado)}</div></div>
