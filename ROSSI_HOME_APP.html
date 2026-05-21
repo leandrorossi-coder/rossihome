@@ -1767,10 +1767,25 @@ let nroVentaCounter = 0;
 const SK_PEDIDOS='rh_ped_v1', SK_ACTIVIDAD='rh_act_v1', SK_METAS='rh_metas_v1', SK_PLANTILLAS='rh_plant_v1', SK_MILOCAL='rh_milocal_v1', SK_ARQUEOS='rh_arq_v1', SK_NROVENTA='rh_nroventa_v1', SK_PROVEEDORES='rh_prov_v1';
 
 function obtenerProximoNroVenta(){
-  const usados = new Set(ventas.map(v=>parseInt(v.nroVenta||0)||0));
-  let n = 1;
-  while(usados.has(n)) n++;
-  return n;
+  return Math.max(0, ...ventas.map(v => parseInt(v.nroVenta||0)||0)) + 1;
+}
+function repararNrosVenta(){
+  const vistos = new Set();
+  let maxNro = Math.max(0, ...ventas.map(v => parseInt(v.nroVenta||0)||0));
+  let huboReparo = false;
+  // Ordenar por fecha para preservar el orden histórico
+  const ordenadas = [...ventas].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+  for (const v of ordenadas) {
+    const n = parseInt(v.nroVenta||0)||0;
+    if (n === 0 || vistos.has(n)) {
+      maxNro++;
+      const original = ventas.find(x => x === v);
+      if (original) { original.nroVenta = maxNro; huboReparo = true; }
+    } else {
+      vistos.add(n);
+    }
+  }
+  if (huboReparo) { guardarVentas(); }
 }
 function logActividad(accion){
   try{
@@ -1847,8 +1862,8 @@ async function leerDeScript() {
     if (d.configLiq) configLiq = {...configLiq, ...d.configLiq};
     if (d.clientes && d.clientes.length > 0) clientes = d.clientes;
     if (d.categorias && d.categorias.length > 0) categorias = d.categorias;
-    if (d.pedidos) pedidos = d.pedidos;
-    if (d.proveedores) proveedores = d.proveedores;
+    if (d.pedidos && d.pedidos.length > 0) pedidos = d.pedidos;
+    if (d.proveedores && d.proveedores.length > 0) proveedores = d.proveedores;
     if (d.activityLog) activityLog = d.activityLog;
     if (d.metas) metas = d.metas;
     if (d.plantillasWA) plantillasWA = d.plantillasWA;
@@ -1898,6 +1913,8 @@ async function cargarDatos() {
   const nv=await sGet(SK_NROVENTA); if(nv) nroVentaCounter=nv;
   // Leer de Drive (fuente de verdad)
   await leerDeScript();
+  // Reparar nroVenta duplicados (corrige ventas con números repetidos)
+  repararNrosVenta();
   // Cargar plantillas por defecto si vacío
   if(!plantillasWA||!plantillasWA.length){ plantillasWA = plantillasDefault(); sSet(SK_PLANTILLAS, plantillasWA); }
 }
