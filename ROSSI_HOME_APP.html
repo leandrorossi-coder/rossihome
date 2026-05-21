@@ -2919,6 +2919,9 @@ function renderCreditos(){
           var btnA = esAdmin()
             ? '<button class="btn btn-ghost btn-sm" onclick="abrirActualizarMontoPactado(' + v.id + ')">Actualizar monto</button>'
             : '';
+          var falta = pactado - pagado;
+          var estadoColor = listo ? 'var(--green)' : 'var(--orange)';
+          var estadoTxt = listo ? 'Completo' : ('Falta: $' + fmt(falta));
           return [
             '<div style="background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:13px;margin-bottom:10px;border-left:4px solid ' + bc + ';">',
             '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">',
@@ -3709,7 +3712,7 @@ function renderPresupuestos() {
             '</div>',
             '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px;">',
             '<span>Pagado: <strong>$' + fmt(pagado) + '</strong></span>',
-            '<span style="color:' + estadoColor + ';">' + estadoTxt + '</span>',
+            '<span style="color:' + (listo ? 'var(--green)' : 'var(--orange)') + ';">' + (listo ? 'Completo' : ('Falta: $' + fmt(pactado - pagado))) + '</span>',
             '</div>',
             '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + btnR + btnA + '</div>',
             '</div>'
