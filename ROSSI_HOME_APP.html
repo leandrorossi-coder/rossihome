@@ -4507,7 +4507,7 @@ function renderCaja() {
           ${m.signo>0?'+':'-'}$${fmt(m.monto)}
           ${m.montoUSD?`<div style="font-size:11px;color:var(--gold);font-weight:600;">USD ${m.montoUSD} · TC $${fmt(m.tipoCambio)}</div>`:''}
         </div>
-        ${esAdmin()?`<div style="display:flex;gap:4px;"><button class="btn btn-ghost btn-sm" onclick="editarMovCaja('${m.realId}')" style="font-size:11px;padding:3px 8px;">Ed</button><button class="btn btn-danger btn-sm" onclick="eliminarMovCaja('${m.realId}')" style="font-size:11px;padding:3px 8px;">X</button></div>`:''}
+        ${(esAdmin()&&m.realId!==undefined)?`<div style="display:flex;gap:4px;"><button class="btn btn-ghost btn-sm" onclick="editarMovCaja(${m.realId})" style="font-size:11px;padding:3px 8px;">Ed</button><button class="btn btn-danger btn-sm" onclick="eliminarMovCaja(${m.realId})" style="font-size:11px;padding:3px 8px;">X</button></div>`:''}
       </div>
     </div>`).join('');
 }
@@ -5794,7 +5794,7 @@ async function guardarEditMovCaja() {
 
 async function eliminarMovCaja(id) {
   if (!confirm('Eliminar este movimiento?')) return;
-  movCaja = movCaja.filter(x => x.id != id);
+  movCaja = movCaja.filter(x => x.id !== id && x.id !== Number(id));
   await guardarCajaData();
   renderCaja();
   toast('OK Movimiento eliminado');
