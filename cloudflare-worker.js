@@ -71,41 +71,81 @@ async function handleScrape(url, headers) {
   if (!url) return json({ ok: false, error: 'URL requerida' }, headers);
 
   try {
-    // Intentar Tiendanube API primero si la URL es de una tienda conocida
-    const tiendanubeRes = await intentarTiendanubeAPI(url, headers);
-    if (tiendanubeRes) return tiendanubeRes;
+    const u = new URL(url);
 
-    // Fetch HTML normal
+    // 1. WooCommerce REST API (pública, sin auth, lista todos los productos)
+    const wooRes = await intentarWooAPI(u.origin, headers);
+    if (wooRes) return wooRes;
+
+    // 2. Tiendanube API
+    const tnRes = await intentarTiendanubeAPI(url, headers);
+    if (tnRes) return tnRes;
+
+    // 3. Fetch HTML con headers de navegador real
     const resp = await fetch(url, { headers: FETCH_HEADERS, redirect: 'follow' });
 
     if (!resp.ok) {
-      return json({ ok: false, error: `El sitio respondió HTTP ${resp.status}. Puede tener protección anti-bot.` }, headers);
+      return json({ ok: false, error: `El sitio respondió HTTP ${resp.status}. El servidor bloquea bots. Probá con una URL de categoría específica.` }, headers);
     }
 
     const html = await resp.text();
     const finalUrl = resp.url || url;
-
-    // Detectar plataforma y extraer productos
+    const platform = detectarPlataforma(html);
     const productos = extraerProductos(html, finalUrl);
-    const debug = {
-      platform: detectarPlataforma(html),
-      htmlLen: html.length,
-      tieneJsonLD: html.includes('application/ld+json'),
-    };
 
     if (!productos.length) {
       return json({
         ok: false,
-        error: `No se encontraron productos. Plataforma detectada: ${debug.platform}. El sitio puede usar JavaScript para cargar los productos (SPA/React/Vue), lo cual no es posible scrapear desde el Worker.`,
-        debug
+        error: `Plataforma detectada: ${platform}. No se encontraron productos en el HTML — el sitio puede cargarlos con JavaScript dinámico.`,
+        debug: { platform, htmlLen: html.length, tieneJsonLD: html.includes('application/ld+json') }
       }, headers);
     }
 
-    return json({ ok: true, productos, total: productos.length, debug }, headers);
+    return json({ ok: true, productos, total: productos.length, platform }, headers);
 
   } catch(e) {
     return json({ ok: false, error: e.message }, headers);
   }
+}
+
+// WooCommerce REST API pública (no requiere clave si el sitio lo permite)
+async function intentarWooAPI(origin, headers) {
+  // Páginas: hasta 5 páginas de 100 productos c/u
+  const productos = [];
+  for (let page = 1; page <= 5; page++) {
+    try {
+      const apiUrl = `${origin}/wp-json/wc/v3/products?per_page=100&page=${page}&status=publish`;
+      const resp = await fetch(apiUrl, {
+        headers: { ...FETCH_HEADERS, 'Accept': 'application/json' },
+        redirect: 'follow',
+      });
+      if (!resp.ok) break;
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.includes('json')) break;
+      const data = await resp.json();
+      if (!Array.isArray(data) || !data.length) break;
+
+      for (const p of data) {
+        const precio = parseFloat(p.price || p.regular_price || 0);
+        const foto = p.images?.[0]?.src || null;
+        const nombre = limpiar(p.name || '');
+        if (!nombre) continue;
+        productos.push({
+          nombre,
+          precio,
+          descripcion: limpiar(p.short_description || p.description || '').slice(0, 200),
+          foto,
+          url: p.permalink || origin,
+          sku: p.sku || '',
+          categoria: p.categories?.[0]?.name || '',
+        });
+      }
+      if (data.length < 100) break; // última página
+    } catch(e) { break; }
+  }
+
+  if (!productos.length) return null;
+  return json({ ok: true, productos, total: productos.length, platform: 'WooCommerce API' }, headers);
 }
 
 // Intenta la API REST de Tiendanube
