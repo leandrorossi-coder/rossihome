@@ -3540,18 +3540,15 @@ function compartirProducto(id) {
   const local = miLocal.nombre||'Rossi Home';
   const precio = p.precio ? `\n💰 Precio: *$${fmt(p.precio)}*` : '';
   const pmayor = (esAdmin()||esLocal()) && p.pMayor ? `\n💼 Mayorista: *$${fmt(p.pMayor)}*` : '';
-  const stock = p.stock==='disponible'?'✅ Disponible':p.stock==='por_pedido'?'📦 Por pedido':'⚠ Consultar stock';
+  const entrega = p.stock==='por_pedido' ? '\n📦 Producto por pedido' : '';
   const desc = p.desc ? `\n\n${p.desc}` : '';
   const marca = p.marca ? ` | ${p.marca}` : '';
   const cat = p.categoria ? ` | ${p.categoria}${p.subcategoria?' > '+p.subcategoria:''}` : '';
-  const texto = `*${local}*\n\n*${p.nombre}*${marca}${cat}${precio}${pmayor}\n${stock}${desc}\n\n_Consultá disponibilidad y más info_`;
-  const wa = miLocal.wa ? miLocal.wa.replace(/\D/g,'') : '';
-  // Try Web Share API first
+  const texto = `*${local}*\n\n*${p.nombre}*${marca}${cat}${precio}${pmayor}${entrega}${desc}\n\n_Consultá disponibilidad y más info_`;
   if(navigator.share){
     navigator.share({title: p.nombre, text: texto}).catch(()=>{});
     return;
   }
-  // Fallback to WhatsApp
   window.open('https://wa.me/?text='+encodeURIComponent(texto),'_blank');
 }
 
