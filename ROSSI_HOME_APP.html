@@ -1826,8 +1826,8 @@ const SCRIPT_URL = 'https://rossihome-proxy.leandro-rossi.workers.dev/';
 let syncTimer = null;
 
 // Storage local como cache
-async function sSet(k,v){ try{ if(window.storage) await window.storage.set(k,JSON.stringify(v)); }catch(e){} }
-async function sGet(k){ try{ if(window.storage){ const r=await window.storage.get(k); return r?JSON.parse(r.value):null; } }catch(e){} return null; }
+async function sSet(k,v){ try{ if(window.storage) await window.storage.set(k,JSON.stringify(v)); }catch(e){} try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+async function sGet(k){ try{ if(window.storage){ const r=await window.storage.get(k); if(r) return JSON.parse(r.value); } }catch(e){} try{ const v=localStorage.getItem(k); if(v) return JSON.parse(v); }catch(e){} return null; }
 
 function mostrarSync(msg, error) {
   const el = document.getElementById('sync-status');
