@@ -988,6 +988,26 @@ select option{text-transform:uppercase;}
     </div>
   </div>
 
+  <!-- MAYORISTA -->
+<div class="page" id="pg-mayorista">
+  <div class="card">
+    <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
+      <h2>💰 Lista Mayorista</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="mayor-filtro-prov" onchange="renderMayorista()" style="padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'Outfit',sans-serif;">
+          <option value="">Todos los proveedores</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="exportarMayorista()">⬇ Exportar</button>
+      </div>
+    </div>
+    <div class="cb">
+      <input type="text" id="mayor-q" placeholder="🔍 Buscar producto..." oninput="renderMayorista()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);margin-bottom:10px;">
+      <div id="mayor-lista"></div>
+      <div class="empty" id="empty-mayor" style="display:none;"><div class="empty-ico">💰</div><p>Sin productos</p></div>
+    </div>
+  </div>
+</div>
+
   <!-- MI LOCAL -->
   <div class="page" id="pg-milocal">
     <div class="card">
@@ -1703,7 +1723,7 @@ const USERS_DEFAULT = {
 
 // Tabs por rol
 const TABS_POR_ROL = {
-  admin:    ['venta','ventas','creditos','precios','catalogo','presupuestos','caja','pedidos','reportes','liquidaciones','clientes','milocal','financiero','admin'],
+  admin:    ['venta','ventas','creditos','precios','catalogo','presupuestos','caja','pedidos','mayorista','reportes','liquidaciones','clientes','milocal','financiero','admin'],
   local:    ['venta','ventas','creditos','precios','catalogo','presupuestos','caja','pedidos','clientes'],
   vendedor: ['venta','ventas'],
 };
@@ -1711,7 +1731,7 @@ const TAB_LABELS = {
   venta:'+ Nueva Venta', ventas:' Ventas',
   creditos:' Créditos', precios:' Lista de Precios', catalogo:' Catálogo',
   presupuestos:' Presupuestos', caja:' Caja', reportes:' Reportes', liquidaciones:' Liquidaciones', clientes:' Clientes', admin:' Admin',
-  pedidos:'🏭 Proveedores', milocal:' Mi Local', financiero:'💵 Financiero'
+  pedidos:'🏭 Proveedores', mayorista:'💰 Mayorista', milocal:' Mi Local', financiero:'💵 Financiero'
 };
 
 // ===
@@ -2118,6 +2138,7 @@ function goTab(n) {
   if (n==='clientes')        renderClientes();
   if (n==='admin')         renderAdmin();
   if (n==='pedidos')       { mostrarTabProv('proveedores'); }
+  if (n==='mayorista')     renderMayorista();
   if (n==='milocal')       renderMiLocal();
   if (n==='financiero' && !Object.keys(cotizaciones).length) actualizarDolar();
 }
@@ -6036,6 +6057,7 @@ function renderProveedores(){
           ${p.notas?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;">${p.notas}</div>`:''}
         </div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          ${p.web?`<button class="btn btn-green btn-sm" onclick="sincronizarProvWeb(${p.id})">🔄 Sync Web</button>`:''}
           <button class="btn btn-blue btn-sm" onclick="editarProveedor(${p.id})">Editar</button>
           ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProveedor(${p.id})">X</button>`:''}
         </div>
@@ -6459,6 +6481,162 @@ renderPrecios = function(){
     </div>`;
   }).join('');
 };
+
+// ── Mayorista ──
+function renderMayorista(){
+  if(!esAdmin()) return;
+  const q = (document.getElementById('mayor-q')?.value||'').toLowerCase();
+  const provFiltro = document.getElementById('mayor-filtro-prov')?.value||'';
+  // populate proveedor filter
+  const sel = document.getElementById('mayor-filtro-prov');
+  if(sel){
+    const provList = [...new Set(productos.map(p=>p.proveedor||'').filter(Boolean))].sort();
+    const curVal = sel.value;
+    sel.innerHTML = '<option value="">Todos los proveedores</option>' + provList.map(pv=>`<option value="${pv}"${pv===curVal?' selected':''}>${pv}</option>`).join('');
+  }
+  let lista = productos;
+  if(q) lista = lista.filter(p=>p.nombre.toLowerCase().includes(q)||(p.proveedor||'').toLowerCase().includes(q));
+  if(provFiltro) lista = lista.filter(p=>(p.proveedor||'')===provFiltro);
+  const cont = document.getElementById('mayor-lista');
+  const empty = document.getElementById('empty-mayor');
+  if(!lista.length){if(cont)cont.innerHTML='';if(empty)empty.style.display='block';return;}
+  if(empty)empty.style.display='none';
+  // Group by proveedor
+  const grupos = {};
+  lista.forEach(p=>{
+    const pv = p.proveedor||'Sin proveedor';
+    if(!grupos[pv])grupos[pv]=[];
+    grupos[pv].push(p);
+  });
+  cont.innerHTML = Object.entries(grupos).map(([pv, prods])=>{
+    const provObj = proveedores.find(x=>x.nombre===pv);
+    const descProv = provObj?.descuento||0;
+    const margenProv = provObj?.margen||40;
+    const rows = prods.map(p=>{
+      const costo = p.costo||0;
+      const costoConDesc = descProv>0 ? Math.round(costo*(1-descProv/100)) : costo;
+      const precioMayor = margenProv>0 ? Math.round(costoConDesc*(1+margenProv/100)) : costo;
+      const precioLista = p.precio||0;
+      const dif = precioLista>0 ? Math.round((precioMayor-precioLista)/precioLista*100) : 0;
+      return `<div class="prod-fila" style="flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);padding:8px 4px;">
+        <div style="flex:1;min-width:160px;">
+          <div style="font-size:13px;font-weight:500;">${p.nombre}</div>
+          ${p.categoria?`<div style="font-size:10px;color:var(--muted);">${p.categoria}</div>`:''}
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">Costo</div><div style="font-size:12px;color:var(--muted);">$${fmt(costo)}</div></div>
+          ${descProv>0?`<div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">C.Neto(${descProv}%)</div><div style="font-size:12px;color:var(--orange);">$${fmt(costoConDesc)}</div></div>`:''}
+          <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">P.Mayor(${margenProv}%)</div><div style="font-weight:700;color:var(--navy);font-size:14px;">$${fmt(precioMayor)}</div></div>
+          <div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">P.Lista</div><div style="font-size:12px;color:var(--muted);">$${fmt(precioLista)}</div></div>
+          ${dif!==0?`<div style="text-align:right;"><div style="font-size:9px;color:var(--muted);">Dif.Lista</div><div style="font-size:12px;color:${dif<0?'var(--green)':'var(--red)'};">${dif>0?'+':''}${dif}%</div></div>`:''}
+          <button class="btn btn-blue btn-sm" onclick="editarProd(${p.id})">Ed</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:16px;">
+      <div style="background:var(--navy);color:var(--gold2);padding:8px 12px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;">
+        <span>${pv}</span>
+        <span style="font-size:11px;font-weight:400;">${prods.length} productos${descProv>0?` · Desc: ${descProv}%`:''} · Margen: ${margenProv}%</span>
+      </div>
+      <div style="border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;overflow:hidden;">${rows}</div>
+    </div>`;
+  }).join('');
+}
+
+function exportarMayorista(){
+  const provFiltro = document.getElementById('mayor-filtro-prov')?.value||'';
+  let lista = productos;
+  if(provFiltro) lista = lista.filter(p=>(p.proveedor||'')===provFiltro);
+  const rows = lista.map(p=>{
+    const provObj = proveedores.find(x=>x.nombre===(p.proveedor||''));
+    const desc = provObj?.descuento||0;
+    const margen = provObj?.margen||40;
+    const costo = p.costo||0;
+    const costoNeto = desc>0?Math.round(costo*(1-desc/100)):costo;
+    const precioMayor = Math.round(costoNeto*(1+margen/100));
+    return `${p.proveedor||''}\t${p.nombre}\t${costo}\t${costoNeto}\t${precioMayor}\t${p.precio||0}`;
+  });
+  const txt = 'Proveedor\tProducto\tCosto\tCostoNeto\tPrecioMayor\tPrecioLista\n'+rows.join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,'+encodeURIComponent(txt);
+  a.download = 'mayorista.txt';
+  a.click();
+  toast('Archivo exportado');
+}
+
+// ── Scraping de proveedor ──
+const WORKER_URL = 'https://rossihome-proxy.leandro-rossi.workers.dev';
+
+async function sincronizarProvWeb(provId){
+  const prov = proveedores.find(p=>p.id===provId);
+  if(!prov||!prov.web){ toast('Sin URL configurada'); return; }
+  document.getElementById('scrap-prov-nombre').textContent = prov.nombre;
+  document.getElementById('scrap-url-display').textContent = prov.web;
+  document.getElementById('scrap-resultados').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);">Consultando sitio...</div>';
+  document.getElementById('scrap-msg').textContent = '';
+  document.getElementById('ovl-scraping').classList.add('on');
+  document.getElementById('ovl-scraping').dataset.provId = provId;
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'scrape', url: prov.web })
+    });
+    const data = await resp.json();
+    if(!data.ok){ document.getElementById('scrap-resultados').innerHTML=`<div class="ibox" style="color:var(--red);">Error: ${data.error||'Sin respuesta'}</div>`; return; }
+    renderScrapingResultados(data.productos||[], data.url);
+  } catch(e) {
+    document.getElementById('scrap-resultados').innerHTML=`<div class="ibox" style="color:var(--red);">Error de red: ${e.message}</div>`;
+  }
+}
+
+function renderScrapingResultados(prods, srcUrl){
+  const cont = document.getElementById('scrap-resultados');
+  if(!prods.length){ cont.innerHTML='<div class="ibox">No se encontraron productos en el sitio.</div>'; return; }
+  document.getElementById('scrap-msg').textContent = `${prods.length} productos encontrados`;
+  cont.innerHTML = prods.map((p,i)=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        ${p.foto?`<img src="${p.foto}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">`:'<div style="width:60px;height:60px;background:var(--cream2);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">📦</div>'}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;">${p.nombre}</div>
+          ${p.descripcion?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${p.descripcion}</div>`:''}
+          <div style="display:flex;gap:8px;margin-top:5px;align-items:center;flex-wrap:wrap;">
+            ${p.precio?`<div style="font-weight:700;color:var(--navy);font-size:14px;">$${fmt(p.precio)}</div>`:'<div style="font-size:11px;color:var(--muted);">Sin precio</div>'}
+            ${p.url?`<a href="${p.url}" target="_blank" style="font-size:10px;color:var(--gold);text-transform:none;">Ver en web ↗</a>`:''}
+          </div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="importarProdScrap(${i})" style="flex-shrink:0;">Importar</button>
+      </div>
+    </div>
+  `).join('');
+  window._scrapProds = prods;
+}
+
+async function importarProdScrap(idx){
+  const p = window._scrapProds?.[idx]; if(!p) return;
+  const provId = parseInt(document.getElementById('ovl-scraping').dataset.provId||0);
+  const prov = proveedores.find(x=>x.id===provId);
+  const margen = prov?.margen||40;
+  const costo = p.precio||0;
+  const precio = costo>0 ? Math.round(costo*(1+margen/100)) : 0;
+  const nuevo = {
+    id: Math.max(0,...productos.map(x=>x.id))+1,
+    nombre: p.nombre,
+    proveedor: prov?.nombre||'',
+    costo: costo,
+    precio: precio,
+    categoria: '',
+    favorito: false,
+    fotos: p.foto?[p.foto]:[],
+    fotoPrincipal: 0
+  };
+  productos.push(nuevo);
+  await guardarProds();
+  toast(`"${p.nombre}" importado`);
+  const btn = document.querySelector(`#scrap-resultados > div:nth-child(${idx+1}) button`);
+  if(btn){ btn.textContent='✓ Importado'; btn.disabled=true; btn.style.opacity='.5'; }
+}
 
 // ── Override renderClientes to add WA + outstanding ──
 const _renderClientesOrig = renderClientes;
