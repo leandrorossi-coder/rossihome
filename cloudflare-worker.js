@@ -94,10 +94,13 @@ async function handleScrape(url, headers) {
     const productos = extraerProductos(html, finalUrl);
 
     if (!productos.length) {
+      // Extraer clases CSS presentes para diagnóstico
+      const clasesEncontradas = [...new Set((html.match(/class="([^"]{3,40})"/g)||[]).map(m=>m.replace('class="','').replace('"','')))]
+        .filter(c => /product|item|precio|price|card|prod/.test(c)).slice(0, 20);
       return json({
         ok: false,
-        error: `Plataforma detectada: ${platform}. No se encontraron productos en el HTML — el sitio puede cargarlos con JavaScript dinámico.`,
-        debug: { platform, htmlLen: html.length, tieneJsonLD: html.includes('application/ld+json') }
+        error: `Plataforma: ${platform} | HTML: ${html.length} chars | Clases: ${clasesEncontradas.join(', ')||'ninguna relevante'} | Primeros 800 chars: ${html.slice(0,800).replace(/\s+/g,' ')}`,
+        debug: { platform, htmlLen: html.length, clasesEncontradas, htmlPreview: html.slice(0, 2000) }
       }, headers);
     }
 
