@@ -479,6 +479,12 @@ select option{text-transform:uppercase;}
               <input type="date" id="cp-fecha1">
             </div>
           </div>
+          <div style="margin-bottom:6px;">
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;background:var(--obg);border-radius:8px;padding:6px 10px;">
+              <input type="checkbox" id="cp-sin-interes" onchange="recalcCP()">
+              <span>Sin Interés <span style="color:var(--muted);font-size:11px;">(se activa automático en 1 cuota)</span></span>
+            </label>
+          </div>
           <div class="ibox" id="cp-resumen" style="display:none;"></div>
           <div class="fg" id="blk-cuota-manual" style="display:none;margin-top:8px;">
             <label>Valor Cuota ($) <span style="font-size:11px;color:var(--muted);">(editable)</span></label>
@@ -1791,7 +1797,6 @@ function repararNrosVenta(){
   const vistos = new Set();
   let maxNro = Math.max(0, ...ventas.map(v => parseInt(v.nroVenta||0)||0));
   let huboReparo = false;
-  // Ordenar por fecha para preservar el orden histórico
   const ordenadas = [...ventas].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
   for (const v of ordenadas) {
     const n = parseInt(v.nroVenta||0)||0;
@@ -1804,6 +1809,15 @@ function repararNrosVenta(){
     }
   }
   if (huboReparo) { guardarVentas(); }
+}
+async function renumerarVentasDesde1(){
+  if(!esAdmin()){toast('Sin permiso');return;}
+  if(!confirm(`¿Renumerar las ${ventas.length} ventas desde #1 en orden cronológico? Esto cambia todos los números de venta.`)) return;
+  const ordenadas = [...ventas].sort((a,b) => (a.fecha||'').localeCompare(b.fecha||'') || (a.id||0)-(b.id||0));
+  ordenadas.forEach((v,i) => { v.nroVenta = i+1; });
+  await guardarVentas();
+  renderVentas();
+  toast(`OK Ventas renumeradas del #1 al #${ventas.length}`);
 }
 function logActividad(accion){
   try{
@@ -2250,7 +2264,10 @@ function recalcCP() {
     return;
   }
   const pago_sel = document.getElementById('f-pago').value;
-  const interes = isL30(pago_sel) ? 0 : (CP_INT[freq]?.[n] || 0);
+  const sinInteresChk = document.getElementById('cp-sin-interes');
+  const sinInteres = (sinInteresChk?.checked) || n <= 1;
+  if(sinInteresChk && n <= 1) sinInteresChk.checked = true;
+  const interes = isL30(pago_sel) ? 0 : (sinInteres ? 0 : (CP_INT[freq]?.[n] || 0));
   const totalConInt = Math.round(saldo * (1 + interes));
   const valorCuota  = Math.round(totalConInt / n);
 
@@ -2258,8 +2275,8 @@ function recalcCP() {
   document.getElementById('cp-resumen').innerHTML =
     `Anticipo: <strong>$${fmt(ant)}</strong> &nbsp;|&nbsp; ` +
     `Saldo: $${fmt(saldo)} &nbsp;|&nbsp; ` +
-    `Interés: ${Math.round(interes*100)}% &nbsp;|&nbsp; ` +
-    `${n} cuotas de <strong>$${fmt(valorCuota)}</strong> &nbsp;|&nbsp; ` +
+    `Interés: <strong style="color:${interes>0?'var(--orange)':'var(--green)'};">${Math.round(interes*100)}%</strong> &nbsp;|&nbsp; ` +
+    `${n} cuota${n!==1?'s':''} de <strong>$${fmt(valorCuota)}</strong> &nbsp;|&nbsp; ` +
     `Total crédito: $${fmt(totalConInt)}`;
   document.getElementById('blk-cuota-manual').style.display = 'block';
   document.getElementById('cp-cuota-manual').value = valorCuota;
@@ -2417,7 +2434,8 @@ async function guardar() {
     const fechaAnt = document.getElementById('cp-fecha-ant').value||fecha;
     const fecha1   = document.getElementById('cp-fecha1').value||'';
     const saldo    = lista - ant;
-    const interes  = isL30(pago) ? 0 : (CP_INT[freq]?.[n]||0);
+    const sinInteresG = document.getElementById('cp-sin-interes')?.checked || n <= 1;
+    const interes  = isL30(pago) ? 0 : (sinInteresG ? 0 : (CP_INT[freq]?.[n]||0));
     const totalInt = Math.round(saldo*(1+interes));
     const cuotaCalc = Math.round(totalInt/n);
     const cuotaManualEl = document.getElementById('cp-cuota-manual');
@@ -2448,6 +2466,15 @@ async function guardar() {
     logActividad('Editó venta #'+(base.nroVenta||''));
     toast('OK Venta actualizada');
   } else {
+    // Protección contra duplicado: misma fecha + producto + cliente en menos de 60s
+    const ahora = Date.now();
+    const dup = ventas.find(v =>
+      v.fecha === base.fecha &&
+      (v.producto||'').trim().toLowerCase() === (base.producto||'').trim().toLowerCase() &&
+      (v.apellido||'').toLowerCase() === (base.apellido||'').toLowerCase() &&
+      (ahora - (v.id||0)) < 60000
+    );
+    if(dup){ toast('⚠ Ya existe una venta igual hace menos de 1 minuto (posible duplicado). Si es intencional, esperá un minuto y volvé a guardar.'); _guardandoVenta=false; if(btnG){btnG.disabled=false;btnG.textContent=btnGOrig;} return; }
     const nuevaVenta = {id:Date.now(),...base};
     ventas.unshift(nuevaVenta);
     nroVentaCounter = (parseInt(nroVenta)||0) + 1;
@@ -2483,6 +2510,7 @@ function limpiar() {
     if(sel && !sel.disabled) sel.value=usuarioActual.nombre;
   }
   ['blk-tc','blk-cp'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  const siChkL=document.getElementById('cp-sin-interes'); if(siChkL) siChkL.checked=false;
   const blkAhV = document.getElementById('blk-ahorro-venta'); if(blkAhV) blkAhV.style.display='none';
   const ahorroMonto = document.getElementById('ahorro-monto-pactado'); if(ahorroMonto) ahorroMonto.value='';
   const ahorroAnt = document.getElementById('ahorro-pct-ant'); if(ahorroAnt) ahorroAnt.value='0';
@@ -2523,6 +2551,8 @@ function editarVenta(id) {
       document.getElementById('cp-fecha-ant').value=v.cpData.fechaAnticipo||'';
       document.getElementById('cp-fecha1').value=v.cpData.fechaPrimeraCuota||'';
       document.getElementById('cp-pct-ant').value='0';
+      const siChk=document.getElementById('cp-sin-interes');
+      if(siChk) siChk.checked = (v.cpData.interes===0 || (v.cpData.nCuotas||1)<=1);
     }
     onPago(); recalc();
   },50);
@@ -3711,6 +3741,26 @@ async function importarBackup(e){
     if(d.saldoInicialCaja)saldoInicialCaja=d.saldoInicialCaja;
     if(d.nroVentaCounter)nroVentaCounter=d.nroVentaCounter;
     if(d.caracteristicas&&d.caracteristicas.length>0)caracteristicas=d.caracteristicas;
+    // Guardar TODO en localStorage para que persista después del reload
+    await Promise.all([
+      sSet('rh_v', ventas),
+      sSet('rh_p', productos),
+      sSet('rh_pres', presupuestos),
+      sSet(SK_CAJA, movCaja),
+      sSet(SK_CUENTAS, datosCuentas),
+      sSet(SK_LIQ, liquidaciones),
+      sSet(SK_PUB, publicaciones),
+      sSet(SK_CFGLIQ, configLiq),
+      sSet(SK_CLIENTES, clientes),
+      sSet(SK_PEDIDOS, pedidos),
+      sSet(SK_PROVEEDORES, proveedores),
+      sSet(SK_ACTIVIDAD, activityLog),
+      sSet(SK_METAS, metas),
+      sSet(SK_PLANTILLAS, plantillasWA),
+      sSet(SK_MILOCAL, miLocal),
+      sSet(SK_ARQUEOS, arqueos),
+      sSet(SK_NROVENTA, nroVentaCounter),
+    ]);
     await guardarEnScript();
     const info=document.getElementById('backup-info');
     if(info)info.textContent=`Backup importado: ${d.ventas?.length||0} ventas, ${d.productos?.length||0} productos`;
@@ -7200,6 +7250,7 @@ renderAdmin = function(){
           ⬆ Importar backup
           <input type="file" id="backup-input" accept=".json" style="display:none;" onchange="importarBackup(event)">
         </label>
+        <button class="btn btn-danger btn-sm" onclick="renumerarVentasDesde1()" title="Renumera todas las ventas en orden cronológico desde #1">🔢 Renumerar ventas</button>
       </div>
       <div id="backup-info" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>
     `);
