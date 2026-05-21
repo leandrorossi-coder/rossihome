@@ -94,13 +94,16 @@ async function handleScrape(url, headers) {
     const productos = extraerProductos(html, finalUrl);
 
     if (!productos.length) {
-      // Extraer clases CSS presentes para diagnóstico
-      const clasesEncontradas = [...new Set((html.match(/class="([^"]{3,40})"/g)||[]).map(m=>m.replace('class="','').replace('"','')))]
-        .filter(c => /product|item|precio|price|card|prod/.test(c)).slice(0, 20);
+      // Mostrar fragmento alrededor de donde deberían estar los productos
+      const idx = html.indexOf('class="products ');
+      const idxLi = html.indexOf('<li class="product ');
+      const idxLi2 = html.indexOf('<li class="type-product');
+      const pos = idxLi >= 0 ? idxLi : (idxLi2 >= 0 ? idxLi2 : (idx >= 0 ? idx : 0));
+      const fragmento = pos > 0 ? html.slice(pos, pos + 3000) : html.slice(html.length/2 - 1000, html.length/2 + 2000);
       return json({
         ok: false,
-        error: `Plataforma: ${platform} | HTML: ${html.length} chars | Clases: ${clasesEncontradas.join(', ')||'ninguna relevante'} | Primeros 800 chars: ${html.slice(0,800).replace(/\s+/g,' ')}`,
-        debug: { platform, htmlLen: html.length, clasesEncontradas, htmlPreview: html.slice(0, 2000) }
+        error: `WooCommerce detectado | ${html.length} chars | li.product en pos ${idxLi} | ul.products en pos ${idx}`,
+        debug: { htmlLen: html.length, posLiProduct: idxLi, posUlProducts: idx, htmlPreview: fragmento }
       }, headers);
     }
 
