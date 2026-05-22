@@ -2600,8 +2600,10 @@ function editarVenta(id) {
     document.getElementById('f-prod').value=v.producto||'';
     document.getElementById('f-precio').value=v.precioBruto||v.precio||'';
     document.getElementById('f-costo').value=v.costo||'';
+    const cantEl=document.getElementById('f-cantidad'); if(cantEl) cantEl.value=v.cantidad||1;
     const chkCE=document.getElementById('chk-contado'); if(chkCE) chkCE.checked=!!(v.descContado>0);
     const descAdicEl=document.getElementById('f-descuento'); if(descAdicEl) descAdicEl.value=v.pctAdicional||'';
+    const eeEl=document.getElementById('f-estado-entrega'); if(eeEl) eeEl.value=v.estadoEntrega||v.estado||'pendiente';
     document.getElementById('f-apellido').value=v.apellido||'';
     document.getElementById('f-nombre').value=v.nombre||'';
     document.getElementById('f-dni').value=v.dni||'';
