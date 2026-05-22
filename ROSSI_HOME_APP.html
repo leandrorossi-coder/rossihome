@@ -1967,6 +1967,25 @@ async function cargarDatos() {
   const cl=await sGet(SK_CFGLIQ); if(cl) configLiq={...configLiq,...cl};
   const pd=await sGet(SK_PEDIDOS); if(pd) pedidos=pd;
   const mprov=await sGet(SK_PROVEEDORES); if(mprov) proveedores=mprov;
+  // Pre-cargar proveedores por defecto si no existen
+  const provDefecto = [
+    {nombre:'Muebles French', tipo:'nacional', metodo:'lista', sinIva:true, mayusculas:true, descuento:0},
+    {nombre:'Los Bosques', tipo:'nacional', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Pinarcis', tipo:'nacional', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Patalín', tipo:'nacional', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'El Criollo', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:15},
+    {nombre:'M-Once', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'ABK Mayorista', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Winco Argentina', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Fusion Digital', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Casa Mtre', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+  ];
+  let huboCambiosProv = false;
+  for(const def of provDefecto){
+    const existe = proveedores.some(p=>(p.nombre||'').toLowerCase()===def.nombre.toLowerCase());
+    if(!existe){ proveedores.push({id:Date.now()+Math.random(),...def}); huboCambiosProv=true; }
+  }
+  if(huboCambiosProv) await guardarProveedoresData();
   const al=await sGet(SK_ACTIVIDAD); if(al) activityLog=al;
   const mt=await sGet(SK_METAS); if(mt) metas=mt;
   const pl=await sGet(SK_PLANTILLAS); if(pl&&pl.length) plantillasWA=pl;
@@ -3406,6 +3425,8 @@ async function guardarPagoCuenta() {
 function renderPrecios(){
   const q=(document.getElementById('precio-q').value||'').toLowerCase();
   let lista=productos;
+  // Hide non-visible products from all views except supplier panel
+  lista = lista.filter(p => p.visible !== false);
   if(q)lista=lista.filter(p=>p.nombre.toLowerCase().includes(q)||(p.proveedor||'').toLowerCase().includes(q));
   document.getElementById('cnt-precios').textContent=`${lista.length} productos`;
   const cont=document.getElementById('lista-precios'),empty=document.getElementById('empty-precios');
@@ -3668,6 +3689,8 @@ function renderCatalogo(){
   }
 
   let lista=productos;
+  // Hide non-visible products from all views except supplier panel
+  lista = lista.filter(p => p.visible !== false);
   if(q)lista=lista.filter(p=>(p.nombre+' '+(p.proveedor||'')+(p.categoria||'')+(p.marca||'')+(p.etiquetas||[]).join(' ')).toLowerCase().includes(q));
   if(catF)lista=lista.filter(p=>p.categoria===catF);
   if(subcatF)lista=lista.filter(p=>(p.subcategoria||'')===subcatF);
@@ -6560,6 +6583,11 @@ function editarProveedor(id){
   document.getElementById('prov-margen').value=p.margen||'40';
   document.getElementById('prov-recargo-tc').value=p.recargoTC||'15';
   document.getElementById('prov-notas').value=p.notas||'';
+  const pt=document.getElementById('prov-tipo'); if(pt)pt.value=p.tipo||'nacional';
+  const pm=document.getElementById('prov-metodo'); if(pm)pm.value=p.metodo||'lista';
+  const ps=document.getElementById('prov-sin-iva'); if(ps)ps.value=p.sinIva?'1':'0';
+  const pmay=document.getElementById('prov-mayusculas'); if(pmay)pmay.value=p.mayusculas?'1':'0';
+  onProvMetodoChange();
   calcResumenProv();
   document.getElementById('ovl-proveedor').classList.add('on');
 }
@@ -6578,7 +6606,11 @@ async function guardarProveedor(){
     descuento: parseFloat(document.getElementById('prov-descuento').value)||0,
     margen: parseFloat(document.getElementById('prov-margen').value)||40,
     recargoTC: parseFloat(document.getElementById('prov-recargo-tc').value)||15,
-    notas: document.getElementById('prov-notas').value.trim()
+    notas: document.getElementById('prov-notas').value.trim(),
+    tipo: document.getElementById('prov-tipo')?.value||'nacional',
+    metodo: document.getElementById('prov-metodo')?.value||'lista',
+    sinIva: document.getElementById('prov-sin-iva')?.value==='1',
+    mayusculas: document.getElementById('prov-mayusculas')?.value==='1',
   };
   if(id){const i=proveedores.findIndex(p=>p.id==id);if(i>=0)proveedores[i]=data;}
   else proveedores.unshift(data);
@@ -6601,30 +6633,247 @@ function renderProveedores(){
   const empty = document.getElementById('empty-proveedores');
   if(!lista.length){if(cont)cont.innerHTML='';if(empty)empty.style.display='block';return;}
   if(empty)empty.style.display='none';
+  const tipoBadge={nacional:'🇦🇷 Nacional',importado:'🌍 Importado',mixto:'🔀 Mixto'};
   cont.innerHTML = lista.map(p=>{
-    const cDesc = p.descuento>0?`Descuento: <strong>${p.descuento}%</strong>`:'';
-    const cMarg = p.margen?`Margen: <strong>${p.margen}%</strong>`:'';
-    const cTC = p.recargoTC?`Recargo TC: <strong>${p.recargoTC}%</strong>`:'';
+    const prodCount = productos.filter(x=>(x.proveedor||'').toLowerCase()===(p.nombre||'').toLowerCase()).length;
+    const visibles = productos.filter(x=>(x.proveedor||'').toLowerCase()===(p.nombre||'').toLowerCase()&&x.visible!==false).length;
+    const cDesc = p.descuento>0?`Desc: ${p.descuento}%`:'';
+    const cIva = p.sinIva?'Sin IVA':'Con IVA';
+    const metodoLabel = p.metodo==='sync'?'🔄 Sync web':'📄 Lista manual';
     return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:8px;border-left:4px solid var(--gold);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
         <div style="flex:1;min-width:140px;">
-          <div style="font-weight:700;font-size:14px;">${p.nombre}</div>
-          ${p.contacto?`<div style="font-size:12px;color:var(--muted);">${p.contacto}</div>`:''}
-          <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap;">
-            ${[cDesc,cMarg,cTC].filter(Boolean).join(' | ')}
-          </div>
-          ${p.tel||p.email?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${[p.tel,p.email].filter(Boolean).join(' · ')}</div>`:''}
-          ${p.web?`<div style="font-size:11px;margin-top:2px;"><a href="${p.web}" target="_blank" style="color:var(--gold);text-transform:none;">${p.web}</a></div>`:''}
-          ${p.notas?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:3px;">${p.notas}</div>`:''}
+          <div style="font-weight:700;font-size:14px;">${p.nombre} <span style="font-size:11px;font-weight:400;color:var(--muted);">${tipoBadge[p.tipo||'nacional']||''}</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${metodoLabel} · ${cIva}${cDesc?' · '+cDesc:''}</div>
+          <div style="font-size:11px;color:var(--muted);">${prodCount} productos · <span style="color:var(--green);">${visibles} visibles</span></div>
+          ${p.contacto?`<div style="font-size:11px;color:var(--muted);">${p.contacto}${p.tel?' · '+p.tel:''}</div>`:''}
+          ${p.notas?`<div style="font-size:11px;color:var(--muted);font-style:italic;">${p.notas}</div>`:''}
         </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          ${p.web?`<button class="btn btn-green btn-sm" onclick="sincronizarProvWeb(${p.id})">🔄 Sync Web</button>`:''}
-          <button class="btn btn-blue btn-sm" onclick="editarProveedor(${p.id})">Editar</button>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:flex-start;">
+          ${p.metodo==='sync'&&p.web?`<button class="btn btn-green btn-sm" onclick="sincronizarProvWeb(${p.id})">🔄 Sync</button>`:''}
+          ${p.metodo==='lista'?`<label class="btn btn-blue btn-sm" style="cursor:pointer;">📄 Subir lista<input type="file" accept=".csv,.txt,.xlsx,.xls" style="display:none;" onchange="procesarListaProv(event,${p.id})"></label>`:''}
+          <button class="btn btn-ghost btn-sm" onclick="verProductosProv(${p.id})">Ver productos</button>
+          <button class="btn btn-gold btn-sm" onclick="editarProveedor(${p.id})">Editar</button>
           ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProveedor(${p.id})">X</button>`:''}
         </div>
       </div>
     </div>`;
   }).join('');
+}
+
+function onProvMetodoChange(){
+  const metodo = document.getElementById('prov-metodo')?.value;
+  const webFg = document.getElementById('prov-web')?.closest('.fg');
+  if(webFg) webFg.style.display = metodo==='sync' ? '' : 'none';
+}
+
+// Genera SKU único para un producto de proveedor
+function generarSKU(provNombre, prodNombre){
+  const pref = (provNombre||'XX').replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,3);
+  const suf = (prodNombre||'').replace(/[^A-Z0-9]/gi,'').toUpperCase().substring(0,4);
+  const rand = Math.random().toString(36).substring(2,5).toUpperCase();
+  return `${pref}-${suf}-${rand}`;
+}
+
+// Normaliza texto según configuración del proveedor
+function normalizarTexto(texto, mayusculas){
+  return mayusculas ? (texto||'').toUpperCase() : (texto||'');
+}
+
+// Parsea precio de lista (respeta centavos separados por coma)
+function parsearPrecioLista(str){
+  if(!str && str!==0) return 0;
+  const s = String(str).trim();
+  // Formato argentino: 1.234,56 → 1234.56
+  if(s.includes(',')){ return parseFloat(s.replace(/\./g,'').replace(',','.'))||0; }
+  return parseFloat(s.replace(/[^0-9.]/g,''))||0;
+}
+
+// Calcula precio de lista y costo según config del proveedor
+function calcularPreciosProv(costoRaw, prov){
+  const descuento = prov.descuento||0;
+  const costoConDesc = costoRaw * (1 - descuento/100);
+  // Si sinIva: costo que nos llega es sin IVA, precio lista = costo sin IVA × 2
+  const costoReal = prov.sinIva ? costoConDesc * 1.21 : costoConDesc;
+  const costoSinIva = prov.sinIva ? costoConDesc : costoConDesc / 1.21;
+  const precioLista = Math.round(costoSinIva * 2);
+  return { costo: Math.round(costoReal), precio: precioLista };
+}
+
+// Procesa archivo de lista de precios subido manualmente
+async function procesarListaProv(event, provId){
+  const file = event.target.files[0]; if(!file)return;
+  const prov = proveedores.find(p=>p.id===provId); if(!prov)return;
+  event.target.value='';
+  toast('Procesando lista...');
+  try{
+    const text = await file.text();
+    const lineas = text.split('\n').map(l=>l.trim()).filter(Boolean);
+    // Intentar parsear CSV (separador ; o ,)
+    const sep = lineas[0]&&lineas[0].includes(';') ? ';' : ',';
+    const filas = lineas.map(l=>l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim()));
+    // Heurística: buscar columnas de nombre y precio
+    // Asumir primera columna = nombre, última columna numérica = precio
+    const productos_lista = [];
+    for(let i=0;i<filas.length;i++){
+      const fila = filas[i];
+      if(fila.length<2)continue;
+      const nombre = normalizarTexto(fila[0], prov.mayusculas);
+      if(!nombre||nombre.length<3)continue;
+      // Buscar precio: la última celda que sea número
+      let precioRaw = 0;
+      for(let j=fila.length-1;j>=1;j--){
+        const v = parsearPrecioLista(fila[j]);
+        if(v>0){precioRaw=v;break;}
+      }
+      if(precioRaw<=0)continue;
+      productos_lista.push({nombre, precioRaw});
+    }
+    if(!productos_lista.length){toast('! No se encontraron productos en el archivo');return;}
+    await aplicarListaProv(productos_lista, prov);
+  }catch(err){toast('Error al procesar: '+err.message);}
+}
+
+// Aplica la lista procesada al catálogo de productos
+async function aplicarListaProv(lista_nueva, prov){
+  const provNombre = prov.nombre;
+  const prodsProv = productos.filter(p=>(p.proveedor||'').toLowerCase()===provNombre.toLowerCase());
+
+  const nuevos = [], actualizados = [], faltantes = [];
+
+  // Detectar nuevos y actualizar existentes
+  for(const item of lista_nueva){
+    const existente = prodsProv.find(p=>(p.nombre||'').toLowerCase()===item.nombre.toLowerCase() || (p.sku&&p.sku===item.sku));
+    const precios = calcularPreciosProv(item.precioRaw, prov);
+    if(existente){
+      existente.costo = precios.costo;
+      existente.precio = precios.precio;
+      existente.nombre = item.nombre;
+      actualizados.push(existente);
+    } else {
+      nuevos.push({...item, ...precios, prov});
+    }
+  }
+
+  // Detectar faltantes
+  for(const prod of prodsProv){
+    const enLista = lista_nueva.find(i=>(i.nombre||'').toLowerCase()===(prod.nombre||'').toLowerCase());
+    if(!enLista) faltantes.push(prod);
+  }
+
+  await guardarProds();
+
+  // Mostrar resultado y pedir decisiones
+  mostrarResultadoListaProv(nuevos, actualizados, faltantes, prov);
+}
+
+// Muestra modal con resultado de la carga de lista
+function mostrarResultadoListaProv(nuevos, actualizados, faltantes, prov){
+  let html = `<div style="padding:16px;max-height:70vh;overflow-y:auto;">
+    <h3 style="margin:0 0 12px;">📄 Resultado — ${prov.nombre}</h3>
+    <div style="background:var(--gbg);border-radius:8px;padding:10px;margin-bottom:12px;">
+      ✅ <strong>${actualizados.length}</strong> productos actualizados automáticamente
+    </div>`;
+
+  if(nuevos.length){
+    html+=`<div style="margin-bottom:12px;">
+      <div style="font-weight:700;color:var(--green);margin-bottom:6px;">🆕 ${nuevos.length} productos NUEVOS — ¿hacerlos visibles?</div>
+      ${nuevos.map((p,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+        <input type="checkbox" id="nuevo_${i}" checked>
+        <label for="nuevo_${i}" style="font-size:13px;flex:1;">${p.nombre}</label>
+        <span style="font-size:12px;color:var(--muted);">$${fmt(p.precio)}</span>
+      </div>`).join('')}
+      <button class="btn btn-green btn-sm" style="margin-top:8px;" onclick="confirmarNuevosProv(${JSON.stringify(nuevos).replace(/"/g,'&quot;')},${prov.id},this)">✅ Confirmar nuevos</button>
+    </div>`;
+  }
+
+  if(faltantes.length){
+    html+=`<div style="margin-bottom:12px;">
+      <div style="font-weight:700;color:var(--orange);margin-bottom:6px;">⚠ ${faltantes.length} productos NO están en la nueva lista</div>
+      ${faltantes.map((p,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+        <label style="font-size:13px;flex:1;">${p.nombre}</label>
+        <select id="falt_${p.id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;">
+          <option value="mantener">Mantener</option>
+          <option value="discontinuo">Discontinuo</option>
+          <option value="oculto">Ocultar</option>
+        </select>
+      </div>`).join('')}
+      <button class="btn btn-gold btn-sm" style="margin-top:8px;" onclick="confirmarFaltantesProv(${JSON.stringify(faltantes.map(p=>p.id))},this)">OK Confirmar</button>
+    </div>`;
+  }
+
+  html+=`</div>`;
+
+  // Mostrar en un overlay simple
+  const ovl = document.getElementById('ovl-lista-prov');
+  if(ovl){ document.getElementById('lista-prov-body').innerHTML=html; ovl.classList.add('on'); }
+  else { alert(`${actualizados.length} actualizados, ${nuevos.length} nuevos, ${faltantes.length} faltantes`); }
+}
+
+async function confirmarNuevosProv(nuevos, provId, btn){
+  const prov = proveedores.find(p=>p.id===provId); if(!prov)return;
+  const container = btn.closest('div');
+  nuevos.forEach((item,i)=>{
+    const chk = document.getElementById('nuevo_'+i);
+    const visible = chk ? chk.checked : true;
+    const sku = generarSKU(prov.nombre, item.nombre);
+    productos.unshift({
+      id: Date.now()+i,
+      sku, nombre: item.nombre,
+      proveedor: prov.nombre,
+      costo: item.costo,
+      precio: item.precio,
+      stock: 'disponible',
+      visible,
+      destacado: false,
+      etiquetas: [],
+      fotos: []
+    });
+  });
+  await guardarProds();
+  container.innerHTML=`<div style="color:var(--green);padding:8px;">✅ ${nuevos.length} productos agregados</div>`;
+  renderProveedores();
+  toast(`OK ${nuevos.length} productos nuevos agregados`);
+}
+
+async function confirmarFaltantesProv(ids, btn){
+  for(const id of ids){
+    const sel = document.getElementById('falt_'+id);
+    const accion = sel ? sel.value : 'mantener';
+    const prod = productos.find(p=>p.id===id);
+    if(!prod)continue;
+    if(accion==='discontinuo'){prod.stock='sin_stock';prod.visible=false;prod.discontinuo=true;}
+    else if(accion==='oculto'){prod.visible=false;}
+  }
+  await guardarProds();
+  btn.closest('div').innerHTML=`<div style="color:var(--green);padding:8px;">✅ Faltantes procesados</div>`;
+  toast('OK Faltantes procesados');
+}
+
+function verProductosProv(provId){
+  const prov = proveedores.find(p=>p.id===provId); if(!prov)return;
+  const prods = productos.filter(p=>(p.proveedor||'').toLowerCase()===(prov.nombre||'').toLowerCase());
+  const ovl = document.getElementById('ovl-lista-prov');
+  if(!ovl)return;
+  const html=`<div style="padding:16px;max-height:70vh;overflow-y:auto;">
+    <h3 style="margin:0 0 12px;">${prov.nombre} — ${prods.length} productos</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Tocá el ojo para cambiar visibilidad</div>
+    ${prods.map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+      <button onclick="toggleVisibleProd(${p.id},this)" style="background:none;border:none;font-size:16px;cursor:pointer;">${p.visible===false?'🙈':'👁'}</button>
+      <span style="flex:1;font-size:13px;">${p.nombre}</span>
+      <span style="font-size:12px;color:var(--muted);">$${fmt(p.precio)}</span>
+      ${p.discontinuo?'<span style="font-size:10px;background:#eee;padding:1px 5px;border-radius:4px;">DISC.</span>':''}
+    </div>`).join('')}
+  </div>`;
+  document.getElementById('lista-prov-body').innerHTML=html;
+  ovl.classList.add('on');
+}
+
+async function toggleVisibleProd(id, btn){
+  const prod = productos.find(p=>p.id===id); if(!prod)return;
+  prod.visible = prod.visible===false ? true : false;
+  btn.textContent = prod.visible===false ? '🙈' : '👁';
+  await guardarProds();
 }
 
 // ── Mi Local ──
@@ -7223,15 +7472,26 @@ async function importarTodosScrap(){
       (x.proveedor||'')===(prov?.nombre||'')
     );
     if(existe){ saltados++; continue; }
-    const costo = p.precio||0;
-    const precio = costo>0 ? Math.round(costo*(1+margen/100)) : 0;
+    const costoRaw = parsearPrecioLista(p.precio)||0;
+    let costo = costoRaw, precio = 0;
+    if(prov && costoRaw>0){
+      const precios = calcularPreciosProv(costoRaw, prov);
+      costo = precios.costo;
+      precio = precios.precio;
+    } else if(costoRaw>0){
+      precio = Math.round(costoRaw*(1+margen/100));
+      costo = costoRaw;
+    }
+    const sku = generarSKU(prov?.nombre||'', p.nombre);
+    const nombre = normalizarTexto(p.nombre, prov?.mayusculas||false);
     productos.push({
       id: maxId()+1,
-      nombre: p.nombre,
+      sku, nombre,
       proveedor: prov?.nombre||'',
       costo, precio,
       categoria: p.categoria||'',
       favorito: false,
+      visible: true,
       fotos: p.foto?[p.foto]:[],
       fotoPrincipal: 0
     });
@@ -7862,6 +8122,35 @@ function calcContadoTC() {
         <div class="fg"><label>Email</label><input type="text" id="prov-email" placeholder="" style="text-transform:none;"></div>
       </div>
       <div class="fg"><label>Pagina Web</label><input type="text" id="prov-web" placeholder="https://..." style="text-transform:none;"></div>
+      <div class="r2">
+        <div class="fg"><label>Tipo de mercadería</label>
+          <select id="prov-tipo">
+            <option value="nacional">🇦🇷 Nacional</option>
+            <option value="importado">🌍 Importado</option>
+            <option value="mixto">🔀 Mixto</option>
+          </select>
+        </div>
+        <div class="fg"><label>Método de carga</label>
+          <select id="prov-metodo" onchange="onProvMetodoChange()">
+            <option value="lista">📄 Lista manual (archivo)</option>
+            <option value="sync">🔄 Sync web automático</option>
+          </select>
+        </div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Lista sin IVA</label>
+          <select id="prov-sin-iva">
+            <option value="1">Sí — sumar 21% al costo</option>
+            <option value="0">No — precio incluye IVA</option>
+          </select>
+        </div>
+        <div class="fg"><label>Descripciones</label>
+          <select id="prov-mayusculas">
+            <option value="0">Como vienen</option>
+            <option value="1">Convertir a MAYÚSCULAS</option>
+          </select>
+        </div>
+      </div>
       <div class="r3">
         <div class="fg"><label>Descuento (%)</label><input type="number" id="prov-descuento" placeholder="0" min="0" max="100" oninput="calcResumenProv()"></div>
         <div class="fg"><label>Margen Ganancia (%)</label><input type="number" id="prov-margen" placeholder="40" min="0" oninput="calcResumenProv()"></div>
@@ -7981,6 +8270,14 @@ function calcContadoTC() {
   <div class="modal" style="max-width:480px;">
     <div class="mh"><h3 id="hist-titulo">Historial</h3><span class="mx" onclick="cM('ovl-historial')">X</span></div>
     <div class="mb"><div id="hist-content"></div></div>
+  </div>
+</div>
+
+<!-- Modal resultado carga de lista proveedor -->
+<div class="overlay" id="ovl-lista-prov" onclick="cM('ovl-lista-prov',event)">
+  <div class="modal" style="max-width:540px;">
+    <div class="mh"><h3>Resultado de carga</h3><span class="mx" onclick="cM('ovl-lista-prov')">X</span></div>
+    <div id="lista-prov-body"></div>
   </div>
 </div>
 
