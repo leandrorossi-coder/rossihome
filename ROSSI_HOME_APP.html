@@ -2518,6 +2518,9 @@ async function guardar() {
       if (base.cpData && ventaExistente.cpData && ventaExistente.cpData.cobros && ventaExistente.cpData.cobros.length > 0) {
         nuevaData.cpData = {...base.cpData, cobros: ventaExistente.cpData.cobros, anticipoPagado: ventaExistente.cpData.anticipoPagado};
       }
+      if (base.ahorroData && ventaExistente.ahorroData) {
+        nuevaData.ahorroData = {...base.ahorroData, pagos: ventaExistente.ahorroData.pagos || []};
+      }
       ventas[idx] = nuevaData;
     }
     editVentaId=null;
@@ -2616,6 +2619,9 @@ function editarVenta(id) {
       document.getElementById('cp-pct-ant').value='0';
       const siChk=document.getElementById('cp-sin-interes');
       if(siChk) siChk.checked = (v.cpData.interes===0 || (v.cpData.nCuotas||1)<=1);
+    }
+    if(v.ahorroData){
+      const ahMP=document.getElementById('ahorro-monto-pactado'); if(ahMP) ahMP.value=v.ahorroData.montoFinal||'';
     }
     onPago(); recalc();
   },50);
@@ -3203,8 +3209,8 @@ function renderCreditos() {
         const ad=v.ahorroData||{};
         const pagado=totalPagadoAhorro(v);
         const pactado=ad.montoFinal||v.precio;
-        const pct=Math.min(100,Math.round((pagado/pactado)*100));
-        const listo=pagado>=pactado;
+        const pct=pactado>0?Math.min(100,Math.round((pagado/pactado)*100)):0;
+        const listo=pactado>0&&pagado>=pactado;
         const pagos=ad.pagos||[];
         let fechaEst='';
         if(!listo && pagos.length>=2) {
@@ -4259,8 +4265,8 @@ function renderPresupuestos() {
           var ad = v.ahorroData || {};
           var pagado = totalPagadoAhorro(v);
           var pactado = ad.montoFinal || v.precio;
-          var pct = Math.min(100, Math.round((pagado/pactado)*100));
-          var listo = pagado >= pactado;
+          var pct = pactado>0 ? Math.min(100, Math.round((pagado/pactado)*100)) : 0;
+          var listo = pactado>0 && pagado >= pactado;
           var bc = listo ? 'var(--green)' : 'var(--gold2)';
           var pc = listo ? 'var(--green)' : 'var(--gold2)';
           var btnR = listo
@@ -6341,7 +6347,9 @@ function totalPagadoAhorro(v) {
 
 function ahorroListo(v) {
   if (!v.ahorroData) return false;
-  return totalPagadoAhorro(v) >= v.ahorroData.montoFinal;
+  const pactado = v.ahorroData.montoFinal || 0;
+  if (!pactado) return false;
+  return totalPagadoAhorro(v) >= pactado;
 }
 
 function abrirPagoAhorro(vid) {
@@ -6351,6 +6359,7 @@ function abrirPagoAhorro(vid) {
   document.getElementById('ahorro-pactado-display').textContent = '$' + fmt(v.ahorroData.montoFinal);
   document.getElementById('ahorro-pagado-display').textContent = '$' + fmt(totalPagadoAhorro(v));
   document.getElementById('ahorro-restante-display').textContent = '$' + fmt(Math.max(0, v.ahorroData.montoFinal - totalPagadoAhorro(v)));
+  document.getElementById('ahorro-fecha').value = hoy();
   document.getElementById('ahorro-monto').value = '';
   document.getElementById('ahorro-medio').value = 'EFECTIVO';
   document.getElementById('ahorro-obs').value = '';
@@ -6359,6 +6368,7 @@ function abrirPagoAhorro(vid) {
 
 async function guardarPagoAhorro() {
   const vid = parseInt(document.getElementById('ahorro-vid').value);
+  const fechaPago = document.getElementById('ahorro-fecha').value || hoy();
   const monto = parseFloat(document.getElementById('ahorro-monto').value) || 0;
   const medio = document.getElementById('ahorro-medio').value;
   const obs = document.getElementById('ahorro-obs').value.trim();
@@ -6368,9 +6378,9 @@ async function guardarPagoAhorro() {
   if (!v.ahorroData) v.ahorroData = {montoFinal: v.precio, pagos: []};
   if (!v.ahorroData.pagos) v.ahorroData.pagos = [];
   const pagoId = Date.now();
-  v.ahorroData.pagos.push({ id: pagoId, fecha: hoy(), monto, medio, obs });
+  v.ahorroData.pagos.push({ id: pagoId, fecha: fechaPago, monto, medio, obs });
   try {
-    movCaja.unshift({ id: Date.now()+1, tipo:'ingreso', fecha: hoy(), caja:'local', concepto:`Plan Ahorro - ${v.producto} - ${cliNom(v)}`, monto, medio, obs, cobrador: usuarioActual?.nombre||'' });
+    movCaja.unshift({ id: Date.now()+1, tipo:'ingreso', fecha: fechaPago, caja:'local', concepto:`Plan Ahorro - ${v.producto} - ${cliNom(v)}`, monto, medio, obs, cobrador: usuarioActual?.nombre||'' });
     await guardarCajaData();
   } catch(e){}
   await guardarVentas();
@@ -8195,7 +8205,10 @@ function calcContadoTC() {
           <div style="font-weight:700;font-size:15px;color:var(--orange);" id="ahorro-restante-display">$0</div>
         </div>
       </div>
-      <div class="fg"><label>Monto a pagar ($)</label><input type="number" id="ahorro-monto" placeholder="0" min="0"></div>
+      <div class="r2">
+        <div class="fg"><label>Fecha del pago</label><input type="date" id="ahorro-fecha"></div>
+        <div class="fg"><label>Monto a pagar ($)</label><input type="number" id="ahorro-monto" placeholder="0" min="0"></div>
+      </div>
       <div class="fg"><label>Medio de pago</label>
         <select id="ahorro-medio">
           <option value="EFECTIVO">Efectivo</option>
