@@ -2092,6 +2092,8 @@ function parseTelEnSplit(tel, selId, numId, syncFn) {
 // ===
 const TC_RC = {TC1:1,TC2:1.11846,TC3:1.15113,TC6:1.23946,TC9:1.34110,TC12:1.39313};
 const TC_N  = {TC2:2,TC3:3,TC6:6,TC9:9,TC12:12};
+// Fee neto que cobra MP/posnet sobre el cobrado (vendedora NO cobra sobre lo que MP se lleva)
+const MP_FEES = {TC1:0.07986,TC2:0.11483,TC3:0.14750,TC6:0.23099,TC9:0.33021,TC12:0.39071,DEBITO:0.04107,PREPAGA:0.04756,QR_MP:0.04107,LINK_MP:0.04107};
 // Intereses CP: 7% mensual × n, 4% quincenal × n, 3% semanal × n
 const CP_INT = {
   mensual:   {2:0.14, 3:0.21, 6:0.42, 9:0.63, 12:0.84},
@@ -5469,21 +5471,31 @@ function cobradoEnPeriodo(vendedora, desde, hasta) {
 }
 
 function comisionVenta(v, desde, hasta) {
-  // Calcular comisión de una venta
-  if (v.comisionSobreVenta) {
-    // Opción B: 10% del precio total, solo en el primer cobro
-    const primerCobro = isCPorL30(v.pago) && v.cpData
-      ? (v.cpData.cobros||[]).filter(c => c.fecha >= desde && c.fecha <= hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0]
-      : null;
-    if (!isCPorL30(v.pago)) return v.precio * 0.1;
-    return primerCobro ? v.precio * 0.1 : 0;
-  } else {
-    // Opción A: 10% de cada cobro en el período
-    if (isCPorL30(v.pago) && v.cpData) {
-      const cobrosEnPeriodo = (v.cpData.cobros||[]).filter(c => c.fecha >= desde && c.fecha <= hasta);
-      return cobrosEnPeriodo.reduce((s,c) => s + (c.monto||0)*0.1, 0);
+  const fee = MP_FEES[v.pago] || 0;
+  const neto = amt => Math.round(amt * (1 - fee));
+
+  // Plan ahorro: comisión sobre pagos recibidos en el período (no tiene fee MP)
+  if (v.pago === 'AHORRO') {
+    if (v.comisionSobreVenta) {
+      const primerPago = (v.ahorroData?.pagos||[]).filter(p=>p.fecha>=desde&&p.fecha<=hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
+      return primerPago ? v.precio * 0.1 : 0;
     }
-    return v.precio * 0.1;
+    return (v.ahorroData?.pagos||[]).filter(p=>p.fecha>=desde&&p.fecha<=hasta).reduce((s,p)=>s+(p.monto||0)*0.1,0);
+  }
+
+  if (v.comisionSobreVenta) {
+    // Cobra sobre precio total (neto de fee MP) al primer cobro del período
+    if (isCPorL30(v.pago) && v.cpData) {
+      const primerCobro = (v.cpData.cobros||[]).filter(c=>c.fecha>=desde&&c.fecha<=hasta).sort((a,b)=>a.fecha.localeCompare(b.fecha))[0];
+      return primerCobro ? neto(v.precio) * 0.1 : 0;
+    }
+    return neto(v.precio) * 0.1;
+  } else {
+    // Cobra 10% sobre cada cobro neto recibido en el período
+    if (isCPorL30(v.pago) && v.cpData) {
+      return (v.cpData.cobros||[]).filter(c=>c.fecha>=desde&&c.fecha<=hasta).reduce((s,c)=>s+neto(c.monto||0)*0.1,0);
+    }
+    return neto(v.precio) * 0.1;
   }
 }
 
@@ -5492,8 +5504,9 @@ function calcularLiquidacion(vendedora, desde, hasta) {
   const totalCobrado = cobradoEnPeriodo(vendedora, desde, hasta);
   const cantVentas = ventasVend.length;
 
-  // Comisiones
-  const comisiones = ventasVend.reduce((s,v) => s + comisionVenta(v, desde, hasta), 0);
+  // Comisiones (excluir las ya marcadas como liquidadas)
+  const comisionesLiquidadas = ventasVend.reduce((s,v) => v.comisionLiquidada ? s + comisionVenta(v, desde, hasta) : s, 0);
+  const comisiones = ventasVend.reduce((s,v) => v.comisionLiquidada ? s : s + comisionVenta(v, desde, hasta), 0);
 
   // Publicaciones
   const pubVend = publicaciones[vendedora] || {};
@@ -5508,7 +5521,7 @@ function calcularLiquidacion(vendedora, desde, hasta) {
 
   const total = comisiones + bonusPub + bonusCobranza;
 
-  return { ventasVend, totalCobrado, cantVentas, comisiones, diasPub, bonusPub, bonusCobranza, total };
+  return { ventasVend, totalCobrado, cantVentas, comisiones, comisionesLiquidadas, diasPub, bonusPub, bonusCobranza, total };
 }
 
 function setLiqPeriodo(tipo) {
@@ -5597,9 +5610,14 @@ function renderLiquidaciones() {
         <div style="font-weight:700;">$${fmt(liq.totalCobrado)}</div>
       </div>
       <div class="prod-fila">
-        <div style="flex:1;font-size:13px;">Comisiones por ventas (10%)</div>
+        <div style="flex:1;font-size:13px;">Comisiones por ventas (10% neto)</div>
         <div style="font-weight:700;color:var(--navy);">$${fmt(Math.round(liq.comisiones))}</div>
       </div>
+      ${liq.comisionesLiquidadas > 0 ? `
+      <div class="prod-fila">
+        <div style="flex:1;font-size:12px;color:var(--green);">✅ Ya liquidadas (no incluidas)</div>
+        <div style="font-size:12px;color:var(--green);">$${fmt(Math.round(liq.comisionesLiquidadas))}</div>
+      </div>` : ''}
       <div class="prod-fila">
         <div style="flex:1;font-size:13px;">Bonus publicaciones (${liq.diasPub} días${liq.cantVentas < configLiq.ventasMinPub ? ' — sin ventas mínimas':''}) </div>
         <div style="font-weight:700;color:var(--navy);">$${fmt(liq.bonusPub)}</div>
@@ -5616,19 +5634,30 @@ function renderLiquidaciones() {
 
   // Detalle ventas con toggle comisión
   const esAdmin = usuarioActual?.nombre?.toUpperCase()==='LEANDRO';
-  document.getElementById('liq-detalle').innerHTML = liq.ventasVend.map(v => `
-    <div class="prod-fila" style="flex-wrap:wrap;">
+  document.getElementById('liq-detalle').innerHTML = liq.ventasVend.map(v => {
+    const fee = MP_FEES[v.pago] || 0;
+    const netoVenta = Math.round(v.precio * (1 - fee));
+    const feeLabel = fee > 0 ? `<div style="font-size:10px;color:var(--muted);">−${(fee*100).toFixed(1)}% MP → neto $${fmt(netoVenta)}</div>` : '';
+    const comVal = Math.round(comisionVenta(v, desde, hasta));
+    const liquidada = !!v.comisionLiquidada;
+    return `
+    <div class="prod-fila" style="flex-wrap:wrap;opacity:${liquidada?0.6:1};background:${liquidada?'var(--gbg)':'none'};border-radius:8px;padding:6px;">
       <div style="flex:1;min-width:140px;">
         <div style="font-weight:600;font-size:13px;">${v.producto||'—'}</div>
-        <div style="font-size:11px;color:var(--muted);">${fmtD(v.fecha)} · ${PAGO_LBL[v.pago]||v.pago}</div>
-        <div style="font-size:11px;color:var(--muted);">Comisión: ${v.comisionSobreVenta?'sobre precio venta':'sobre cobrado'}</div>
+        <div style="font-size:11px;color:var(--muted);">${fmtD(v.fecha)} · ${PAGO_LBL[v.pago]||v.pago} · #${v.nroVenta||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);">Comisión: ${v.comisionSobreVenta?'sobre precio venta':'sobre cada cobro'}</div>
+        ${feeLabel}
       </div>
       <div style="text-align:right;">
         <div style="font-weight:700;">$${fmt(v.precio)}</div>
-        <div style="font-size:12px;color:var(--green);">Com: $${fmt(Math.round(comisionVenta(v, desde, hasta)))}</div>
-        ${esAdmin ? `<button class="btn btn-ghost btn-sm" style="font-size:10px;margin-top:4px;" onclick="toggleComisionVenta(${v.id})">${v.comisionSobreVenta?'▶ Sobre cobrado':'▶ Sobre venta'}</button>` : ''}
+        <div style="font-size:12px;color:${liquidada?'var(--green)':'var(--navy)'};">${liquidada?'✅ Liquidada':'Com: $'+fmt(comVal)}</div>
+        ${esAdmin ? `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;align-items:flex-end;">
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="toggleComisionVenta(${v.id})">${v.comisionSobreVenta?'▶ Sobre cobrado':'▶ Sobre venta'}</button>
+          <button class="btn btn-sm" style="font-size:10px;background:${liquidada?'var(--cream2)':'var(--green)'};color:${liquidada?'var(--muted)':'#fff'};border:none;" onclick="toggleComisionLiquidada(${v.id})">${liquidada?'Desmarcar':'✅ Marcar liquidada'}</button>
+        </div>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderCalendarioPub(vend, desde, hasta) {
@@ -5673,6 +5702,14 @@ async function toggleComisionVenta(id) {
   await guardarVentas();
   renderLiquidaciones();
   toast(`Comisión: ${v.comisionSobreVenta?'sobre precio venta':'sobre cobrado'}`);
+}
+
+async function toggleComisionLiquidada(id) {
+  const v = ventas.find(x => x.id === id); if(!v) return;
+  v.comisionLiquidada = !v.comisionLiquidada;
+  await guardarVentas();
+  renderLiquidaciones();
+  toast(v.comisionLiquidada ? 'OK Comisión marcada como liquidada' : 'Comisión desmarcada');
 }
 
 async function guardarConfigLiq() {
