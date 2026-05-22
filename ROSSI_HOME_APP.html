@@ -530,7 +530,13 @@ select option{text-transform:uppercase;}
       <!-- TOTAL Y DESCUENTO -->
       <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:9px;">
         <div class="fg" style="flex:1;display:none;" id="blk-total-venta"><label>Total</label><input type="text" id="f-total-display" readonly style="background:var(--cream2);font-weight:700;color:var(--navy);"></div>
-        <div class="fg" style="max-width:160px;flex-shrink:0;"><label>Descuento ($)</label><input type="number" id="f-descuento" placeholder="0" min="0" oninput="recalc()"></div>
+        <div class="fg" style="flex:1;">
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="chk-contado" onchange="recalc()">
+            <span>Desc. Contado −10%</span>
+          </label>
+        </div>
+        <div class="fg" style="max-width:140px;flex-shrink:0;"><label>Desc. Adicional (%)</label><input type="number" id="f-descuento" placeholder="0" min="0" max="99" step="0.5" oninput="recalc()"></div>
       </div>
 
       <!-- ESTADO DE ENTREGA -->
@@ -2269,15 +2275,7 @@ function onPago() {
   document.getElementById('blk-cp').style.display = (isCPorL30(p) && p !== 'AHORRO') ? 'block' : 'none';
   document.getElementById('blk-ahorro-venta').style.display = p === 'AHORRO' ? 'block' : 'none';
 
-  // Si es efectivo o transferencia y hay precio de lista cargado, calcular contado
-  if (isEFTRANSF(p)) {
-    const precioEl = document.getElementById('f-precio');
-    const precioActual = parseFloat(precioEl.value)||0;
-    // Si el precio parece ser de lista (no fue editado manualmente), calcular contado
-    if (precioActual > 0) {
-      precioEl.value = Math.round(precioActual * 0.9);
-    }
-  }
+  // El precio siempre es de lista — el descuento contado se aplica con el checkbox
 
   if (isCPorL30(p)) {
     // Pre-cargar precio de lista desde el precio de venta si ya está cargado
@@ -2375,25 +2373,37 @@ function onCuotaManual() {
   }
 }
 
+function calcDescuentosVenta(precio){
+  const chkContado = document.getElementById('chk-contado')?.checked;
+  const pctAdicional = parseFloat(document.getElementById('f-descuento')?.value)||0;
+  const descContado = chkContado ? Math.round(precio * 0.10) : 0;
+  const descAdicional = Math.round(precio * pctAdicional / 100);
+  const totalDesc = descContado + descAdicional;
+  return { descContado, descAdicional, totalDesc, pctAdicional };
+}
 function recalc() {
   const p       = document.getElementById('f-pago').value;
   const precio  = parseFloat(document.getElementById('f-precio').value)||0;
   const cant    = Math.max(1, parseInt(document.getElementById('f-cantidad')?.value)||1);
-  const desc    = parseFloat(document.getElementById('f-descuento')?.value)||0;
   const subtotal = precio * cant;
-  const precioNeto = Math.max(0, subtotal - desc);
-  // Mostrar total si hay cantidad > 1 o descuento
+  const { descContado, descAdicional, totalDesc, pctAdicional } = calcDescuentosVenta(subtotal);
+  const precioNeto = Math.max(0, subtotal - totalDesc);
+  const hayDesc = totalDesc > 0 || cant > 1;
   const blkTotal = document.getElementById('blk-total-venta');
   const dispTotal = document.getElementById('f-total-display');
   if (blkTotal && dispTotal) {
-    if (cant > 1 || desc > 0) {
+    if (hayDesc) {
+      let detalle = [];
+      if(cant > 1) detalle.push(`${cant} × $${fmt(precio)}`);
+      if(descContado > 0) detalle.push(`−10% contado ($${fmt(descContado)})`);
+      if(descAdicional > 0) detalle.push(`−${pctAdicional}% adicional ($${fmt(descAdicional)})`);
       blkTotal.style.display = '';
-      dispTotal.value = `$${fmt(precioNeto)}${cant>1?` (${cant} × $${fmt(precio)})`:''}${desc>0?` — desc. $${fmt(desc)}`:''}`;
+      dispTotal.value = `$${fmt(precioNeto)}  ${detalle.join(' · ')}`;
     } else { blkTotal.style.display = 'none'; }
   }
   if (isTC(p) && p!=='TC1' && precioNeto>0) {
     const n=TC_N[p],r=TC_RC[p],total=Math.round(precioNeto*r),cuota=Math.round(total/n);
-    document.getElementById('tc-info').innerHTML=`${n} cuotas de <strong>$${fmt(cuota)}</strong> — Total: $${fmt(total)}${desc>0?` (con descuento $${fmt(desc)})`:''}`;
+    document.getElementById('tc-info').innerHTML=`${n} cuotas de <strong>$${fmt(cuota)}</strong> — Total: $${fmt(total)}`;
     document.getElementById('blk-tc').style.display='block';
   } else { document.getElementById('blk-tc').style.display='none'; }
 }
@@ -2426,13 +2436,7 @@ function buscarProd() {
 function selProd(id) {
   const p=productos.find(x=>x.id===id); if(!p)return;
   document.getElementById('f-prod').value=p.nombre;
-  // Calcular precio según forma de pago seleccionada
-  const pago = document.getElementById('f-pago').value;
-  if (isEFTRANSF(pago)) {
-    document.getElementById('f-precio').value = Math.round((p.precio||0) * 0.9);
-  } else {
-    document.getElementById('f-precio').value = p.precio||'';
-  }
+  document.getElementById('f-precio').value=p.precio||'';
   document.getElementById('f-costo').value=p.costo||'';
   document.getElementById('prod-ac').classList.remove('on');
   recalc();
@@ -2457,16 +2461,18 @@ async function guardar() {
   const pago = esMixto && pagosVenta.length > 0 ? (pagosVenta.length===1 ? pagosVenta[0].pago : 'MIXTO') : pagoSimple;
   const pagosDetalle = esMixto && pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precio, label: PAGO_LBL[pagoSimple]||pagoSimple}];
 
-  const descuento = parseFloat(document.getElementById('f-descuento')?.value)||0;
   const cantidad  = Math.max(1, parseInt(document.getElementById('f-cantidad')?.value)||1);
   const fechaEntrega = document.getElementById('f-fecha-entrega')?.value||'';
   const estadoEntrega = document.getElementById('f-estado-entrega')?.value||'pendiente';
-  const precioFinal = Math.max(0, (precio * cantidad) - descuento);
+  const subtotalBruto = precio * cantidad;
+  const { descContado, descAdicional, totalDesc, pctAdicional } = calcDescuentosVenta(subtotalBruto);
+  const descuento = totalDesc;
+  const precioFinal = Math.max(0, subtotalBruto - descuento);
   // nroVenta autoincrement
   const nroVenta = obtenerProximoNroVenta();
 
   const base = {
-    fecha,vendedora:vend,producto:prod,precio:precioFinal,precioBruto:precio,descuento,cantidad,costo,pago,
+    fecha,vendedora:vend,producto:prod,precio:precioFinal,precioBruto:precio,descuento,descContado,pctAdicional,cantidad,costo,pago,
     nroVenta, fechaEntrega, estadoEntrega,
     apellido:document.getElementById('f-apellido').value.trim(),
     nombre:  document.getElementById('f-nombre').value.trim(),
@@ -2565,6 +2571,7 @@ function limpiar() {
   }
   ['blk-tc','blk-cp'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
   const siChkL=document.getElementById('cp-sin-interes'); if(siChkL) siChkL.checked=false;
+  const chkCL=document.getElementById('chk-contado'); if(chkCL) chkCL.checked=false;
   const blkAhV = document.getElementById('blk-ahorro-venta'); if(blkAhV) blkAhV.style.display='none';
   const ahorroMonto = document.getElementById('ahorro-monto-pactado'); if(ahorroMonto) ahorroMonto.value='';
   const ahorroAnt = document.getElementById('ahorro-pct-ant'); if(ahorroAnt) ahorroAnt.value='0';
@@ -2588,8 +2595,10 @@ function editarVenta(id) {
     if(!sel.disabled) sel.value=v.vendedora||usuarioActual.nombre;
     document.getElementById('f-pago').value=v.pago||'';
     document.getElementById('f-prod').value=v.producto||'';
-    document.getElementById('f-precio').value=v.precio||'';
+    document.getElementById('f-precio').value=v.precioBruto||v.precio||'';
     document.getElementById('f-costo').value=v.costo||'';
+    const chkCE=document.getElementById('chk-contado'); if(chkCE) chkCE.checked=!!(v.descContado>0);
+    const descAdicEl=document.getElementById('f-descuento'); if(descAdicEl) descAdicEl.value=v.pctAdicional||'';
     document.getElementById('f-apellido').value=v.apellido||'';
     document.getElementById('f-nombre').value=v.nombre||'';
     document.getElementById('f-dni').value=v.dni||'';
