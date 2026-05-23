@@ -4530,14 +4530,15 @@ function cajaDeMovimiento(mov) {
 function impactosCaja(venta) {
   // AHORRO: no impacta caja al registrar; los pagos entran por guardarPagoAhorro
   if (venta.pago === 'AHORRO') return [];
+  const netoPago = (monto, pago) => Math.round((monto||0) * (1 - (MP_FEES[pago]||0)));
   // Devuelve [{caja, monto}] para ventas con múltiples pagos
   if (venta.pagosDetalle && venta.pagosDetalle.length > 1) {
     return venta.pagosDetalle.map(p => ({
       caja: cajaDeMovimiento({pago: p.pago}),
-      monto: p.monto
+      monto: netoPago(p.monto, p.pago)
     }));
   }
-  return [{ caja: cajaDeMovimiento(venta), monto: venta.precio }];
+  return [{ caja: cajaDeMovimiento(venta), monto: netoPago(venta.precio, venta.pago) }];
 }
 
 function saldosCaja() {
@@ -4547,18 +4548,20 @@ function saldosCaja() {
     impactosCaja(v).forEach(({caja, monto}) => {
       if (saldos[caja] !== undefined) saldos[caja] += monto;
     });
-    // Cobros de créditos (anticipos y cuotas)
+    // Cobros de créditos (anticipos y cuotas) — descontar fee si se cobró por posnet/MP
     if (v.cpData && v.cpData.cobros) {
       v.cpData.cobros.forEach(c => {
         const cajaCobro = cajaDeMovimiento({pago: c.medio || 'EFECTIVO'});
-        if (saldos[cajaCobro] !== undefined) saldos[cajaCobro] += c.monto || 0;
+        const neto = Math.round((c.monto||0) * (1 - (MP_FEES[c.medio]||0)));
+        if (saldos[cajaCobro] !== undefined) saldos[cajaCobro] += neto;
       });
     }
-    // Pagos de plan ahorro (cada pago entra a caja según su medio)
+    // Pagos de plan ahorro — descontar fee si se pagó por MP
     if (v.pago === 'AHORRO' && v.ahorroData && v.ahorroData.pagos) {
       v.ahorroData.pagos.forEach(p => {
         const cajaPago = cajaDeMovimiento({pago: p.medio || 'EFECTIVO'});
-        if (saldos[cajaPago] !== undefined) saldos[cajaPago] += p.monto || 0;
+        const neto = Math.round((p.monto||0) * (1 - (MP_FEES[p.medio]||0)));
+        if (saldos[cajaPago] !== undefined) saldos[cajaPago] += neto;
       });
     }
   });
