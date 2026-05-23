@@ -264,6 +264,7 @@ select option{text-transform:uppercase;}
   <div class="hdr">
     <div class="logo">Rossi <em>Home</em></div>
     <span id="sync-status" style="font-size:11px;color:rgba(255,255,255,.45);flex:1;text-align:center;"></span>
+    <button id="btn-sync-nube" onclick="sincronizarDesdeNube(true)" title="Actualizar desde nube" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:rgba(255,255,255,.6);font-size:18px;line-height:1;" aria-label="Sincronizar">⟳</button>
     <span id="hdr-dolar" onclick="goTab('financiero')" style="font-size:10px;color:rgba(255,255,255,.55);cursor:pointer;white-space:nowrap;margin-right:6px;display:none;" title="Ver cotizaciones"></span>
     <span id="hdr-reloj" style="font-size:11px;color:rgba(255,255,255,.45);white-space:nowrap;margin-right:6px;"></span>
     <span class="hdr-user" id="hdr-user"></span>
@@ -1950,6 +1951,21 @@ async function leerDeScript() {
     mostrarSync('⚠ Sin Drive', true);
     return false;
   }
+}
+
+async function sincronizarDesdeNube(manual=false) {
+  const btn = document.getElementById('btn-sync-nube');
+  if(btn) btn.style.opacity='0.3';
+  const ok = await leerDeScript();
+  if(btn) btn.style.opacity='1';
+  if(!ok && manual){ toast('⚠ No se pudo conectar con la nube'); return; }
+  // Re-renderizar la página activa
+  const activa = document.querySelector('.page.on');
+  if(!activa) return;
+  const id = activa.id.replace('pg-','');
+  const renders = {ventas:()=>{renderPills();renderVentas();}, creditos:renderCreditos, precios:renderPrecios, catalogo:renderCatalogo, presupuestos:renderPresupuestos, caja:renderCaja, reportes:renderReportes, liquidaciones:renderLiquidaciones, clientes:renderClientes, admin:renderAdmin, milocal:renderMiLocal};
+  if(renders[id]) renders[id]();
+  if(manual) toast('OK Datos actualizados');
 }
 
 async function guardarVentas()  { await sSet('rh_v', ventas);   programarGuardado(); }
@@ -7811,6 +7827,8 @@ function iniciarReloj() {
   }
   tick();
   setInterval(tick, 30000);
+  // Auto-sync desde Drive cada 2 minutos (para ver en celular lo que se carga en local)
+  setInterval(() => sincronizarDesdeNube(false), 2 * 60 * 1000);
 }
 
 // ══════════════════════════════════════════════════════
