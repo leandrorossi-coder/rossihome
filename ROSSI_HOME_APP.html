@@ -190,7 +190,6 @@ td{padding:9px 11px;vertical-align:middle;}
   thead th{padding:6px 6px;}
   td{padding:7px 6px;}
   .cat-grid{grid-template-columns:1fr 1fr !important;}
-  .fab-calc{bottom:70px !important;}
   .hdr{padding:0 10px;}
   .tabs .tab{padding:9px 10px;font-size:10px;}
 }
@@ -694,8 +693,6 @@ select option{text-transform:uppercase;}
           <button class="pill" onclick="setCalcTab('ganancia',this)">💰 Ganancia</button>
           <button class="pill" onclick="setCalcTab('contadotc',this)">🔄 Contado vs TC</button>
         </div>
-
-        <!-- Tab: Pesos → USD -->
         <div id="calc-conv" class="calc-tab">
           <div class="r2" style="margin-bottom:10px;">
             <div class="fg"><label>Monto en pesos ($)</label><input type="number" id="conv-pesos" placeholder="0" oninput="calcConversion()" style="font-size:16px;"></div>
@@ -708,8 +705,6 @@ select option{text-transform:uppercase;}
           </div>
           <div id="conv-resultado" class="ibox" style="display:none;font-size:18px;font-weight:700;color:var(--navy);text-align:center;"></div>
         </div>
-
-        <!-- Tab: Margen de ganancia -->
         <div id="calc-margen" class="calc-tab" style="display:none;">
           <div class="r2" style="margin-bottom:10px;">
             <div class="fg"><label>Costo ($)</label><input type="number" id="calc-m-costo" placeholder="0" oninput="calcMargen()"></div>
@@ -717,8 +712,6 @@ select option{text-transform:uppercase;}
           </div>
           <div id="calc-m-res" class="ibox" style="display:none;font-size:15px;color:var(--navy);"></div>
         </div>
-
-        <!-- Tab: Descuento -->
         <div id="calc-desc" class="calc-tab" style="display:none;">
           <div class="r2" style="margin-bottom:10px;">
             <div class="fg"><label>Precio lista ($)</label><input type="number" id="calc-d-precio" placeholder="0" oninput="calcDescuento()"></div>
@@ -726,27 +719,20 @@ select option{text-transform:uppercase;}
           </div>
           <div id="calc-d-res" class="ibox" style="display:none;font-size:15px;color:var(--navy);"></div>
         </div>
-
-        <!-- Tab: Cuota estimada -->
         <div id="calc-cuota" class="calc-tab" style="display:none;">
           <div class="r2" style="margin-bottom:10px;">
             <div class="fg"><label>Total a financiar ($)</label><input type="number" id="calc-c-total" placeholder="0" oninput="calcCuotaEst()"></div>
             <div class="fg"><label>Cantidad de cuotas</label>
               <select id="calc-c-n" onchange="calcCuotaEst()">
-                <option value="2">2 cuotas</option>
-                <option value="3">3 cuotas</option>
-                <option value="4">4 cuotas</option>
-                <option value="6">6 cuotas</option>
-                <option value="9">9 cuotas</option>
-                <option value="12">12 cuotas</option>
+                <option value="2">2 cuotas</option><option value="3">3 cuotas</option>
+                <option value="4">4 cuotas</option><option value="6">6 cuotas</option>
+                <option value="9">9 cuotas</option><option value="12">12 cuotas</option>
               </select>
             </div>
           </div>
           <div class="fg" style="margin-bottom:10px;"><label>Recargo total (%)</label><input type="number" id="calc-c-int" placeholder="0" oninput="calcCuotaEst()"></div>
           <div id="calc-c-res" class="ibox" style="display:none;font-size:15px;color:var(--navy);"></div>
         </div>
-
-        <!-- Tab: Ganancia -->
         <div id="calc-ganancia" class="calc-tab" style="display:none;">
           <div class="r2" style="margin-bottom:10px;">
             <div class="fg"><label>Precio de venta ($)</label><input type="number" id="calc-g-venta" placeholder="0" oninput="calcGanancia()"></div>
@@ -754,8 +740,6 @@ select option{text-transform:uppercase;}
           </div>
           <div id="calc-g-res" class="ibox" style="display:none;font-size:15px;color:var(--navy);"></div>
         </div>
-
-        <!-- Tab: Contado vs TC -->
         <div id="calc-contadotc" class="calc-tab" style="display:none;">
           <div class="fg" style="margin-bottom:10px;"><label>Precio lista ($)</label><input type="number" id="calc-tc-precio" placeholder="0" oninput="calcContadoTC()"></div>
           <div id="calc-tc-res" class="ibox" style="display:none;font-size:13px;color:var(--navy);"></div>
@@ -1325,7 +1309,7 @@ select option{text-transform:uppercase;}
     <div class="mb">
       <div class="fg"><label>Nombre</label><input type="text" id="ap-nom"></div>
       <div class="r2">
-        <div class="fg"><label>Proveedor</label><input type="text" id="ap-prov"></div>
+        <div class="fg"><label>Proveedor</label><input type="text" id="ap-prov" onchange="onProvChange_prod()"></div>
         <div class="fg"><label>Precio lista / TC ($)</label><input type="number" id="ap-precio" min="0"></div>
       </div>
       <div class="r2">
@@ -1363,6 +1347,18 @@ select option{text-transform:uppercase;}
         </div>
       </div>
       <div class="fg"><label>Etiquetas (separadas por coma)</label><input type="text" id="ap-etiquetas" placeholder="nuevo, oferta, exclusivo..."></div>
+      <div class="r2">
+        <div class="fg"><label>Código original proveedor</label><input type="text" id="ap-codigo-orig" placeholder="Ej: RSEX80, TTE80GL..."></div>
+        <div class="fg"><label>URL ficha del producto</label><input type="text" id="ap-url-ficha" placeholder="https://..." style="text-transform:none;"></div>
+      </div>
+      <div class="fg" id="blk-marca-var" style="display:none;">
+        <label>Marca/variante (precio auto-calculado)</label>
+        <select id="ap-marca-var" onchange="onMarcaVarChange()">
+          <option value="">— Seleccionar marca —</option>
+        </select>
+        <span style="font-size:11px;color:var(--muted);margin-top:2px;" id="ap-marca-var-info"></span>
+      </div>
+      <div class="fg"><label>Manuales / documentación (URLs, una por línea)</label><textarea id="ap-manuales" rows="2" placeholder="https://... (manual de uso)&#10;https://... (manual instalación)&#10;https://... (formulario garantía)"></textarea></div>
       <!-- Fotos -->
       <div class="sec">Fotos del producto</div>
       <div>
@@ -1490,28 +1486,6 @@ select option{text-transform:uppercase;}
   <div class="modal"><div class="mh"><h3> Presupuesto</h3><span class="mx" onclick="cM('ovl-ver-pres')">X</span></div><div id="ver-pres-content"></div></div>
 </div>
 
-<!-- Floating calculator button -->
-<button id="fab-calc" onclick="abrirCalculadora()" title="Calculadora rápida" style="position:fixed;bottom:80px;left:16px;background:var(--gold);color:#fff;border:none;border-radius:50%;width:52px;height:52px;font-size:22px;cursor:pointer;box-shadow:var(--sh2);z-index:400;display:none;">💰</button>
-
-<!-- Modal Calculadora -->
-<div class="overlay" id="ovl-calc" onclick="cM('ovl-calc',event)">
-  <div class="modal" style="max-width:420px;">
-    <div class="mh"><h3>💰 Calculadora Rápida</h3><span class="mx" onclick="cM('ovl-calc')">X</span></div>
-    <div class="mb">
-      <div class="r2">
-        <div class="fg"><label>Costo ($)</label><input type="number" id="calc-costo" min="0" oninput="recalcCalc()"></div>
-        <div class="fg"><label>Margen %</label><input type="number" id="calc-margen" value="40" min="0" oninput="recalcCalc()"></div>
-      </div>
-      <div class="fg"><label>Cuotas CP</label>
-        <select id="calc-cuotas" onchange="recalcCalc()">
-          <option value="2">2</option><option value="3">3</option>
-          <option value="6" selected>6</option><option value="9">9</option><option value="12">12</option>
-        </select>
-      </div>
-      <div id="calc-result" class="ibox" style="margin-top:8px;font-size:13px;"></div>
-    </div>
-  </div>
-</div>
 
 <!-- Modal Pedido -->
 <div class="overlay" id="ovl-pedido" onclick="cM('ovl-pedido',event)">
@@ -2243,7 +2217,6 @@ function iniciarApp() {
   renderPills();
   renderVentas();
   // Mostrar botón flotante calculadora
-  const fab = document.getElementById('fab-calc'); if(fab) fab.style.display='block';
   // Poblar select de características telefónicas
   poblarSelectCar();
   // Badge créditos vencidos
@@ -2630,6 +2603,7 @@ function limpiar() {
   const blkAntI = document.getElementById('blk-ahorro-ant-inputs'); if(blkAntI) blkAntI.style.display='none';
   const ahorroVRes = document.getElementById('ahorro-venta-resumen'); if(ahorroVRes) ahorroVRes.style.display='none';
   document.getElementById('prod-ac').classList.remove('on');
+  document.getElementById('prod-ac')?.classList.remove('on');
 }
 
 function editarVenta(id) {
@@ -3521,6 +3495,7 @@ function renderPrecios(){
       <div style="flex:1;min-width:150px;">
         <div class="pf-nom" style="font-size:13px;font-weight:500;">${p.nombre}</div>
         <div class="pf-prov">${esAdmin()||esLocal()?`${p.proveedor||''} `:''}${p.marca?`<strong style="font-size:10px;">${p.marca}</strong> `:''} ${p.categoria?`<span style="color:var(--gold);font-size:10px;">${p.categoria}${p.subcategoria?` > ${p.subcategoria}`:''}</span>`:''}</div>
+        ${p.codigoOriginal?`<div style="font-size:10px;color:var(--muted);">Cód: ${p.codigoOriginal}</div>`:''}
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div style="text-align:right;">
@@ -3594,6 +3569,10 @@ function editarProd(id){
   poblarSelectCat(p.categoria||'');
   poblarSelectSubcat(p.subcategoria||'');
   const ap_marc=document.getElementById('ap-marca'); if(ap_marc)ap_marc.value=p.marca||'';
+  const ap_cod=document.getElementById('ap-codigo-orig'); if(ap_cod)ap_cod.value=p.codigoOriginal||'';
+  const ap_url=document.getElementById('ap-url-ficha'); if(ap_url)ap_url.value=p.urlFicha||'';
+  const ap_man=document.getElementById('ap-manuales'); if(ap_man)ap_man.value=(p.manuales||[]).join('\n');
+  onProvChange_prod(); // refresh brand variant selector
   renderFotosGrid();
   document.getElementById('ovl-prod').classList.add('on');
 }
@@ -3616,7 +3595,10 @@ async function guardarProd(){
     destacado:document.getElementById('ap-destacado').checked,
     etiquetas,
     fotos:[...editFotos],
-    fotoPrincipal:editFotoPrincipal
+    fotoPrincipal:editFotoPrincipal,
+    codigoOriginal: document.getElementById('ap-codigo-orig')?.value.trim()||'',
+    urlFicha: document.getElementById('ap-url-ficha')?.value.trim()||'',
+    manuales: (document.getElementById('ap-manuales')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean),
   };
   if(editProdId){
     const idx=productos.findIndex(p=>p.id===editProdId);
@@ -3628,6 +3610,57 @@ async function guardarProd(){
   }
   await guardarProds(); cM('ovl-prod'); renderPrecios(); if(document.getElementById('pg-catalogo').classList.contains('on'))renderCatalogo(); editProdId=null;
 }
+function parseMarcasProv(marcasText) {
+  return (marcasText||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const parts = l.split('|');
+    return { nombre: parts[0]||'', desc1: parseFloat(parts[1])||0, desc2: parseFloat(parts[2])||0 };
+  });
+}
+
+function calcPrecioMarcaVar(costoSinIva, desc1, desc2, agregarIva) {
+  let p = costoSinIva * (1 - desc1/100);
+  if(desc2 > 0) p = p * (1 - desc2/100);
+  if(agregarIva) p = p * 1.21;
+  return Math.round(p);
+}
+
+function onProvChange_prod() {
+  const provNombre = document.getElementById('ap-prov')?.value.trim();
+  const prov = proveedores.find(p=>(p.nombre||'').toLowerCase()===(provNombre||'').toLowerCase());
+  const blk = document.getElementById('blk-marca-var');
+  const sel = document.getElementById('ap-marca-var');
+  if(!blk||!sel) return;
+  if(prov && prov.marcas) {
+    const marcas = parseMarcasProv(prov.marcas);
+    if(marcas.length > 0) {
+      sel.innerHTML = '<option value="">— Seleccionar marca —</option>' +
+        marcas.map((m,i)=>`<option value="${i}">${m.nombre} (−${m.desc1}%${m.desc2?` −${m.desc2}%`:''} ${prov.sinIva?'+IVA':''})</option>`).join('');
+      blk.style.display = '';
+      return;
+    }
+  }
+  blk.style.display = 'none';
+  sel.innerHTML = '<option value="">— Seleccionar marca —</option>';
+}
+
+function onMarcaVarChange() {
+  const provNombre = document.getElementById('ap-prov')?.value.trim();
+  const prov = proveedores.find(p=>(p.nombre||'').toLowerCase()===(provNombre||'').toLowerCase());
+  const sel = document.getElementById('ap-marca-var');
+  const info = document.getElementById('ap-marca-var-info');
+  if(!prov||!sel||sel.value==='') { if(info)info.textContent=''; return; }
+  const marcas = parseMarcasProv(prov.marcas);
+  const idx = parseInt(sel.value);
+  const m = marcas[idx];
+  if(!m) return;
+  const costo = parseFloat(document.getElementById('ap-costo')?.value)||0;
+  if(!costo) { if(info)info.textContent='Ingresá el costo primero'; return; }
+  const precio = calcPrecioMarcaVar(costo, m.desc1, m.desc2, !!prov.sinIva);
+  if(document.getElementById('ap-marca')) document.getElementById('ap-marca').value = m.nombre;
+  if(document.getElementById('ap-precio')) document.getElementById('ap-precio').value = precio;
+  if(info) info.textContent = `Precio calculado: $${precio.toLocaleString('es-AR')}`;
+}
+
 async function eliminarProd(id){
   if(!esAdmin()){toast('Sin permiso');return;}
   if(!confirm('¿Eliminás este producto?'))return;
@@ -4556,7 +4589,7 @@ function impactosCaja(venta) {
 }
 
 function saldosCaja() {
-  const saldos = {EFECTIVO:0, MERCADO_PAGO:0, FLEX:0, GABRIELA:0, ROSA:0, DOLORES:0};
+  const saldos = {EFECTIVO:0, MERCADO_PAGO:0, FLEX:0, GABRIELA:0, ROSA:0, DOLORES:0, VARIOS:0};
   // Ingresos por ventas cobradas
   ventas.forEach(v => {
     impactosCaja(v).forEach(({caja, monto}) => {
@@ -6679,6 +6712,9 @@ function editarProveedor(id){
   const pmay=document.getElementById('prov-mayusculas'); if(pmay)pmay.value=p.mayusculas?'1':'0';
   onProvMetodoChange();
   calcResumenProv();
+  const pmarcas=document.getElementById('prov-marcas'); if(pmarcas)pmarcas.value=p.marcas||'';
+  const pdc=document.getElementById('prov-desc-contado'); if(pdc)pdc.value=p.descuentoContado||'';
+  const pdcam=document.getElementById('prov-desc-camion'); if(pdcam)pdcam.value=p.descuentoCamion||'';
   document.getElementById('ovl-proveedor').classList.add('on');
 }
 
@@ -6701,6 +6737,9 @@ async function guardarProveedor(){
     metodo: document.getElementById('prov-metodo')?.value||'lista',
     sinIva: document.getElementById('prov-sin-iva')?.value==='1',
     mayusculas: document.getElementById('prov-mayusculas')?.value==='1',
+    marcas: document.getElementById('prov-marcas')?.value.trim()||'',
+    descuentoContado: parseFloat(document.getElementById('prov-desc-contado')?.value)||0,
+    descuentoCamion: parseFloat(document.getElementById('prov-desc-camion')?.value)||0,
   };
   if(id){const i=proveedores.findIndex(p=>p.id==id);if(i>=0)proveedores[i]=data;}
   else proveedores.unshift(data);
@@ -6779,81 +6818,241 @@ function parsearPrecioLista(str){
   return parseFloat(s.replace(/[^0-9.]/g,''))||0;
 }
 
-// Calcula precio de lista y costo según config del proveedor
-function calcularPreciosProv(costoRaw, prov){
-  const descuento = prov.descuento||0;
-  const costoConDesc = costoRaw * (1 - descuento/100);
-  // Si sinIva: costo que nos llega es sin IVA, precio lista = costo sin IVA × 2
-  const costoReal = prov.sinIva ? costoConDesc * 1.21 : costoConDesc;
-  const costoSinIva = prov.sinIva ? costoConDesc : costoConDesc / 1.21;
-  const precioLista = Math.round(costoSinIva * 2);
+// Multiplicador de precio de lista: gross-up en cascada para cubrir markup + comisión +
+// desc. contado tienda + fee máximo de Mercado Pago (TC1 = 7.986%).
+// El desc. contado del proveedor ya fue aplicado en el costo, no aquí.
+// Fórmula: markupTarget ÷ (1−comisión) ÷ (1−desc.contado) ÷ (1−fee MP TC1)
+// Ej. RHEEM SA (43% markup): 1.43 ÷ 0.90 ÷ 0.90 ÷ 0.9201 = ×1.919 ≈ ×1.92
+function calcMultiplicadorProv(prov){
+  const markupTarget = 1 + (prov.margen||40)/100;
+  const comision = 0.10;
+  const descStore = 0.10;
+  const feeMP = 0.07986; // MP TC1 sin recargo (6.60% + 21% IVA) — peor caso no-cuotas
+  return markupTarget / (1 - comision) / (1 - descStore) / (1 - feeMP);
+}
+
+// Calcula costo real y precio de lista según config del proveedor.
+// marcaConfig opcional: { nombre, desc1, desc2 } para descuentos en cascada por marca.
+// El descuento contado del proveedor (prov.descuentoContado) reduce el costo en cascada,
+// como un tercer descuento siempre aplicado (ej. Sherman: −37% −8% −8% contado).
+function calcularPreciosProv(costoRaw, prov, marcaConfig=null){
+  let costoDesc = costoRaw;
+  if(marcaConfig){
+    // Desc. propios de la marca (en cascada)
+    costoDesc = costoRaw * (1 - marcaConfig.desc1/100);
+    if(marcaConfig.desc2 > 0) costoDesc = costoDesc * (1 - marcaConfig.desc2/100);
+  } else {
+    costoDesc = costoRaw * (1 - (prov.descuento||0)/100);
+  }
+  // Descuento contado del proveedor: siempre en cascada sobre el resultado anterior
+  const descContadoProv = (prov.descuentoContado||0)/100;
+  if(descContadoProv > 0) costoDesc = costoDesc * (1 - descContadoProv);
+
+  // Agregar IVA para obtener costo real
+  const costoReal = prov.sinIva ? costoDesc * 1.21 : costoDesc;
+
+  let precioLista;
+  if(marcaConfig || prov.marcas){
+    // Gross-up sobre costo real (markup + comisión + desc.contado tienda)
+    precioLista = Math.round(costoReal * calcMultiplicadorProv(prov));
+  } else {
+    // Legacy para proveedores sin configuración de marcas
+    const costoSinIva = prov.sinIva ? costoDesc : costoDesc / 1.21;
+    precioLista = Math.round(costoSinIva * 2);
+  }
   return { costo: Math.round(costoReal), precio: precioLista };
 }
 
-// Procesa archivo de lista de precios subido manualmente
+// Variables temporales para el flujo de importación de lista
+let _listaProvFilas = null, _listaProvProv = null;
+
+// Procesa archivo de lista de precios — muestra mapper de columnas antes de importar
 async function procesarListaProv(event, provId){
   const file = event.target.files[0]; if(!file)return;
   const prov = proveedores.find(p=>p.id===provId); if(!prov)return;
   event.target.value='';
-  toast('Procesando lista...');
   try{
     const text = await file.text();
     const lineas = text.split('\n').map(l=>l.trim()).filter(Boolean);
-    // Intentar parsear CSV (separador ; o ,)
-    const sep = lineas[0]&&lineas[0].includes(';') ? ';' : ',';
+    if(!lineas.length){ toast('! Archivo vacío'); return; }
+    const sep = lineas[0].includes(';') ? ';' : ',';
     const filas = lineas.map(l=>l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim()));
-    // Heurística: buscar columnas de nombre y precio
-    // Asumir primera columna = nombre, última columna numérica = precio
-    const productos_lista = [];
-    for(let i=0;i<filas.length;i++){
-      const fila = filas[i];
-      if(fila.length<2)continue;
-      const nombre = normalizarTexto(fila[0], prov.mayusculas);
-      if(!nombre||nombre.length<3)continue;
-      // Buscar precio: la última celda que sea número
-      let precioRaw = 0;
-      for(let j=fila.length-1;j>=1;j--){
-        const v = parsearPrecioLista(fila[j]);
-        if(v>0){precioRaw=v;break;}
-      }
-      if(precioRaw<=0)continue;
-      productos_lista.push({nombre, precioRaw});
+    const maxCols = Math.max(...filas.slice(0,20).map(f=>f.length));
+    // Detectar columnas numéricas
+    const colIsNum = [];
+    for(let c=0;c<maxCols;c++){
+      const nc = filas.slice(1,10).filter(f=>f[c]&&parsearPrecioLista(f[c])>0).length;
+      colIsNum[c] = nc >= 3;
     }
-    if(!productos_lista.length){toast('! No se encontraron productos en el archivo');return;}
-    await aplicarListaProv(productos_lista, prov);
-  }catch(err){toast('Error al procesar: '+err.message);}
+    _listaProvFilas = filas;
+    _listaProvProv = prov;
+    mostrarMapperLista(filas, maxCols, colIsNum, prov);
+  }catch(err){ toast('Error al leer el archivo: '+err.message); }
+}
+
+function mostrarMapperLista(filas, maxCols, colIsNum, prov){
+  const marcas = parseMarcasProv(prov.marcas||'');
+  const ovl = document.getElementById('ovl-lista-prov');
+  if(!ovl) return;
+  const preview = filas.slice(0,5);
+  const colOpts = Array.from({length:maxCols},(_,i)=>`<option value="${i}">Col.${i+1} — "${(preview[0]&&preview[0][i]||'').substring(0,18)}"</option>`).join('');
+  const noCol = `<option value="-1">— ninguna —</option>`;
+  const marcaSelector = marcas.length > 0 ? `
+    <div class="fg" style="margin-bottom:10px;">
+      <label style="font-weight:600;">¿A qué marca pertenece este archivo?</label>
+      <select id="lp-marca" onchange="actualizarPreviewCalcLista()" style="margin-top:4px;">
+        <option value="-1">— Sin especificar (config. general) —</option>
+        ${marcas.map((m,i)=>`<option value="${i}">${m.nombre} (−${m.desc1}%${m.desc2?` −${m.desc2}%`:''})</option>`).join('')}
+      </select>
+    </div>` : '';
+  const previewHtml = `<div style="overflow-x:auto;margin-bottom:12px;border:1px solid var(--border);border-radius:6px;">
+    <table style="border-collapse:collapse;font-size:11px;width:100%;">
+      ${preview.map((fila,ri)=>`<tr style="background:${ri===0?'var(--navy)':'var(--cream)'};color:${ri===0?'#fff':''};">
+        ${fila.map(cel=>`<td style="border:1px solid var(--border);padding:3px 7px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${cel}">${cel||'—'}</td>`).join('')}
+      </tr>`).join('')}
+    </table></div>`;
+  const html = `<div style="padding:16px;max-height:85vh;overflow-y:auto;">
+    <h3 style="margin:0 0 10px;">📄 Importar lista — ${prov.nombre}</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Primeras filas del archivo:</div>
+    ${previewHtml}
+    ${marcaSelector}
+    <div class="r2" style="gap:8px;margin-bottom:8px;">
+      <div class="fg"><label>Columna Código/SKU</label><select id="lp-col-sku" onchange="actualizarPreviewCalcLista()">${noCol}${colOpts}</select></div>
+      <div class="fg"><label>Columna Nombre del producto *</label><select id="lp-col-nom" onchange="actualizarPreviewCalcLista()">${colOpts}</select></div>
+    </div>
+    <div class="r2" style="gap:8px;margin-bottom:10px;">
+      <div class="fg"><label>Columna Precio lista SIN IVA *</label><select id="lp-col-precio" onchange="actualizarPreviewCalcLista()">${noCol}${colOpts}</select></div>
+      <div class="fg"><label>Columna Precio sugerido c/IVA</label><select id="lp-col-sugerido" onchange="actualizarPreviewCalcLista()">${noCol}${colOpts}</select></div>
+    </div>
+    <div style="background:var(--cream2);border-radius:8px;padding:10px;font-size:12px;margin-bottom:12px;" id="lp-preview-calc">Configurá las columnas para ver previsualización.</div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="cM('ovl-lista-prov')">Cancelar</button>
+      <button class="btn btn-gold" onclick="confirmarImportarLista(${prov.id})">✅ Importar lista</button>
+    </div>
+  </div>`;
+  document.getElementById('lista-prov-body').innerHTML = html;
+  ovl.classList.add('on');
+  // Auto-detectar columnas por heurística
+  setTimeout(()=>{
+    let maxAvgLen=0, nomIdx=0;
+    for(let c=0;c<maxCols;c++){
+      if(colIsNum[c]) continue;
+      const avg = filas.slice(1,6).reduce((s,f)=>s+(f[c]||'').length,0)/5;
+      if(avg>maxAvgLen){ maxAvgLen=avg; nomIdx=c; }
+    }
+    const elNom=document.getElementById('lp-col-nom'); if(elNom) elNom.value=nomIdx;
+    for(let c=0;c<maxCols;c++){
+      if(c===nomIdx||colIsNum[c]) continue;
+      const avg=filas.slice(1,6).reduce((s,f)=>s+(f[c]||'').length,0)/5;
+      if(avg>2&&avg<22){ const elSku=document.getElementById('lp-col-sku'); if(elSku)elSku.value=c; break; }
+    }
+    const numCols=colIsNum.map((v,i)=>v?i:-1).filter(i=>i>=0);
+    if(numCols.length>=1){ const elP=document.getElementById('lp-col-precio'); if(elP)elP.value=numCols[0]; }
+    if(numCols.length>=2){ const elS=document.getElementById('lp-col-sugerido'); if(elS)elS.value=numCols[1]; }
+    actualizarPreviewCalcLista();
+  },100);
+}
+
+function actualizarPreviewCalcLista(){
+  const filas=_listaProvFilas, prov=_listaProvProv;
+  if(!filas||!prov) return;
+  const colNomIdx=parseInt(document.getElementById('lp-col-nom')?.value??-1);
+  const colPrecioIdx=parseInt(document.getElementById('lp-col-precio')?.value??-1);
+  const colSugeridoIdx=parseInt(document.getElementById('lp-col-sugerido')?.value??-1);
+  const colMarcaIdx=parseInt(document.getElementById('lp-marca')?.value??-1);
+  const marcas=parseMarcasProv(prov.marcas||'');
+  const marcaConfig=colMarcaIdx>=0?marcas[colMarcaIdx]:null;
+  const prev=document.getElementById('lp-preview-calc');
+  if(!prev) return;
+  if(colPrecioIdx<0||colNomIdx<0){ prev.textContent='Seleccioná columna de nombre y precio.'; return; }
+  const rows=filas.filter((_,i)=>i>0).slice(0,4);
+  const mult=calcMultiplicadorProv(prov);
+  const ejemplos=rows.map(fila=>{
+    const nombre=(fila[colNomIdx]||'').substring(0,28);
+    const precioRaw=parsearPrecioLista(fila[colPrecioIdx]||'0');
+    if(!precioRaw) return null;
+    const {costo,precio}=calcularPreciosProv(precioRaw,prov,marcaConfig);
+    const sugerido=colSugeridoIdx>=0?parsearPrecioLista(fila[colSugeridoIdx]||'0'):0;
+    // Si usamos el precio sugerido: ¿qué margen nos queda?
+    const margenSug=sugerido>0?Math.round((sugerido-costo)/sugerido*100):null;
+    const margenMio=Math.round((precio-costo)/precio*100);
+    const sугStyle=margenSug===null?'':(margenSug>=30?'color:var(--green);font-weight:700;':'color:var(--orange);font-weight:700;');
+    return `<tr>
+      <td style="padding:2px 5px;font-size:11px;">${nombre}</td>
+      <td style="padding:2px 5px;font-size:11px;color:var(--muted);">$${fmt(precioRaw)}</td>
+      <td style="padding:2px 5px;font-size:11px;color:var(--orange);">$${fmt(costo)}</td>
+      <td style="padding:2px 5px;font-size:11px;font-weight:700;">$${fmt(precio)} <span style="font-size:10px;color:var(--muted);">(${margenMio}%)</span></td>
+      ${sugerido>0?`<td style="padding:2px 5px;font-size:11px;color:var(--muted);">$${fmt(sugerido)}</td><td style="padding:2px 5px;font-size:11px;${sугStyle}">${margenSug!==null?margenSug+'% margen':''}</td>`:''}
+    </tr>`;
+  }).filter(Boolean).join('');
+  const multInfo=marcaConfig?`desc. ${marcaConfig.desc1}%${marcaConfig.desc2?` +${marcaConfig.desc2}%`:''} en cascada${prov.sinIva?' +IVA':''} → ×${mult.toFixed(3)}`:`×${mult.toFixed(3)} (margen ${prov.margen||40}%)`;
+  prev.innerHTML=`<div style="font-weight:600;margin-bottom:5px;">Previsualización · ${multInfo}</div>
+    <table style="border-collapse:collapse;width:100%;">
+      <tr style="color:var(--muted);font-size:10px;"><th style="padding:2px 5px;text-align:left;">Nombre</th><th style="padding:2px 5px;">Lista</th><th style="padding:2px 5px;">Costo real</th><th style="padding:2px 5px;">Mi precio (margen)</th>${colSugeridoIdx>=0?'<th style="padding:2px 5px;">Sugerido</th><th style="padding:2px 5px;">Margen si uso sugerido</th>':''}</tr>
+      ${ejemplos}
+    </table>
+    <div style="font-size:10px;color:var(--muted);margin-top:5px;">Costo = lista ×(1−desc.marca) ×(1−${prov.descuentoContado||0}%contado) ${prov.sinIva?'×1.21':''}. Precio = costo ×${mult.toFixed(3)} (${Math.round(prov.margen||40)}% ganancia +10% comisión +10% desc.tienda). <span style="color:var(--green);">Verde = margen ≥30% · Naranja = &lt;30%</span></div>`;
+}
+
+async function confirmarImportarLista(provId){
+  const prov=_listaProvProv; if(!prov) return;
+  const colNomIdx=parseInt(document.getElementById('lp-col-nom')?.value??-1);
+  const colPrecioIdx=parseInt(document.getElementById('lp-col-precio')?.value??-1);
+  const colSkuIdx=parseInt(document.getElementById('lp-col-sku')?.value??-1);
+  const colMarcaIdx=parseInt(document.getElementById('lp-marca')?.value??-1);
+  if(colNomIdx<0||colPrecioIdx<0){ toast('! Seleccioná columna de nombre y precio'); return; }
+  const marcas=parseMarcasProv(prov.marcas||'');
+  const marcaConfig=colMarcaIdx>=0?marcas[colMarcaIdx]:null;
+  const productos_lista=[];
+  for(let i=1;i<_listaProvFilas.length;i++){
+    const fila=_listaProvFilas[i];
+    const nombre=normalizarTexto(fila[colNomIdx]||'',prov.mayusculas);
+    if(!nombre||nombre.length<3) continue;
+    const precioRaw=parsearPrecioLista(fila[colPrecioIdx]||'0');
+    if(precioRaw<=0) continue;
+    const codigoOriginal=colSkuIdx>=0?(fila[colSkuIdx]||'').trim():'';
+    productos_lista.push({nombre,precioRaw,codigoOriginal,marcaConfig});
+  }
+  if(!productos_lista.length){ toast('! No se encontraron productos válidos'); return; }
+  toast('Procesando...');
+  await aplicarListaProv(productos_lista,prov);
 }
 
 // Aplica la lista procesada al catálogo de productos
 async function aplicarListaProv(lista_nueva, prov){
   const provNombre = prov.nombre;
   const prodsProv = productos.filter(p=>(p.proveedor||'').toLowerCase()===provNombre.toLowerCase());
-
   const nuevos = [], actualizados = [], faltantes = [];
 
-  // Detectar nuevos y actualizar existentes
   for(const item of lista_nueva){
-    const existente = prodsProv.find(p=>(p.nombre||'').toLowerCase()===item.nombre.toLowerCase() || (p.sku&&p.sku===item.sku));
-    const precios = calcularPreciosProv(item.precioRaw, prov);
+    const marcaConfig = item.marcaConfig||null;
+    const precios = calcularPreciosProv(item.precioRaw, prov, marcaConfig);
+    // Buscar por código original primero, luego por nombre
+    const existente = prodsProv.find(p=>
+      (item.codigoOriginal && p.codigoOriginal && p.codigoOriginal===item.codigoOriginal) ||
+      (p.nombre||'').toLowerCase()===item.nombre.toLowerCase()
+    );
     if(existente){
       existente.costo = precios.costo;
       existente.precio = precios.precio;
       existente.nombre = item.nombre;
+      if(item.codigoOriginal) existente.codigoOriginal = item.codigoOriginal;
+      if(marcaConfig) existente.marca = marcaConfig.nombre;
       actualizados.push(existente);
     } else {
-      nuevos.push({...item, ...precios, prov});
+      nuevos.push({...item, ...precios});
     }
   }
 
-  // Detectar faltantes
   for(const prod of prodsProv){
-    const enLista = lista_nueva.find(i=>(i.nombre||'').toLowerCase()===(prod.nombre||'').toLowerCase());
+    const enLista = lista_nueva.find(i=>
+      (i.codigoOriginal && prod.codigoOriginal && i.codigoOriginal===prod.codigoOriginal) ||
+      (i.nombre||'').toLowerCase()===(prod.nombre||'').toLowerCase()
+    );
     if(!enLista) faltantes.push(prod);
   }
 
   await guardarProds();
-
-  // Mostrar resultado y pedir decisiones
   mostrarResultadoListaProv(nuevos, actualizados, faltantes, prov);
 }
 
@@ -6911,6 +7110,8 @@ async function confirmarNuevosProv(nuevos, provId, btn){
       id: Date.now()+i,
       sku, nombre: item.nombre,
       proveedor: prov.nombre,
+      marca: item.marcaConfig ? item.marcaConfig.nombre : (item.marca||''),
+      codigoOriginal: item.codigoOriginal||'',
       costo: item.costo,
       precio: item.precio,
       stock: 'disponible',
@@ -8249,6 +8450,16 @@ function calcContadoTC() {
         <div class="fg"><label>% TC (Recargo)</label><input type="number" id="prov-recargo-tc" placeholder="15" min="0" oninput="calcResumenProv()"></div>
       </div>
       <div class="ibox" id="prov-calc-resumen" style="display:none;font-size:12px;"></div>
+      <div class="fg"><label>Marcas y descuentos por marca</label>
+        <textarea id="prov-marcas" rows="4" placeholder="Una marca por línea: MARCA|descuento1%|descuento2% (en cascada)&#10;Ej: RHEEM (Termotanques)|37.5|0&#10;RHEEM (Calefones)|35|0&#10;SAIAR|35.5|0&#10;SHERMAN|37|8"></textarea>
+        <span style="font-size:10px;color:var(--muted);">Formato: MARCA|desc1|desc2 — Los descuentos se aplican en cascada al costo, luego se suma IVA si corresponde</span>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Desc. Contado proveedor (%)</label><input type="number" id="prov-desc-contado" placeholder="0" min="0" max="100" step="0.5"></div>
+        <div class="fg"><label>Desc. Camión entero (%)</label><input type="number" id="prov-desc-camion" placeholder="0" min="0" max="100" step="0.5">
+          <span style="font-size:10px;color:var(--muted);">Solo admin. No se aplica automáticamente.</span>
+        </div>
+      </div>
       <div class="fg"><label>Notas / Condiciones</label><textarea id="prov-notas" rows="2" placeholder="Condiciones de pago, plazos de entrega..."></textarea></div>
       <div class="btn-row">
         <button class="btn btn-ghost" onclick="cM('ovl-proveedor')">Cancelar</button>
