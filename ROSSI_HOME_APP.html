@@ -2579,6 +2579,17 @@ async function guardar() {
         auto:true, ventaNro: nroVenta });
       movCaja.unshift(...gastosTC.reverse());
       await guardarCajaData();
+      base.gastosMP = true;
+    }
+    const esMPSimple = ['DEBITO','PREPAGA','QR_MP','LINK_MP'].includes(pago);
+    if (esMPSimple) {
+      const cli = `${base.apellido||''} ${base.nombre||''}`.trim() || base.producto || '—';
+      const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0));
+      movCaja.unshift({ id:Date.now()+3, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+        concepto:`Cargo ${PAGO_LBL[pago]||pago} — ${cli}`, monto: gastoFee,
+        auto:true, ventaNro: nroVenta });
+      await guardarCajaData();
+      base.gastosMP = true;
     }
   }
   await guardarVentas();
@@ -2892,7 +2903,21 @@ async function confirmarCobro() {
   cp.cobros.push(cobro);
   if (tipo==='anticipo') cp.anticipoPagado = true;
   try {
-    movCaja.unshift({ id:Date.now()+1, tipo:'ingreso', fecha, caja:'local', concepto:`Crédito ${tipo==='anticipo'?'Anticipo':`Cuota ${(idx||0)+1}`} - ${v.producto} - ${cliNom(v)}`, monto, medio, obs, cobrador: usuarioActual?.nombre||'' });
+    const cajaCobro = cajaDeMovimiento({pago: medio});
+    movCaja.unshift({ id:Date.now()+1, tipo:'ingreso', fecha, caja:cajaCobro, concepto:`Crédito ${tipo==='anticipo'?'Anticipo':`Cuota ${(idx||0)+1}`} - ${v.producto} - ${cliNom(v)}`, monto, medio, obs, cobrador: usuarioActual?.nombre||'' });
+    const esMPCobro = cajaCobro === 'MERCADO_PAGO';
+    if (esMPCobro) {
+      cobro.gastoMP = true;
+      const gastosCobroTC = [];
+      if (isTC(medio) && medio !== 'TC1' && MP_FEES[medio]) {
+        gastosCobroTC.push({ id:Date.now()+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+          concepto:`Costo interés ${medio} — ${cliNom(v)}`, monto: Math.round(monto * MP_FEES[medio]), auto:true });
+      }
+      const feeServicio = isTC(medio) ? MP_FEES.TC1 : (MP_FEES[medio]||0);
+      gastosCobroTC.push({ id:Date.now()+3, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+        concepto:`Cargo MP — ${cliNom(v)}`, monto: Math.round(monto * feeServicio), auto:true });
+      movCaja.unshift(...gastosCobroTC.reverse());
+    }
     await guardarCajaData();
   } catch(e){}
   await guardarVentas();
@@ -4547,30 +4572,26 @@ function cajaDeMovimiento(mov) {
 function impactosCaja(venta) {
   if (venta.pago === 'AHORRO') return [];
   const p = venta.pago || '';
-  // Para TC: entra el total bruto (TC_total), los gastos automáticos hacen la deducción
-  // Para ventas TC antiguas sin precioVenta guardado, calculamos desde precioBruto
-  const montoTCBruto = (v) => {
-    const lista = v.precioBruto || v.precioLista || v.precio || 0;
-    return Math.round(lista * (TC_RC[v.pago]||1));
-  };
-  if (isTC(p)) {
-    if (venta.pagosDetalle && venta.pagosDetalle.length > 1) {
-      return venta.pagosDetalle.map(pd => ({
-        caja: cajaDeMovimiento({pago: pd.pago}),
-        monto: isTC(pd.pago) ? Math.round((pd.monto||0) * (TC_RC[pd.pago]||1)) : Math.round((pd.monto||0) * (1-(MP_FEES[pd.pago]||0)))
-      }));
+
+  // Helpers
+  const montoIngreso = (monto, pago, tieneGastos) => {
+    if (tieneGastos) return monto;
+    // Sin gastos: mostrar neto (backward compatible con ventas antiguas)
+    if (isTC(pago)) {
+      const lista = monto; // para ventas antiguas monto ya es el lista
+      const tcTotal = Math.round(lista * (TC_RC[pago]||1));
+      return Math.round(tcTotal * (1 - (MP_FEES[pago]||0) - MP_FEES.TC1));
     }
-    return [{ caja: cajaDeMovimiento(venta), monto: montoTCBruto(venta) }];
-  }
-  // No-TC: entra el neto (descontando fee MP)
-  const netoPago = (monto, pago) => Math.round((monto||0) * (1 - (MP_FEES[pago]||0)));
+    return Math.round(monto * (1 - (MP_FEES[pago]||0)));
+  };
+
   if (venta.pagosDetalle && venta.pagosDetalle.length > 1) {
     return venta.pagosDetalle.map(pd => ({
       caja: cajaDeMovimiento({pago: pd.pago}),
-      monto: netoPago(pd.monto, pd.pago)
+      monto: montoIngreso(pd.monto, pd.pago, venta.gastosMP)
     }));
   }
-  return [{ caja: cajaDeMovimiento(venta), monto: netoPago(venta.precio, p) }];
+  return [{ caja: cajaDeMovimiento(venta), monto: montoIngreso(venta.precio, p, venta.gastosMP) }];
 }
 
 function saldosCaja() {
@@ -4584,16 +4605,15 @@ function saldosCaja() {
     if (v.cpData && v.cpData.cobros) {
       v.cpData.cobros.forEach(c => {
         const cajaCobro = cajaDeMovimiento({pago: c.medio || 'EFECTIVO'});
-        const neto = Math.round((c.monto||0) * (1 - (MP_FEES[c.medio]||0)));
-        if (saldos[cajaCobro] !== undefined) saldos[cajaCobro] += neto;
+        const montoCobro = c.gastoMP ? (c.monto||0) : Math.round((c.monto||0) * (1-(MP_FEES[c.medio]||0)));
+        if (saldos[cajaCobro] !== undefined) saldos[cajaCobro] += montoCobro;
       });
     }
-    // Pagos de plan ahorro — descontar fee si se pagó por MP
+    // Pagos de plan ahorro (siempre efectivo/transferencia, sin fee MP)
     if (v.pago === 'AHORRO' && v.ahorroData && v.ahorroData.pagos) {
       v.ahorroData.pagos.forEach(p => {
         const cajaPago = cajaDeMovimiento({pago: p.medio || 'EFECTIVO'});
-        const neto = Math.round((p.monto||0) * (1 - (MP_FEES[p.medio]||0)));
-        if (saldos[cajaPago] !== undefined) saldos[cajaPago] += neto;
+        if (saldos[cajaPago] !== undefined) saldos[cajaPago] += p.monto||0;
       });
     }
   });
