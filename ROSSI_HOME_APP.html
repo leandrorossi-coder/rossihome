@@ -2485,12 +2485,14 @@ async function guardar() {
   const subtotalBruto = precio * cantidad;
   const { descContado, descAdicional, totalDesc, pctAdicional } = calcDescuentosVenta(subtotalBruto);
   const descuento = totalDesc;
-  const precioFinal = Math.max(0, subtotalBruto - descuento);
+  const precioLista = Math.max(0, subtotalBruto - descuento); // precio lista (lo que vale el producto)
+  // Para TC: el precio registrado es el total que paga el cliente en cuotas
+  const precioVenta = isTC(pago) ? Math.round(precioLista * (TC_RC[pago]||1)) : precioLista;
   // nroVenta autoincrement
   const nroVenta = obtenerProximoNroVenta();
 
   const base = {
-    fecha,vendedora:vend,producto:prod,precio:precioFinal,precioBruto:precio,descuento,descContado,pctAdicional,cantidad,costo,pago,
+    fecha,vendedora:vend,producto:prod,precio:precioVenta,precioBruto:precio,precioLista,descuento,descContado,pctAdicional,cantidad,costo,pago,
     nroVenta, fechaEntrega, estadoEntrega,
     apellido:document.getElementById('f-apellido').value.trim(),
     nombre:  document.getElementById('f-nombre').value.trim(),
@@ -2561,8 +2563,23 @@ async function guardar() {
     nroVentaCounter = (parseInt(nroVenta)||0) + 1;
     actualizarMaestroClientes(nuevaVenta);
     guardarClientes();
-    logActividad('Nueva venta #'+nroVenta+' — $'+fmt(precioFinal));
+    logActividad('Nueva venta #'+nroVenta+' — $'+fmt(precioVenta));
     toast('OK Venta guardada #'+nroVenta);
+    // Gastos automáticos MP para ventas TC (interés + cargo de servicio)
+    if (isTC(pago)) {
+      const cli = `${base.apellido||''} ${base.nombre||''}`.trim() || base.producto || '—';
+      const gastosTC = [];
+      if (pago !== 'TC1' && MP_FEES[pago]) {
+        gastosTC.push({ id:Date.now()+1, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+          concepto:`Costo interés ${pago} — ${cli}`, monto: Math.round(precioVenta * MP_FEES[pago]),
+          auto:true, ventaNro: nroVenta });
+      }
+      gastosTC.push({ id:Date.now()+2, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+        concepto:`Cargo Mercado Pago — ${cli}`, monto: Math.round(precioVenta * MP_FEES.TC1),
+        auto:true, ventaNro: nroVenta });
+      movCaja.unshift(...gastosTC.reverse());
+      await guardarCajaData();
+    }
   }
   await guardarVentas();
   limpiar();
@@ -4528,17 +4545,32 @@ function cajaDeMovimiento(mov) {
 }
 
 function impactosCaja(venta) {
-  // AHORRO: no impacta caja al registrar; los pagos entran por guardarPagoAhorro
   if (venta.pago === 'AHORRO') return [];
+  const p = venta.pago || '';
+  // Para TC: entra el total bruto (TC_total), los gastos automáticos hacen la deducción
+  // Para ventas TC antiguas sin precioVenta guardado, calculamos desde precioBruto
+  const montoTCBruto = (v) => {
+    const lista = v.precioBruto || v.precioLista || v.precio || 0;
+    return Math.round(lista * (TC_RC[v.pago]||1));
+  };
+  if (isTC(p)) {
+    if (venta.pagosDetalle && venta.pagosDetalle.length > 1) {
+      return venta.pagosDetalle.map(pd => ({
+        caja: cajaDeMovimiento({pago: pd.pago}),
+        monto: isTC(pd.pago) ? Math.round((pd.monto||0) * (TC_RC[pd.pago]||1)) : Math.round((pd.monto||0) * (1-(MP_FEES[pd.pago]||0)))
+      }));
+    }
+    return [{ caja: cajaDeMovimiento(venta), monto: montoTCBruto(venta) }];
+  }
+  // No-TC: entra el neto (descontando fee MP)
   const netoPago = (monto, pago) => Math.round((monto||0) * (1 - (MP_FEES[pago]||0)));
-  // Devuelve [{caja, monto}] para ventas con múltiples pagos
   if (venta.pagosDetalle && venta.pagosDetalle.length > 1) {
-    return venta.pagosDetalle.map(p => ({
-      caja: cajaDeMovimiento({pago: p.pago}),
-      monto: netoPago(p.monto, p.pago)
+    return venta.pagosDetalle.map(pd => ({
+      caja: cajaDeMovimiento({pago: pd.pago}),
+      monto: netoPago(pd.monto, pd.pago)
     }));
   }
-  return [{ caja: cajaDeMovimiento(venta), monto: netoPago(venta.precio, venta.pago) }];
+  return [{ caja: cajaDeMovimiento(venta), monto: netoPago(venta.precio, p) }];
 }
 
 function saldosCaja() {
