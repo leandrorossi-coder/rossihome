@@ -4322,11 +4322,12 @@ function exportarBackup(){
 async function importarBackup(e){
   if(!esAdmin()){toast('Sin permiso');return;}
   const file=e.target.files[0]; if(!file)return;
-  if(!confirm(`¿Importar backup "${file.name}"? Los datos actuales serán reemplazados.`)){e.target.value='';return;}
   try{
     const text=await file.text();
     const d=JSON.parse(text);
     if(!d.ventas&&!d.productos){toast('Archivo inválido');return;}
+    const resumen=`¿Importar backup "${file.name}"?\n\nContenido:\n• ${(d.ventas||[]).length} ventas\n• ${(d.productos||[]).length} productos\n• ${(d.clientes||[]).length} clientes\n• ${(d.movCaja||[]).length} mov. de caja\n\nLos datos actuales serán REEMPLAZADOS.`;
+    if(!confirm(resumen)){e.target.value='';return;}
     if(d.ventas)ventas=d.ventas;
     if(d.productos&&d.productos.length>0)productos=d.productos;
     if(d.presupuestos)presupuestos=d.presupuestos;
@@ -7133,7 +7134,11 @@ async function guardarProveedor(){
     descuentoCamion: parseFloat(document.getElementById('prov-desc-camion')?.value)||0,
   };
   if(id){const i=proveedores.findIndex(p=>p.id==id);if(i>=0)proveedores[i]=data;}
-  else proveedores.unshift(data);
+  else {
+    const dup=proveedores.find(p=>(p.nombre||'').toUpperCase()===nombre);
+    if(dup){toast(`! Ya existe un proveedor con ese nombre`);return;}
+    proveedores.unshift(data);
+  }
   await guardarProveedoresData();
   cM('ovl-proveedor'); renderProveedores();
   toast('OK Proveedor guardado');
@@ -8508,6 +8513,7 @@ async function actualizarDolar() {
   // Fuente 2: dolarapi.com
   try {
     const r2 = await fetchTimeout('https://dolarapi.com/v1/dolares');
+    if (!r2.ok) throw new Error();
     const arr = await r2.json();
     if (Array.isArray(arr)) {
       arr.forEach(d => {
@@ -8521,6 +8527,7 @@ async function actualizarDolar() {
       return;
     }
   } catch(e2) {}
+  renderDolarCards();
   toast('Sin conexión para cotizaciones');
 }
 
