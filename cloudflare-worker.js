@@ -24,7 +24,11 @@ export default {
           return await handleScrape(parsed.url, jsonHeaders);
         }
 
-        // Proxy a Google Apps Script
+        if (parsed.action === 'guardar') {
+          return await handleGuardar(parsed, body, SCRIPT_URL, jsonHeaders);
+        }
+
+        // Cualquier otro POST — proxy directo
         const resp = await fetch(SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -49,6 +53,52 @@ export default {
     }
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GUARDAR CON MERGE DE PRODUCTOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function handleGuardar(parsed, originalBody, SCRIPT_URL, jsonHeaders) {
+  const productosDirty = parsed.productosDirty === true;
+  const productosEntrantes = parsed.productos || [];
+
+  // Si productos no fueron modificados en este dispositivo,
+  // consultamos Drive para no pisar productos que otro dispositivo haya agregado
+  if (!productosDirty) {
+    try {
+      const driveResp = await fetch(SCRIPT_URL + '?api=1', {
+        method: 'GET',
+        redirect: 'follow',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (driveResp.ok) {
+        const driveText = await driveResp.text();
+        const driveData = JSON.parse(driveText);
+        const driveProds = driveData?.datos?.productos || [];
+
+        if (driveProds.length > productosEntrantes.length) {
+          // Drive tiene más productos — usar los de Drive para no perderlos
+          parsed.productos = driveProds;
+        }
+      }
+    } catch(e) {
+      // Si falla el GET, usamos los productos entrantes (mejor que cortar el guardado)
+    }
+  }
+
+  // Reensamblar el body con los productos correctos
+  const bodyFinal = JSON.stringify(parsed);
+
+  const resp = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: bodyFinal,
+    redirect: 'follow',
+  });
+  const text = await resp.text();
+  try { JSON.parse(text); return new Response(text, { headers: jsonHeaders }); }
+  catch(e) { return new Response(JSON.stringify({ ok: false, error: 'Auth required' }), { headers: jsonHeaders }); }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCRAPING
@@ -106,12 +156,9 @@ async function handleScrape(url, headers) {
     const productos = extraerProductos(html, finalUrl);
 
     if (!productos.length) {
-      // Mostrar fragmento alrededor de donde deberían estar los productos
-      // Mostrar lo que hay DENTRO del <ul class="products">
       const idx = html.indexOf('class="products ');
       const ulStart = idx > 0 ? html.indexOf('>', idx) + 1 : -1;
       const fragmento = ulStart > 0 ? html.slice(ulStart, ulStart + 4000) : html.slice(224000, 228000);
-      // También buscar cualquier <li> cercano al ul.products
       const primerLi = html.indexOf('<li', ulStart > 0 ? ulStart : 224000);
       const liClase = primerLi > 0 ? html.slice(primerLi, primerLi + 300) : 'no li found';
       return json({
@@ -144,7 +191,6 @@ async function intentarWooStoreAPI(origin, headers) {
     try {
       const apiUrl = `${origin}/wp-json/wc/store/v1/products?per_page=100&page=${page}`;
       let resp = await fetch(apiUrl, { headers: apiHeaders, redirect: 'follow' });
-      // Retry con per_page menor si falla
       if (!resp.ok && resp.status === 403) {
         resp = await fetch(`${origin}/wp-json/wc/store/v1/products?per_page=20&page=${page}`, { headers: apiHeaders, redirect: 'follow' });
       }
@@ -156,7 +202,6 @@ async function intentarWooStoreAPI(origin, headers) {
       for (const p of data) {
         const nombre = limpiar(p.name || '');
         if (!nombre) continue;
-        // precio viene como string "1234.56" o con HTML
         const precioStr = limpiar(p.prices?.price || p.price_html || '0');
         const precio = parsePrecioAR(precioStr.replace(/[^\d.,]/g, ''));
         const foto = p.images?.[0]?.src || null;
@@ -177,9 +222,8 @@ async function intentarWooStoreAPI(origin, headers) {
   return json({ ok: true, productos, total: productos.length, platform: 'WooCommerce Store API' }, headers);
 }
 
-// WooCommerce REST API pública (no requiere clave si el sitio lo permite)
+// WooCommerce REST API pública
 async function intentarWooAPI(origin, headers) {
-  // Páginas: hasta 5 páginas de 100 productos c/u
   const productos = [];
   for (let page = 1; page <= 5; page++) {
     try {
@@ -209,7 +253,7 @@ async function intentarWooAPI(origin, headers) {
           categoria: p.categories?.[0]?.name || '',
         });
       }
-      if (data.length < 100) break; // última página
+      if (data.length < 100) break;
     } catch(e) { break; }
   }
 
@@ -217,11 +261,10 @@ async function intentarWooAPI(origin, headers) {
   return json({ ok: true, productos, total: productos.length, platform: 'WooCommerce API' }, headers);
 }
 
-// Intenta la API REST de Tiendanube
+// Tiendanube API
 async function intentarTiendanubeAPI(url, headers) {
   try {
     const u = new URL(url);
-    // Tiendanube usa su propia API pública sin auth para listar productos
     const apiUrl = `${u.origin}/api/v1/products?per_page=50`;
     const resp = await fetch(apiUrl, {
       headers: { ...FETCH_HEADERS, 'Accept': 'application/json' },
@@ -260,28 +303,22 @@ function detectarPlataforma(html) {
 }
 
 function extraerProductos(html, baseUrl) {
-  // 1. JSON-LD
   const jsonldProds = extraerJsonLD(html, baseUrl);
   if (jsonldProds.length) return jsonldProds.slice(0, 100);
 
-  // 2. Shopify (JSON en window.productData o similar)
   const shopifyProds = extraerShopify(html, baseUrl);
   if (shopifyProds.length) return shopifyProds.slice(0, 100);
 
-  // 3. WooCommerce HTML
   const wooProds = extraerWooCommerce(html, baseUrl);
   if (wooProds.length) return wooProds.slice(0, 100);
 
-  // 4. Tiendanube HTML (fallback si la API falló)
   const tnProds = extraerTiendanubeHTML(html, baseUrl);
   if (tnProds.length) return tnProds.slice(0, 100);
 
-  // 5. PrestaShop / genérico
   const genericProds = extraerGenerico(html, baseUrl);
   return genericProds.slice(0, 100);
 }
 
-// ── JSON-LD ──────────────────────────────────────────────────────────────────
 function extraerJsonLD(html, baseUrl) {
   const prods = [];
   const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -302,6 +339,7 @@ function extraerJsonLD(html, baseUrl) {
   }
   return prods;
 }
+
 function fromJsonLDProduct(item, baseUrl) {
   return {
     nombre: item.name || '',
@@ -312,10 +350,8 @@ function fromJsonLDProduct(item, baseUrl) {
   };
 }
 
-// ── Shopify ──────────────────────────────────────────────────────────────────
 function extraerShopify(html, baseUrl) {
   const prods = [];
-  // Shopify embeds product JSON in script tags
   const re = /var\s+meta\s*=\s*(\{[\s\S]*?\});/;
   const m = html.match(re);
   if (m) {
@@ -332,7 +368,6 @@ function extraerShopify(html, baseUrl) {
       }
     } catch(e) {}
   }
-  // Also try window.ShopifyAnalytics
   const re2 = /ShopifyAnalytics\.meta\.product\s*=\s*(\{[\s\S]*?\});/;
   const m2 = html.match(re2);
   if (m2) {
@@ -344,15 +379,10 @@ function extraerShopify(html, baseUrl) {
   return prods;
 }
 
-// ── WooCommerce ──────────────────────────────────────────────────────────────
 function extraerWooCommerce(html, baseUrl) {
   const prods = [];
-
-  // Buscar cada apertura de <li class="...product..."> y tomar chunk fijo
-  // (evita el problema de </li> anidados que cortan el bloque)
   const liRe = /<li[^>]*class="([^"]*\bproduct\b[^"]*)"[^>]*>/gi;
   for (const m of html.matchAll(liRe)) {
-    // Saltar el <ul class="products"> que también tiene "product" en la clase
     if (/\bproducts\b/.test(m[1]) && !/\btype-product\b|\bpost-\d/.test(m[1])) continue;
     const start = m.index + m[0].length;
     const bloque = html.slice(start, start + 4000);
@@ -367,26 +397,20 @@ function extraerWooCommerce(html, baseUrl) {
     );
     if (!nombre || nombre.length < 2) continue;
 
-    // Precio: WooCommerce envuelve el monto en <bdi>
     const bdi = bloque.match(/<bdi>([\s\S]*?)<\/bdi>/i);
     const precioStr = bdi ? limpiar(bdi[1]) : (textoClase(bloque, 'woocommerce-Price-amount') || textoClase(bloque, 'price') || '');
     const precio = precioTexto(precioStr) || precioHtml(bloque);
-
-    // Imagen: WooCommerce usa data-src (lazy) o src
     const foto = imgSrc(bloque, baseUrl);
     const link = href(bloque, baseUrl);
 
     pushProd(prods, { nombre: limpiar(nombre), precio, foto, url: link, descripcion: '' });
     if (prods.length >= 100) break;
   }
-
   return prods;
 }
 
-// ── Tiendanube HTML ──────────────────────────────────────────────────────────
 function extraerTiendanubeHTML(html, baseUrl) {
   const prods = [];
-  // Tiendanube patterns
   const patterns = [
     /<li[^>]*class="[^"]*\bitem\b[^"]*"[^>]*>([\s\S]*?)<\/li>/gi,
     /<div[^>]*class="[^"]*\bitem-list[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
@@ -418,10 +442,8 @@ function extraerTiendanubeHTML(html, baseUrl) {
   return prods;
 }
 
-// ── Genérico: cualquier elemento con nombre+precio ───────────────────────────
 function extraerGenerico(html, baseUrl) {
   const prods = [];
-  // Buscar cualquier bloque repetido que tenga precio
   const blockRe = /<(?:div|li|article)[^>]*>([\s\S]{50,600}?)<\/(?:div|li|article)>/gi;
   let count = 0;
   for (const m of html.matchAll(blockRe)) {
@@ -498,13 +520,9 @@ function precioTexto(txt) {
 
 function parsePrecioAR(raw) {
   raw = raw.replace(/\s/g, '');
-  // 1.234,56 → 1234.56
   if (/\d\.\d{3},\d/.test(raw)) return parseFloat(raw.replace(/\./g, '').replace(',', '.'));
-  // 1,234.56 → 1234.56
   if (/\d,\d{3}\.\d/.test(raw)) return parseFloat(raw.replace(/,/g, ''));
-  // 1.234 (solo miles) → 1234
   if (/^\d{1,3}(\.\d{3})+$/.test(raw)) return parseFloat(raw.replace(/\./g, ''));
-  // 1234,56 → 1234.56
   if (/^\d+,\d{1,2}$/.test(raw)) return parseFloat(raw.replace(',', '.'));
   return parseFloat(raw) || 0;
 }
