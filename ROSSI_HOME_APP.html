@@ -554,7 +554,7 @@ select option{text-transform:uppercase;}
       <div id="ventas-acciones" style="display:flex;gap:6px;"></div>
     </div>
     <div style="margin-bottom:8px;">
-      <input type="text" id="ventas-buscar" placeholder="🔍 Buscar por producto o cliente..." oninput="renderVentas()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
+      <input type="text" id="ventas-buscar" placeholder="🔍 Buscar por producto o cliente..." oninput="clearTimeout(window._ventasT);window._ventasT=setTimeout(renderVentas,250)" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
     </div>
     <div class="pills" id="pills-estado-entrega">
       <button class="pill on" data-estado="TODOS" onclick="setFiltroEstadoEntrega('TODOS',this)">Todos</button>
@@ -586,7 +586,7 @@ select option{text-transform:uppercase;}
       <button class="pill" onclick="filtroCredito('cobradas',this)" style="color:var(--green);">✅ Completados</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-      <input id="cred-buscar" type="text" placeholder="Buscar cliente o producto..." oninput="renderCreditos()"
+      <input id="cred-buscar" type="text" placeholder="Buscar cliente o producto..." oninput="clearTimeout(window._credT);window._credT=setTimeout(renderCreditos,250)"
         style="flex:1;min-width:150px;border:1.5px solid var(--border);border-radius:9px;padding:7px 12px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
       <select id="cred-vendedor" onchange="renderCreditos()"
         style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);display:none;">
@@ -605,7 +605,7 @@ select option{text-transform:uppercase;}
   <!-- LISTA DE PRECIOS -->
   <div class="page" id="pg-precios">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:11px;flex-wrap:wrap;">
-      <input type="text" id="precio-q" placeholder="🔍 Buscar producto…" oninput="renderPrecios()"
+      <input type="text" id="precio-q" placeholder="🔍 Buscar producto…" oninput="clearTimeout(window._precioT);window._precioT=setTimeout(renderPrecios,250)"
         style="border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;font-size:14px;font-family:'Outfit',sans-serif;outline:none;flex:1;min-width:160px;background:var(--white);">
       <button class="btn btn-gold btn-sm" id="btn-add-prod" onclick="abrirAddProd()">+ Agregar</button>
     </div>
@@ -958,7 +958,7 @@ select option{text-transform:uppercase;}
           <button class="btn btn-gold btn-sm" onclick="abrirNuevoProveedor()">+ Nuevo Proveedor</button>
         </div>
         <div class="cb">
-          <input type="text" id="prov-buscar" placeholder="Buscar proveedor..." oninput="renderProveedores()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);margin-bottom:10px;text-transform:none;">
+          <input type="text" id="prov-buscar" placeholder="Buscar proveedor..." oninput="clearTimeout(window._provT);window._provT=setTimeout(renderProveedores,250)" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);margin-bottom:10px;text-transform:none;">
           <div id="proveedores-lista"></div>
           <div class="empty" id="empty-proveedores" style="display:none;"><div class="empty-ico">🏭</div><p>Sin proveedores cargados</p></div>
         </div>
@@ -982,7 +982,7 @@ select option{text-transform:uppercase;}
               <option value="recibido">Recibido</option>
               <option value="cancelado">Cancelado</option>
             </select>
-            <input type="text" id="ped-filtro-prov" placeholder="Filtrar por proveedor..." oninput="renderPedidos()" style="flex:2;min-width:160px;padding:8px;border:1.5px solid var(--border);border-radius:9px;text-transform:none;">
+            <input type="text" id="ped-filtro-prov" placeholder="Filtrar por proveedor..." oninput="clearTimeout(window._pedT);window._pedT=setTimeout(renderPedidos,250)" style="flex:2;min-width:160px;padding:8px;border:1.5px solid var(--border);border-radius:9px;text-transform:none;">
           </div>
           <div id="pedidos-lista"></div>
           <div class="empty" id="empty-pedidos" style="display:none;"><div class="empty-ico">📦</div><p>Sin pedidos</p></div>
@@ -1004,7 +1004,7 @@ select option{text-transform:uppercase;}
       </div>
     </div>
     <div class="cb">
-      <input type="text" id="mayor-q" placeholder="🔍 Buscar producto..." oninput="renderMayorista()" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);margin-bottom:10px;">
+      <input type="text" id="mayor-q" placeholder="🔍 Buscar producto..." oninput="clearTimeout(window._mayorT);window._mayorT=setTimeout(renderMayorista,250)" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);margin-bottom:10px;">
       <div id="mayor-lista"></div>
       <div class="empty" id="empty-mayor" style="display:none;"><div class="empty-ico">💰</div><p>Sin productos</p></div>
     </div>
@@ -1079,7 +1079,7 @@ select option{text-transform:uppercase;}
         <button class="btn btn-gold btn-sm" onclick="abrirNuevoCliente()">+ Nuevo</button>
       </div>
       <div style="margin-bottom:12px;">
-        <input type="text" id="cli-buscar" placeholder="Buscar por nombre, apellido o c&#243;digo..." oninput="renderClientes()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
+        <input type="text" id="cli-buscar" placeholder="Buscar por nombre, apellido o c&#243;digo..." oninput="clearTimeout(window._cliT);window._cliT=setTimeout(renderClientes,250)" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;">
       </div>
       <div id="clientes-lista"></div>
       <div class="empty" id="empty-clientes" style="display:none;"><div class="empty-ico">&#128101;</div><p>Sin clientes todav&#237;a</p></div>
