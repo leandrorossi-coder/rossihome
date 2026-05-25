@@ -10169,6 +10169,11 @@ guardarCliente = async function(){
   const apellido = document.getElementById('cli-apellido').value.trim();
   if (!apellido) { toast('Ingresá el apellido'); return; }
   const id = document.getElementById('cli-id').value;
+  const dniNuevo = (document.getElementById('cli-dni').value.trim().replace(/\D/g,'')||'');
+  if (!id && dniNuevo) {
+    const existe = clientes.find(x => (x.dni||'').replace(/\D/g,'') === dniNuevo);
+    if (existe) { toast(`! Ya existe un cliente con ese DNI: ${existe.apellido} ${existe.nombre}`); return; }
+  }
   const cliente = {
     id: id || Date.now(),
     codigo: document.getElementById('cli-codigo').value.trim().toUpperCase(),
@@ -10178,6 +10183,7 @@ guardarCliente = async function(){
     tel: document.getElementById('cli-tel').value.trim(),
     dir: document.getElementById('cli-dir').value.trim(),
     obs: document.getElementById('cli-obs').value.trim(),
+    tipo: document.getElementById('cli-tipo')?.value||'minorista',
     categoria: document.getElementById('cli-categoria')?.value||'',
     notas: document.getElementById('cli-notas')?.value||''
   };
