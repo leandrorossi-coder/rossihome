@@ -2698,6 +2698,7 @@ function goTab(n) {
   if (n==='clientes')        renderClientes();
   if (n==='admin')         renderAdmin();
   if (n==='mayorista')     renderMayorista();
+  if (n==='pedidos')       { renderProveedores(); renderPedidos(); }
   if (n==='milocal')       renderMiLocal();
   if (n==='financiero') { if(!Object.keys(cotizaciones).length) actualizarDolar(); renderPnL(); renderHistCot(); }
 }
