@@ -2435,7 +2435,13 @@ async function cargarDatos() {
     proveedores.push({id:Date.now(), nombre:'RHEEM SA', sinIva:true, descuentoContado:8, margen:33,
       marcas:'RHEEM (Termotanques)|37.5|0\nRHEEM (Calefones)|35|0\nSAIAR|35.5|0',
       contacto:'', tel:'', email:'', web:'', notas:'', tipo:'proveedor'});
-    await sSet(SK_PROVEEDORES, proveedores); // solo localStorage, sin disparar sync a Drive
+    await sSet(SK_PROVEEDORES, proveedores);
+  }
+  if(!proveedores.some(p=>p.nombre==='SHERMAN')){
+    proveedores.push({id:Date.now()+1, nombre:'SHERMAN', sinIva:true, descuentoContado:8, margen:33,
+      marcas:'SHERMAN|37|8',
+      contacto:'', tel:'', email:'', web:'', notas:'', tipo:'proveedor'});
+    await sSet(SK_PROVEEDORES, proveedores);
   }
   // Reparar nroVenta duplicados (corrige ventas con números repetidos)
   repararNrosVenta();
