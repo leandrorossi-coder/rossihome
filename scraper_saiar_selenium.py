@@ -26,6 +26,13 @@ PRODUCTOS = [
     'https://saiar.com.ar/product/TPG150MSA',
 ]
 
+EXCLUIR_SIEMPRE = ['logo','sprite','flag','certif','iso','9001','14001','sello','award']
+
+def es_valida(src):
+    sl = src.lower()
+    return any(ext in sl for ext in ['.jpg','.jpeg','.png','.webp']) and \
+           not any(x in sl for x in EXCLUIR_SIEMPRE)
+
 def descargar(url, ruta, session):
     try:
         r = session.get(url, timeout=15)
@@ -107,82 +114,39 @@ def main():
         print(f"  Specs: {len(specs)} items")
 
         imgs = []
-        EXCLUIR = ['logo','icon','banner','sprite','flag','feature','caracteristica',
-                   'icono','ventaja','beneficio','check','tick','star','rating',
-                   'certif','iso','sello','award','fondo','background','bg-']
 
-        def es_foto_producto(src):
-            sl = src.lower()
-            if not any(ext in sl for ext in ['.jpg','.jpeg','.png','.webp']):
-                return False
-            if any(x in sl for x in EXCLUIR):
-                return False
-            return True
+        # 1. Buscar imagen cuya URL contiene el código de producto (SKU)
+        sku_lower = sku.lower()
+        for img in driver.find_elements(By.TAG_NAME, 'img'):
+            src = img.get_attribute('src') or img.get_attribute('data-src') or ''
+            if sku_lower in src.lower() and es_valida(src):
+                imgs.append(src)
+        if imgs:
+            print(f"  SKU match: {imgs[0][:70]}")
 
-        # 1. og:image — siempre tiene la foto principal del producto
-        try:
-            og = driver.find_element(By.CSS_SELECTOR, 'meta[property="og:image"]')
-            og_url = og.get_attribute('content') or ''
-            if og_url and es_foto_producto(og_url):
-                imgs.append(og_url)
-                print(f"  og:image: {og_url[:60]}")
-        except: pass
-
-        # 2. Imagen principal del producto (antes de cualquier sección de features)
+        # 2. og:image — foto principal definida por el sitio
         if not imgs:
-            main_sels = [
-                '.product__image img', '.product-single__photo img',
-                '[data-product-featured-image]', '[id*="product-image"] img',
-                '.product-images img:first-child', '.product-gallery img:first-child',
-                '[class*="hero"] img', '[class*="main-image"] img',
-            ]
-            for sel in main_sels:
-                try:
-                    el = driver.find_element(By.CSS_SELECTOR, sel)
-                    src = el.get_attribute('src') or el.get_attribute('data-src') or ''
-                    if src and es_foto_producto(src):
-                        imgs.append(src)
-                        break
-                except: pass
+            try:
+                og = driver.find_element(By.CSS_SELECTOR, 'meta[property="og:image"]')
+                og_url = og.get_attribute('content') or ''
+                if og_url and es_valida(og_url):
+                    imgs.append(og_url)
+                    print(f"  og:image: {og_url[:70]}")
+            except: pass
 
-        # 3. Galería del producto (excluir secciones de features/beneficios explícitamente)
+        # 3. Fallback: imagen más grande de la página medida con JS
         if not imgs:
-            galeria_sels = [
-                '[class*="gallery"] img', '[class*="carousel"] img',
-                '[class*="slider"] img', '[class*="product-image"] img',
-                '[class*="swiper"] img', 'figure img',
-            ]
-            for sel in galeria_sels:
-                try:
-                    found = driver.find_elements(By.CSS_SELECTOR, sel)
-                    for img in found:
-                        src = img.get_attribute('src') or img.get_attribute('data-src') or ''
-                        # Verificar que la imagen no está dentro de sección de features
-                        try:
-                            parent_class = img.find_element(By.XPATH, './ancestor::*[contains(@class,"feature") or contains(@class,"benefit") or contains(@class,"ventaja") or contains(@class,"caracteristica")]')
-                            continue  # está dentro de sección de features, saltar
-                        except: pass
-                        if es_foto_producto(src):
-                            imgs.append(src)
-                    if imgs: break
-                except: pass
-
-        # 4. Fallback: todas las imágenes de la página que parezcan fotos de producto
-        if not imgs:
+            candidatas = []
             for img in driver.find_elements(By.TAG_NAME, 'img'):
                 src = img.get_attribute('src') or img.get_attribute('data-src') or ''
-                if not es_foto_producto(src): continue
-                # Intentar obtener dimensiones reales via JS
+                if not es_valida(src): continue
                 try:
                     w = driver.execute_script("return arguments[0].naturalWidth", img) or 0
                     h = driver.execute_script("return arguments[0].naturalHeight", img) or 0
-                    # Excluir iconos cuadrados ≤ 400px
-                    if w > 0 and h > 0:
-                        if w == h and w <= 400: continue
-                        if w < 150 or h < 150: continue
                 except: w, h = 0, 0
-                imgs.append(src)
-                if len(imgs) >= 3: break
+                candidatas.append((w * h, src))
+            candidatas.sort(reverse=True)
+            imgs = [src for _, src in candidatas[:3] if src]
 
         imgs = list(dict.fromkeys(imgs))[:5]
         print(f"  {len(imgs)} imágenes")
