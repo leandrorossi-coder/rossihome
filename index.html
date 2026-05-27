@@ -9046,12 +9046,52 @@ async function cargarFotosMasivasProv(provId){
     let actualizados = 0;
     for(const file of files){
       const b64 = await new Promise(r=>{ const fr=new FileReader(); fr.onload=e=>r(e.target.result); fr.readAsDataURL(file); });
-      const fname = file.name.toUpperCase().replace(/[-_]/g,' ');
-      const prod = provProds.find(p=>{
-        const n = (p.nombre||'').toUpperCase();
-        const words = n.split(' ').filter(w=>w.length>2);
-        return words.filter(w=>fname.includes(w)).length >= 3;
-      });
+      const fname = file.name.toUpperCase();
+      let prod = null;
+
+      // 1. Coincidencia por SKU si el producto tiene campo sku
+      prod = provProds.find(p => p.sku && fname.includes(p.sku.toUpperCase()));
+
+      // 2. Coincidencia por marca + capacidad extraída del nombre de archivo (ej: SHERMAN_TPGP050MSH13_1.jpg)
+      if (!prod) {
+        const skuMatch = fname.match(/([A-Z]+)_([A-Z]{2,}(\d{3})[A-Z0-9]*)_(\d+)/);
+        if (skuMatch) {
+          const brand = skuMatch[1];
+          const cap = parseInt(skuMatch[3]).toString(); // "050" → "50"
+          const skuRaw = skuMatch[2];
+          // Detectar tipo por prefijo del SKU
+          const isElectrico = /^TE/.test(skuRaw);
+          const isGas = /^T[PG]G|^TCG/.test(skuRaw);
+          const isColgar = /^TEC/.test(skuRaw);
+          const isPie = /^TEP|^TPG/.test(skuRaw);
+          const candidates = provProds.filter(p => {
+            const n = (p.nombre||'').toUpperCase();
+            return n.includes(brand) && (n.includes(' '+cap+' ') || n.includes(' '+cap+'L'));
+          });
+          if (candidates.length === 1) {
+            prod = candidates[0];
+          } else if (candidates.length > 1) {
+            // Desempatar por tipo
+            prod = candidates.find(p => {
+              const n = (p.nombre||'').toUpperCase();
+              if (isPie && n.includes('PIE')) return true;
+              if (isColgar && (n.includes('COLGAR') || n.includes('COLGANTE'))) return true;
+              return false;
+            }) || candidates[0];
+          }
+        }
+      }
+
+      // 3. Fallback: palabras comunes entre nombre y archivo
+      if (!prod) {
+        const fnameClean = fname.replace(/[-_]/g,' ');
+        prod = provProds.find(p=>{
+          const n = (p.nombre||'').toUpperCase();
+          const words = n.split(' ').filter(w=>w.length>2);
+          return words.filter(w=>fnameClean.includes(w)).length >= 3;
+        });
+      }
+
       if(prod){
         prod.fotos = prod.fotos || [];
         if(!prod.fotos.includes(b64)) prod.fotos.push(b64);
