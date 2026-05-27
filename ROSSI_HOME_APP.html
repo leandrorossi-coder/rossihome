@@ -9099,7 +9099,7 @@ async function cargarFotosMasivasProv(provId){
         actualizados++;
       }
     }
-    await guardarDatos();
+    await guardarProds();
     toast(`OK ${actualizados} fotos cargadas en ${[...new Set(provProds.filter(p=>p.fotos&&p.fotos.length).map(p=>p.nombre))].length} productos`);
     verProductosProv(provId);
   };
@@ -9137,7 +9137,7 @@ async function borrarFotosProv(provId){
   const desc = filtro ? `marca ${filtro}` : `${prov.nombre}`;
   if(!confirm(`¿Borrar todas las fotos de ${aLimpiar.length} productos de ${desc}?`)) return;
   aLimpiar.forEach(p=>{ p.fotos=[]; delete p.fotoPrincipal; });
-  await guardarDatos();
+  await guardarProds();
   toast(`OK Fotos borradas de ${aLimpiar.length} productos (${desc})`);
   verProductosProv(provId);
 }
