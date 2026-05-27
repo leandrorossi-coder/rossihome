@@ -9112,7 +9112,18 @@ async function borrarFotosProv(provId){
   const conFotos = provProds.filter(p=>p.fotos&&p.fotos.length>0);
   if(!conFotos.length){ toast('No hay fotos para borrar'); return; }
   // Detectar marcas disponibles dentro del proveedor
-  const marcas = [...new Set(conFotos.map(p=>p.marca||'(sin marca)'))].sort();
+  // Para productos sin marca, intentar detectarla del nombre del producto
+  const getMarca = p => {
+    if (p.marca) return p.marca;
+    const n = (p.nombre||'').toUpperCase();
+    // Buscar marcas conocidas del proveedor en el nombre del producto
+    const marcasProv = (prov.marcas||'').split('\n').map(l=>l.split('|')[0].trim()).filter(Boolean);
+    for(const m of marcasProv){ if(n.includes(m.toUpperCase())) return m; }
+    // Buscar palabras comunes de marca
+    for(const m of ['RHEEM','SAIAR','SHERMAN']){ if(n.includes(m)) return m; }
+    return '(sin marca)';
+  };
+  const marcas = [...new Set(conFotos.map(getMarca))].sort();
   let filtro = null;
   if(marcas.length > 1){
     const opciones = ['Todas las marcas', ...marcas];
@@ -9122,7 +9133,7 @@ async function borrarFotosProv(provId){
     if(isNaN(idx)||idx<0||idx>=opciones.length) return;
     if(idx>0) filtro = marcas[idx-1] === '(sin marca)' ? '' : marcas[idx-1];
   }
-  const aLimpiar = filtro !== null ? conFotos.filter(p=>(p.marca||'')===(filtro)) : conFotos;
+  const aLimpiar = filtro !== null ? conFotos.filter(p=>getMarca(p)===filtro) : conFotos;
   const desc = filtro ? `marca ${filtro}` : `${prov.nombre}`;
   if(!confirm(`¿Borrar todas las fotos de ${aLimpiar.length} productos de ${desc}?`)) return;
   aLimpiar.forEach(p=>{ p.fotos=[]; delete p.fotoPrincipal; });
