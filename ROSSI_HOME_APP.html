@@ -2454,13 +2454,15 @@ async function cargarDatos() {
     categorias=categorias.map((c,i)=>({id:Date.now()+i,nombre:c,subcategorias:[]}));
   }
   // Leer de Drive (fuente de verdad — pisa localStorage si hay datos más recientes)
-  const _prodCountBeforeSync = productos.length;
+  // Guardamos la lista local ANTES de que leerDeScript la pise con los datos de la nube
+  const _prodsLocal = productos.length > 0 ? [...productos] : null;
   await leerDeScript();
-  // Si el local tenía muchos más productos que la nube, publicar el local a la nube
+  // Si el local tenía muchos más productos que la nube, restaurar local y publicar a la nube
   // (caso típico: se subió un nuevo index.html y la nube quedó desactualizada)
   const _cloudCount = parseInt(localStorage.getItem('rh_cloudProdCount')||'0');
-  if (_prodCountBeforeSync > _cloudCount + 5 && _prodCountBeforeSync > 0) {
-    setTimeout(() => guardarEnScript(), 3000);
+  if (_prodsLocal && _prodsLocal.length > _cloudCount + 5) {
+    productos = _prodsLocal; // restaurar lista local (la nube tenía menos)
+    setTimeout(() => guardarEnScript(), 3000); // publicar a la nube
   }
   // Normalizar proveedores DESPUÉS del sync de Drive
   proveedores = proveedores.map(p=>({...p, nombre:(p.nombre||'').toUpperCase()}));
