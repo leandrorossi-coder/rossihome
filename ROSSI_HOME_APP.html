@@ -1717,7 +1717,7 @@ select option{text-transform:uppercase;}
 <!-- Modal presupuesto tipo 1 — formas de pago -->
 <div class="overlay" id="ovl-pres1" onclick="cM('ovl-pres1',event)">
   <div class="modal" style="max-width:600px;">
-    <div class="mh"><h3> Presupuesto — Formas de Pago</h3><button id="btn-vd-pres" onclick="toggleVD()" style="margin-left:auto;margin-right:8px;border-radius:9px;font-size:11px;padding:4px 10px;white-space:nowrap;border:1.5px solid var(--border);background:var(--cream2);color:var(--text);cursor:pointer;font-family:inherit;transition:all .2s;">⚡ Directa</button><span class="mx" onclick="cM('ovl-pres1')">X</span></div>
+    <div class="mh"><h3> Presupuesto — Formas de Pago</h3><span class="mx" onclick="cM('ovl-pres1')">X</span></div>
     <div class="mb">
       <div class="r2">
         <div class="fg"><label>Cliente (opcional)</label><input type="text" id="p1-cliente" placeholder="Nombre y apellido"></div>
@@ -1730,7 +1730,7 @@ select option{text-transform:uppercase;}
           <div class="ac" id="p1-ac"></div>
         </div>
       </div>
-      <div class="fg"><label>Precio de lista ($) <span id="vd-pres-badge" style="display:none;background:#22c55e;color:white;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px;vertical-align:middle;font-weight:600;">⚡ DIRECTA</span></label>
+      <div class="fg"><label>Precio de lista ($)</label>
         <input type="number" id="p1-precio" placeholder="0" min="0" oninput="calcPres1()">
       </div>
       <div class="r2">
@@ -2323,8 +2323,15 @@ function _clearDeletedProdIds(){ localStorage.removeItem(_DELETED_PRODS_KEY); }
 async function leerDeScript() {
   try {
     mostrarSync('Cargando datos…', false);
-    // Usar proxy Cloudflare
-    const resp = await fetch(SCRIPT_URL, { method: 'GET' });
+    // Usar proxy Cloudflare — con timeout de 20s para no colgar silenciosamente
+    const ctrl = new AbortController();
+    const toutId = setTimeout(() => ctrl.abort(), 20000);
+    let resp;
+    try {
+      resp = await fetch(SCRIPT_URL, { method: 'GET', signal: ctrl.signal });
+    } finally {
+      clearTimeout(toutId);
+    }
     if (!resp.ok) return false;
     const data = await resp.json();
     if (!data.ok) return false;
@@ -2390,9 +2397,9 @@ async function sincronizarDesdeNube(manual=false) {
   const activa = document.querySelector('.page.on');
   if(!activa) return;
   const id = activa.id.replace('pg-','');
-  const renders = {ventas:()=>{renderPills();renderVentas();}, creditos:renderCreditos, precios:renderPrecios, catalogo:renderCatalogo, presupuestos:renderPresupuestos, caja:renderCaja, reportes:renderReportes, liquidaciones:renderLiquidaciones, clientes:renderClientes, admin:renderAdmin, milocal:renderMiLocal};
+  const renders = {ventas:()=>{renderPills();renderVentas();}, creditos:renderCreditos, precios:renderPrecios, catalogo:renderCatalogo, presupuestos:renderPresupuestos, caja:renderCaja, reportes:renderReportes, liquidaciones:renderLiquidaciones, clientes:renderClientes, admin:renderAdmin, milocal:renderMiLocal, proveedores:renderProveedores};
   if(renders[id]) renders[id]();
-  if(manual) toast('OK Datos actualizados');
+  if(manual) toast(`OK Datos actualizados — ${productos.length} productos, ${ventas.length} ventas`);
 }
 
 async function guardarVentas()  { await sSet('rh_v', ventas);   programarGuardado(); }
@@ -2447,7 +2454,14 @@ async function cargarDatos() {
     categorias=categorias.map((c,i)=>({id:Date.now()+i,nombre:c,subcategorias:[]}));
   }
   // Leer de Drive (fuente de verdad — pisa localStorage si hay datos más recientes)
+  const _prodCountBeforeSync = productos.length;
   await leerDeScript();
+  // Si el local tenía muchos más productos que la nube, publicar el local a la nube
+  // (caso típico: se subió un nuevo index.html y la nube quedó desactualizada)
+  const _cloudCount = parseInt(localStorage.getItem('rh_cloudProdCount')||'0');
+  if (_prodCountBeforeSync > _cloudCount + 5 && _prodCountBeforeSync > 0) {
+    setTimeout(() => guardarEnScript(), 3000);
+  }
   // Normalizar proveedores DESPUÉS del sync de Drive
   proveedores = proveedores.map(p=>({...p, nombre:(p.nombre||'').toUpperCase()}));
   if(!proveedores.some(p=>p.nombre==='RHEEM SA')){
@@ -3116,7 +3130,7 @@ async function guardar() {
 
   const base = {
     fecha,vendedora:vend,producto:prod,precio:precioVenta,precioBruto:precio,precioLista,descuento,descContado,pctAdicional,cantidad,costo,pago,
-    nroVenta, fechaEntrega, estadoEntrega, esVentaDirecta: ventaDirecta||false,
+    nroVenta, fechaEntrega, estadoEntrega,
     apellido:document.getElementById('f-apellido').value.trim(),
     nombre:  document.getElementById('f-nombre').value.trim(),
     dni:     document.getElementById('f-dni').value.trim().replace(/\./g,''),
@@ -5253,7 +5267,6 @@ function exportarExcel(){
 // ===
 let presupuestos = [];
 let filtroPres   = 'todos';
-let ventaDirecta = false;
 const SK_PRES    = 'rh_pres_v1';
 const SK_CAJA    = 'rh_caja_v1';
 const SK_CLIENTES = 'rh_cli_v1';
@@ -5329,7 +5342,7 @@ function buscarProdPres() {
   ac.innerHTML = hits.map(p =>
     `<div class="ac-row" onmousedown="selProdPres(${p.id})">
       <div><div class="ac-nom">${p.nombre}</div><div class="ac-sub">${p.proveedor||''}</div></div>
-      <div class="ac-p">$${fmt(precioVD(p.precio))}</div>
+      <div class="ac-p">$${fmt(p.precio)}</div>
     </div>`).join('');
   ac.classList.add('on');
 }
@@ -5337,7 +5350,7 @@ function buscarProdPres() {
 function selProdPres(id) {
   const p = productos.find(x=>x.id===id); if(!p)return;
   document.getElementById('p1-prod').value = p.nombre;
-  document.getElementById('p1-precio').value = precioVD(p.precio||0)||'';
+  document.getElementById('p1-precio').value = p.precio||0||'';
   document.getElementById('p1-ac').classList.remove('on');
   calcPres1();
 }
@@ -5638,7 +5651,7 @@ async function confirmarConvPres(id) {
     id:Date.now(), nroVenta, fecha:hoy(),
     apellido:p.cliente||'', nombre:'', dni:'', tel:'', dir:'', obs:'Generado desde presupuesto #'+String(p.id).slice(-6),
     producto, precio, formaPago:pago, estado:'pendiente', estadoEntrega:'pendiente',
-    items, esVentaDirecta:false
+    items
   };
   ventas.unshift(nuevaVenta);
   p.estado='concretado';
@@ -7059,7 +7072,7 @@ function cobradoEnPeriodo(vendedora, desde, hasta) {
 
 function comisionVenta(v, desde, hasta) {
   // Venta directa del dueño: sin comisión (flag explícito o vendedora DIRECTA)
-  if (v.esVentaDirecta || v.vendedora === 'DIRECTA') return 0;
+  if (v.vendedora === 'DIRECTA') return 0;
 
   const fee = MP_FEES[v.pago] || 0;
   const neto = amt => Math.round(amt * (1 - fee));
@@ -8516,6 +8529,7 @@ function normalizarTexto(texto, mayusculas){
 // Parsea precio de lista (respeta centavos separados por coma)
 function parsearPrecioLista(str){
   if(!str && str!==0) return 0;
+  if(typeof str === 'number') return str;
   const s = String(str).trim().replace(/\s/g,'').replace(/[$]/g,'');
   if(!s) return 0;
   // Formato argentino: punto = miles, coma = decimales
@@ -8531,35 +8545,14 @@ function parsearPrecioLista(str){
   }
   if(dots === 1){
     const partes = s.split('.');
-    // si la parte decimal tiene exactamente 3 dígitos → es separador de miles
-    if(partes[1].length === 3) return parseFloat(s.replace('.',''))||0;
-    // si tiene 1 o 2 dígitos → es separador decimal (formato internacional)
+    // Separador de miles solo si la parte entera tiene ≤3 dígitos: "5.821"→5821, "28.320"→28320
+    // Si la parte entera tiene >3 dígitos ("392346.525") → el punto es decimal real
+    if(partes[1].length === 3 && partes[0].length <= 3) return parseFloat(s.replace('.',''))||0;
     return parseFloat(s)||0;
   }
   return parseFloat(s)||0;
 }
 
-// Venta Directa: elimina el gross-up de comisión (10%) del precio de lista.
-// El margen neto queda igual pero el precio es ~10% menor — "as en la manga".
-function precioVD(precio){ return ventaDirecta ? Math.round(precio * 0.9) : precio; }
-function toggleVD(){
-  ventaDirecta = !ventaDirecta;
-  _applyVDUI();
-  renderPrecios();
-}
-function _applyVDUI(){
-  const on = ventaDirecta;
-  const badge = document.getElementById('vd-pres-badge');
-  if(badge) badge.style.display = on ? 'inline' : 'none';
-  [document.getElementById('btn-vd'), document.getElementById('btn-vd-pres')].forEach(btn=>{
-    if(!btn) return;
-    btn.style.background  = on ? '#22c55e' : 'var(--cream2)';
-    btn.style.color       = on ? 'white'   : 'var(--text)';
-    btn.style.borderColor = on ? '#22c55e' : 'var(--border)';
-    btn.style.fontWeight  = on ? '700'     : '400';
-    btn.textContent       = on ? '⚡ Directa ON' : '⚡ Directa';
-  });
-}
 
 // Multiplicador de precio de lista: gross-up en cascada para cubrir markup + comisión + desc. contado.
 // Fee MP (7.99%) NO se apila: es menor al 10% del contado y ambos son mutuamente excluyentes
@@ -8642,10 +8635,10 @@ async function procesarListaProv(event, provId){
       }
     }
     if(headerRowIdx > 0) filas = filas.slice(headerRowIdx);
-    // Detectar columnas numéricas
+    // Detectar columnas numéricas (buscar en hasta 60 filas para saltear encabezados de sección vacíos)
     const colIsNum = [];
     for(let c=0;c<maxCols;c++){
-      const nc = filas.slice(1,10).filter(f=>f[c]&&parsearPrecioLista(f[c])>0).length;
+      const nc = filas.slice(1, Math.min(60, filas.length)).filter(f=>f[c]&&parsearPrecioLista(f[c])>0).length;
       colIsNum[c] = nc >= 3;
     }
     _listaProvFilas = filas;
@@ -8712,20 +8705,18 @@ function mostrarMapperLista(filas, maxCols, colIsNum, prov){
   // Auto-detectar columnas por heurística
   setTimeout(()=>{
     const header = (filas[0]||[]).map(h=>(h||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''));
-    // auto-detect nombre: columna no numérica con promedio más largo
-    let maxAvgLen=0, nomIdx=0;
+    // auto-detect nombre: columna no numérica con mayor % de celdas no vacías y promedio de longitud alto
+    let bestNomScore=-1, nomIdx=0;
     for(let c=0;c<maxCols;c++){
       if(colIsNum[c]) continue;
-      const avg = filas.slice(1,6).reduce((s,f)=>s+(f[c]||'').length,0)/5;
-      if(avg>maxAvgLen){ maxAvgLen=avg; nomIdx=c; }
+      const rows=filas.slice(1,Math.min(40,filas.length));
+      const nonEmpty=rows.filter(f=>(f[c]||'').trim());
+      const fillRatio=nonEmpty.length/rows.length;
+      const avgLen=nonEmpty.reduce((s,f)=>s+(f[c]||'').length,0)/(nonEmpty.length||1);
+      const score=fillRatio*avgLen;
+      if(score>bestNomScore){ bestNomScore=score; nomIdx=c; }
     }
     const elNom=document.getElementById('lp-col-nom'); if(elNom) elNom.value=nomIdx;
-    // auto-detect SKU
-    for(let c=0;c<maxCols;c++){
-      if(c===nomIdx||colIsNum[c]) continue;
-      const avg=filas.slice(1,6).reduce((s,f)=>s+(f[c]||'').length,0)/5;
-      if(avg>2&&avg<22){ const elSku=document.getElementById('lp-col-sku'); if(elSku)elSku.value=c; break; }
-    }
     // auto-detect precio: priorizar columnas numéricas cuyo encabezado contenga palabras clave de precio
     const precioKw = ['precio','costo','s/iva','sin iva','comercio','neto','lista','unit','importe','valor'];
     const sugeridoKw = ['suger','pvp','publico','público','venta','con iva','c/iva'];
@@ -8753,6 +8744,7 @@ function mostrarMapperLista(filas, maxCols, colIsNum, prov){
           return words.length>0 && words.every(w=>v.includes(w));
         });
       };
+      let seccionColDetectada = -1;
       for(let c=0;c<maxCols;c++){
         if(colIsNum[c]) continue;
         const dataRows = filas.slice(1, Math.min(60, filas.length));
@@ -8761,8 +8753,17 @@ function mostrarMapperLista(filas, maxCols, colIsNum, prov){
         const brandHits = nonEmpty.filter(f=>_matchMarca(f[c]||'')).length;
         if(emptyRatio > 0.5 && brandHits >= 1){
           const elSec = document.getElementById('lp-col-seccion'); if(elSec) elSec.value=c;
+          seccionColDetectada = c;
           break;
         }
+      }
+      // Corregir SKU: excluir columna de sección y columna de nombre
+      const elNomFinal=document.getElementById('lp-col-nom');
+      const nomIdxFinal=elNomFinal?parseInt(elNomFinal.value):-1;
+      for(let c=0;c<maxCols;c++){
+        if(c===nomIdxFinal||c===seccionColDetectada||colIsNum[c]) continue;
+        const avg=filas.slice(1,Math.min(20,filas.length)).reduce((s,f)=>s+(f[c]||'').length,0)/Math.min(19,filas.length-1);
+        if(avg>1&&avg<25){ const elSku=document.getElementById('lp-col-sku'); if(elSku)elSku.value=c; break; }
       }
     }
     actualizarPreviewCalcLista();
@@ -8838,8 +8839,27 @@ async function confirmarImportarLista(provId){
       const secVal=(fila[colSeccionIdx]||'').trim();
       if(secVal){ const m=_matchMarcaSeccion(secVal); if(m) currentSeccionMarca=m; }
     }
-    const nombre=normalizarTexto(fila[colNomIdx]||'',prov.mayusculas);
+    let nombre=normalizarTexto(fila[colNomIdx]||'',prov.mayusculas);
     if(!nombre||nombre.length<3) continue;
+    // Normalización automática de nombres para proveedores con marcas configuradas
+    if(marcas.length>0){
+      nombre = nombre
+        .replace(/\bTT\b/gi,'Termotanque')
+        .replace(/\bTermo\b/gi,'Termotanque')
+        .replace(/\bGN\b/g,'Gas Natural')
+        .replace(/\bGE\b/g,'Gas Envasado')
+        .replace(/\bpolietileno\b/gi,'')
+        .replace(/\bpureza\b/gi,'')
+        .replace(/\bc\/pur\b/gi,'')
+        .replace(/\bcon purga\b/gi,'')
+        .replace(/\s{2,}/g,' ').trim();
+      // Marca al final si no está ya
+      const marcaFinalNombre = currentSeccionMarca?.nombre || marcaFija?.nombre || '';
+      if(marcaFinalNombre && !nombre.toUpperCase().endsWith(marcaFinalNombre.toUpperCase())){
+        nombre = nombre + ' ' + marcaFinalNombre;
+      }
+      if(prov.mayusculas) nombre = nombre.toUpperCase();
+    }
     const precioRaw=parsearPrecioLista(fila[colPrecioIdx]||'0');
     if(precioRaw<=0) continue;
     const codigoOriginal=colSkuIdx>=0?(fila[colSkuIdx]||'').trim():'';
@@ -9012,6 +9032,38 @@ async function recalcularPreciosProv(provId){
   renderPrecios();
 }
 
+async function cargarFotosMasivasProv(provId){
+  const prov = proveedores.find(p=>p.id===provId); if(!prov) return;
+  const input = document.createElement('input');
+  input.type = 'file'; input.multiple = true; input.accept = 'image/*';
+  input.onchange = async function(){
+    const files = [...input.files];
+    if(!files.length) return;
+    toast('Procesando fotos...');
+    const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
+    let actualizados = 0;
+    for(const file of files){
+      const b64 = await new Promise(r=>{ const fr=new FileReader(); fr.onload=e=>r(e.target.result); fr.readAsDataURL(file); });
+      const fname = file.name.toUpperCase().replace(/[-_]/g,' ');
+      const prod = provProds.find(p=>{
+        const n = (p.nombre||'').toUpperCase();
+        const words = n.split(' ').filter(w=>w.length>2);
+        return words.filter(w=>fname.includes(w)).length >= 3;
+      });
+      if(prod){
+        prod.fotos = prod.fotos || [];
+        if(!prod.fotos.includes(b64)) prod.fotos.push(b64);
+        prod.fotoPrincipal = prod.fotoPrincipal || 0;
+        actualizados++;
+      }
+    }
+    await guardarDatos();
+    toast(`OK ${actualizados} fotos cargadas en ${[...new Set(provProds.filter(p=>p.fotos&&p.fotos.length).map(p=>p.nombre))].length} productos`);
+    verProductosProv(provId);
+  };
+  input.click();
+}
+
 function verProductosProv(provId){
   const prov = proveedores.find(p=>p.id===provId); if(!prov)return;
   const prods = productos.filter(p=>(p.proveedor||'').toLowerCase()===(prov.nombre||'').toLowerCase());
@@ -9036,6 +9088,7 @@ function verProductosProv(provId){
     ${prods.length>0?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
       <button class="btn btn-danger btn-sm" onclick="eliminarTodosProductosProv(${provId})">🗑 Eliminar todos</button>
       <button class="btn btn-gold btn-sm" onclick="recalcularPreciosProv(${provId})">🔄 Recalcular precios</button>
+      <button class="btn btn-blue btn-sm" onclick="cargarFotosMasivasProv(${provId})">🖼 Cargar fotos</button>
     </div>`:''}
     ${snapshotInfo}
     ${ocultos.length?`<div style="background:#fff3cd;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#856404;font-weight:600;">
@@ -9464,13 +9517,12 @@ async function aplicarBulkPrice(){
 function exportarListaPrecios(){
   const lista = typeof preciosListaFiltrada === 'function' ? preciosListaFiltrada() : productos.filter(p=>p.visible!==false);
   if(!lista.length){ toast('Sin productos'); return; }
-  const h=['Producto','Proveedor','Marca','Categoria','Subcategoria','Costo','Contado','VentaDirecta','Lista TC','Mayorista','Margen%'];
+  const h=['Producto','Proveedor','Marca','Categoria','Subcategoria','Costo','Contado','Lista TC','Mayorista','Margen%'];
   const rows = lista.map(p=>{
-    const contado = Math.round((p.precio||0)*0.81);
-    const vd = Math.round((p.precio||0)*0.9);
+    const contado = Math.round((p.precio||0)*0.9);
     const margen = (p.costo>0 && p.precio>0) ? Math.round((p.precio-p.costo)/p.precio*100) : '';
     const esc = s => `"${String(s||'').replace(/"/g,'""')}"`;
-    return [esc(p.nombre),esc(p.proveedor||''),esc(p.marca||''),esc(p.categoria||''),esc(p.subcategoria||''),p.costo||0,contado,vd,p.precio||0,p.pMayor||0,margen].join(';');
+    return [esc(p.nombre),esc(p.proveedor||''),esc(p.marca||''),esc(p.categoria||''),esc(p.subcategoria||''),p.costo||0,contado,p.precio||0,p.pMayor||0,margen].join(';');
   });
   const csv='﻿'+h.join(';')+'\n'+rows.join('\n');
   const a=document.createElement('a');
@@ -9703,8 +9755,7 @@ renderPrecios = function(){
   const puedeEditar = esLocal();
   cont.innerHTML = lista.map(p=>{
     const pLista = p.precio||0;
-    const pVD    = Math.round(pLista * 0.9);
-    const pCont  = Math.round(pLista * 0.81);
+    const pCont  = Math.round(pLista * 0.9);
     const margen = (p.costo>0 && p.precio>0) ? Math.round((p.precio-p.costo)/p.precio*100) : null;
     const margenColor = margen===null ? 'var(--muted)' : margen<0 ? 'var(--red)' : margen<15 ? 'var(--orange)' : 'var(--green)';
     const foto = p.fotos && p.fotos.length ? p.fotos[Math.min(p.fotoPrincipal||0, p.fotos.length-1)] : null;
@@ -9720,10 +9771,6 @@ renderPrecios = function(){
         <div style="text-align:right;">
           <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Contado</div>
           <div style="font-weight:700;color:var(--green);font-size:13px;">$${fmt(pCont)}</div>
-        </div>
-        <div style="text-align:right;background:rgba(34,197,94,.13);border:1.5px solid #22c55e;border-radius:8px;padding:3px 8px;">
-          <div style="font-size:9px;color:#22c55e;font-weight:700;text-transform:uppercase;">⚡ Directa</div>
-          <div style="font-weight:700;color:#22c55e;font-size:13px;">$${fmt(pVD)}</div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:9px;color:var(--muted);text-transform:uppercase;">Lista</div>
@@ -10810,8 +10857,12 @@ function iniciarReloj() {
   }
   tick();
   setInterval(tick, 30000);
-  // Auto-sync desde Drive cada 2 minutos (para ver en celular lo que se carga en local)
+  // Auto-sync desde Drive cada 2 minutos
   setInterval(() => sincronizarDesdeNube(false), 2 * 60 * 1000);
+  // Sync automático al volver a la pestaña o abrir la app
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') sincronizarDesdeNube(false);
+  });
 }
 
 // ══════════════════════════════════════════════════════
