@@ -9106,36 +9106,50 @@ async function cargarFotosMasivasProv(provId){
   input.click();
 }
 
-async function borrarFotosProv(provId){
+function borrarFotosProv(provId){
   const prov = proveedores.find(p=>p.id===provId); if(!prov) return;
   const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
   const conFotos = provProds.filter(p=>p.fotos&&p.fotos.length>0);
   if(!conFotos.length){ toast('No hay fotos para borrar'); return; }
-  // Detectar marcas disponibles dentro del proveedor
-  // Para productos sin marca, intentar detectarla del nombre del producto
   const getMarca = p => {
     if (p.marca) return p.marca;
     const n = (p.nombre||'').toUpperCase();
-    // Buscar marcas conocidas del proveedor en el nombre del producto
     const marcasProv = (prov.marcas||'').split('\n').map(l=>l.split('|')[0].trim()).filter(Boolean);
     for(const m of marcasProv){ if(n.includes(m.toUpperCase())) return m; }
-    // Buscar palabras comunes de marca
     for(const m of ['RHEEM','SAIAR','SHERMAN']){ if(n.includes(m)) return m; }
-    return '(sin marca)';
+    return 'Otros';
   };
   const marcas = [...new Set(conFotos.map(getMarca))].sort();
-  let filtro = null;
-  if(marcas.length > 1){
-    const opciones = ['Todas las marcas', ...marcas];
-    const sel = prompt(`¿Qué fotos borrar de ${prov.nombre}?\n${opciones.map((m,i)=>`${i}: ${m}`).join('\n')}\n\nIngresá el número:`);
-    if(sel===null) return;
-    const idx = parseInt(sel);
-    if(isNaN(idx)||idx<0||idx>=opciones.length) return;
-    if(idx>0) filtro = marcas[idx-1] === '(sin marca)' ? '' : marcas[idx-1];
-  }
-  const aLimpiar = filtro !== null ? conFotos.filter(p=>getMarca(p)===filtro) : conFotos;
-  const desc = filtro ? `marca ${filtro}` : `${prov.nombre}`;
-  if(!confirm(`¿Borrar todas las fotos de ${aLimpiar.length} productos de ${desc}?`)) return;
+  // Mostrar modal con botones en vez de prompt()
+  const opciones = ['Todas', ...marcas];
+  const btns = opciones.map((m,i) => `<button onclick="confirmarBorrarFotos(${provId},'${m==='Todas'?'':m}')" style="padding:10px 18px;border-radius:8px;border:none;background:${i===0?'#e57373':'#1a3a5c'};color:#fff;font-size:14px;cursor:pointer;font-family:'Outfit',sans-serif;">${m}</button>`).join('');
+  const modal = document.createElement('div');
+  modal.id = 'modal-borrar-fotos';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `<div style="background:#fff;border-radius:14px;padding:24px;max-width:320px;width:90%;text-align:center;">
+    <div style="font-weight:700;font-size:16px;margin-bottom:6px;">🗑 Borrar fotos</div>
+    <div style="color:#666;font-size:13px;margin-bottom:16px;">¿De qué marca borrar las fotos?</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px;">${btns}</div>
+    <button onclick="document.getElementById('modal-borrar-fotos').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer;font-family:'Outfit',sans-serif;">Cancelar</button>
+  </div>`;
+  document.body.appendChild(modal);
+}
+async function confirmarBorrarFotos(provId, marca){
+  document.getElementById('modal-borrar-fotos')?.remove();
+  const prov = proveedores.find(p=>p.id===provId); if(!prov) return;
+  const getMarca = p => {
+    if (p.marca) return p.marca;
+    const n = (p.nombre||'').toUpperCase();
+    const marcasProv = (prov.marcas||'').split('\n').map(l=>l.split('|')[0].trim()).filter(Boolean);
+    for(const m of marcasProv){ if(n.includes(m.toUpperCase())) return m; }
+    for(const m of ['RHEEM','SAIAR','SHERMAN']){ if(n.includes(m)) return m; }
+    return 'Otros';
+  };
+  const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
+  const conFotos = provProds.filter(p=>p.fotos&&p.fotos.length>0);
+  const aLimpiar = marca ? conFotos.filter(p=>getMarca(p)===marca) : conFotos;
+  const desc = marca || prov.nombre;
+  if(!aLimpiar.length){ toast('No hay fotos para borrar'); return; }
   aLimpiar.forEach(p=>{ p.fotos=[]; delete p.fotoPrincipal; });
   await guardarProds();
   toast(`OK Fotos borradas de ${aLimpiar.length} productos (${desc})`);
