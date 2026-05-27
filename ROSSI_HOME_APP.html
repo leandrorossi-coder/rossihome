@@ -9106,6 +9106,18 @@ async function cargarFotosMasivasProv(provId){
   input.click();
 }
 
+async function borrarFotosProv(provId){
+  const prov = proveedores.find(p=>p.id===provId); if(!prov) return;
+  const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
+  const conFotos = provProds.filter(p=>p.fotos&&p.fotos.length>0);
+  if(!conFotos.length){ toast('No hay fotos para borrar'); return; }
+  if(!confirm(`¿Borrar todas las fotos de ${conFotos.length} productos de ${prov.nombre}?`)) return;
+  conFotos.forEach(p=>{ p.fotos=[]; delete p.fotoPrincipal; });
+  await guardarDatos();
+  toast(`OK Fotos borradas de ${conFotos.length} productos`);
+  verProductosProv(provId);
+}
+
 function verProductosProv(provId){
   const prov = proveedores.find(p=>p.id===provId); if(!prov)return;
   const prods = productos.filter(p=>(p.proveedor||'').toLowerCase()===(prov.nombre||'').toLowerCase());
@@ -9131,6 +9143,7 @@ function verProductosProv(provId){
       <button class="btn btn-danger btn-sm" onclick="eliminarTodosProductosProv(${provId})">🗑 Eliminar todos</button>
       <button class="btn btn-gold btn-sm" onclick="recalcularPreciosProv(${provId})">🔄 Recalcular precios</button>
       <button class="btn btn-blue btn-sm" onclick="cargarFotosMasivasProv(${provId})">🖼 Cargar fotos</button>
+      <button class="btn btn-sm" style="background:#eee;" onclick="borrarFotosProv(${provId})">🗑 Borrar fotos</button>
     </div>`:''}
     ${snapshotInfo}
     ${ocultos.length?`<div style="background:#fff3cd;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#856404;font-weight:600;">
