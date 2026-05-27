@@ -9111,10 +9111,23 @@ async function borrarFotosProv(provId){
   const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
   const conFotos = provProds.filter(p=>p.fotos&&p.fotos.length>0);
   if(!conFotos.length){ toast('No hay fotos para borrar'); return; }
-  if(!confirm(`¿Borrar todas las fotos de ${conFotos.length} productos de ${prov.nombre}?`)) return;
-  conFotos.forEach(p=>{ p.fotos=[]; delete p.fotoPrincipal; });
+  // Detectar marcas disponibles dentro del proveedor
+  const marcas = [...new Set(conFotos.map(p=>p.marca||'').filter(Boolean))].sort();
+  let filtro = null;
+  if(marcas.length > 1){
+    const opciones = ['Todas las marcas', ...marcas];
+    const sel = prompt(`¿Qué fotos borrar de ${prov.nombre}?\n${opciones.map((m,i)=>`${i}: ${m}`).join('\n')}\n\nIngresá el número:`);
+    if(sel===null) return;
+    const idx = parseInt(sel);
+    if(isNaN(idx)||idx<0||idx>=opciones.length) return;
+    if(idx>0) filtro = marcas[idx-1];
+  }
+  const aLimpiar = filtro ? conFotos.filter(p=>p.marca===filtro) : conFotos;
+  const desc = filtro ? `marca ${filtro}` : `${prov.nombre}`;
+  if(!confirm(`¿Borrar todas las fotos de ${aLimpiar.length} productos de ${desc}?`)) return;
+  aLimpiar.forEach(p=>{ p.fotos=[]; delete p.fotoPrincipal; });
   await guardarDatos();
-  toast(`OK Fotos borradas de ${conFotos.length} productos`);
+  toast(`OK Fotos borradas de ${aLimpiar.length} productos (${desc})`);
   verProductosProv(provId);
 }
 
