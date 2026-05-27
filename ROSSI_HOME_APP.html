@@ -9112,7 +9112,7 @@ async function borrarFotosProv(provId){
   const conFotos = provProds.filter(p=>p.fotos&&p.fotos.length>0);
   if(!conFotos.length){ toast('No hay fotos para borrar'); return; }
   // Detectar marcas disponibles dentro del proveedor
-  const marcas = [...new Set(conFotos.map(p=>p.marca||'').filter(Boolean))].sort();
+  const marcas = [...new Set(conFotos.map(p=>p.marca||'(sin marca)'))].sort();
   let filtro = null;
   if(marcas.length > 1){
     const opciones = ['Todas las marcas', ...marcas];
@@ -9120,9 +9120,9 @@ async function borrarFotosProv(provId){
     if(sel===null) return;
     const idx = parseInt(sel);
     if(isNaN(idx)||idx<0||idx>=opciones.length) return;
-    if(idx>0) filtro = marcas[idx-1];
+    if(idx>0) filtro = marcas[idx-1] === '(sin marca)' ? '' : marcas[idx-1];
   }
-  const aLimpiar = filtro ? conFotos.filter(p=>p.marca===filtro) : conFotos;
+  const aLimpiar = filtro !== null ? conFotos.filter(p=>(p.marca||'')===(filtro)) : conFotos;
   const desc = filtro ? `marca ${filtro}` : `${prov.nombre}`;
   if(!confirm(`¿Borrar todas las fotos de ${aLimpiar.length} productos de ${desc}?`)) return;
   aLimpiar.forEach(p=>{ p.fotos=[]; delete p.fotoPrincipal; });
