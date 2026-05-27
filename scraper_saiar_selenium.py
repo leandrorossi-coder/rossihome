@@ -108,61 +108,82 @@ def main():
 
         imgs = []
         EXCLUIR = ['logo','icon','banner','sprite','flag','feature','caracteristica',
-                   'icono','ventaja','beneficio','check','tick','star','rating']
+                   'icono','ventaja','beneficio','check','tick','star','rating',
+                   'certif','iso','sello','award','fondo','background','bg-']
 
-        def es_foto_producto(src, w=0, h=0):
+        def es_foto_producto(src):
             sl = src.lower()
             if not any(ext in sl for ext in ['.jpg','.jpeg','.png','.webp']):
                 return False
             if any(x in sl for x in EXCLUIR):
                 return False
-            try:
-                # Excluir imágenes cuadradas pequeñas (iconos suelen ser < 200x200)
-                wi, hi = int(w or 0), int(h or 0)
-                if wi > 0 and hi > 0 and wi < 200 and hi < 200:
-                    return False
-                # Excluir imágenes perfectamente cuadradas pequeñas (iconos)
-                if wi > 0 and hi > 0 and wi == hi and wi <= 300:
-                    return False
-            except: pass
             return True
 
-        # Buscar primero en el contenedor principal del producto (no en secciones de features)
-        galeria_sels = [
-            '.product-images img', '.product-gallery img',
-            '[class*="gallery"] img', '[class*="carousel"] img',
-            '[class*="slider"] img', '[class*="product-image"] img',
-            '[class*="swiper"] img', '[class*="photo"] img',
-            '[class*="imagen"] img', 'figure img',
-        ]
-        for sel in galeria_sels:
-            try:
-                found = driver.find_elements(By.CSS_SELECTOR, sel)
-                for img in found:
-                    src = img.get_attribute('src') or img.get_attribute('data-src') or ''
-                    w = img.get_attribute('width') or '0'
-                    h = img.get_attribute('height') or '0'
-                    if es_foto_producto(src, w, h):
-                        imgs.append(src)
-                if imgs:
-                    break
-            except: pass
-        # Fallback: tomar las imágenes más grandes (excluyendo iconos)
+        # 1. og:image — siempre tiene la foto principal del producto
+        try:
+            og = driver.find_element(By.CSS_SELECTOR, 'meta[property="og:image"]')
+            og_url = og.get_attribute('content') or ''
+            if og_url and es_foto_producto(og_url):
+                imgs.append(og_url)
+                print(f"  og:image: {og_url[:60]}")
+        except: pass
+
+        # 2. Imagen principal del producto (antes de cualquier sección de features)
         if not imgs:
-            candidatas = []
+            main_sels = [
+                '.product__image img', '.product-single__photo img',
+                '[data-product-featured-image]', '[id*="product-image"] img',
+                '.product-images img:first-child', '.product-gallery img:first-child',
+                '[class*="hero"] img', '[class*="main-image"] img',
+            ]
+            for sel in main_sels:
+                try:
+                    el = driver.find_element(By.CSS_SELECTOR, sel)
+                    src = el.get_attribute('src') or el.get_attribute('data-src') or ''
+                    if src and es_foto_producto(src):
+                        imgs.append(src)
+                        break
+                except: pass
+
+        # 3. Galería del producto (excluir secciones de features/beneficios explícitamente)
+        if not imgs:
+            galeria_sels = [
+                '[class*="gallery"] img', '[class*="carousel"] img',
+                '[class*="slider"] img', '[class*="product-image"] img',
+                '[class*="swiper"] img', 'figure img',
+            ]
+            for sel in galeria_sels:
+                try:
+                    found = driver.find_elements(By.CSS_SELECTOR, sel)
+                    for img in found:
+                        src = img.get_attribute('src') or img.get_attribute('data-src') or ''
+                        # Verificar que la imagen no está dentro de sección de features
+                        try:
+                            parent_class = img.find_element(By.XPATH, './ancestor::*[contains(@class,"feature") or contains(@class,"benefit") or contains(@class,"ventaja") or contains(@class,"caracteristica")]')
+                            continue  # está dentro de sección de features, saltar
+                        except: pass
+                        if es_foto_producto(src):
+                            imgs.append(src)
+                    if imgs: break
+                except: pass
+
+        # 4. Fallback: todas las imágenes de la página que parezcan fotos de producto
+        if not imgs:
             for img in driver.find_elements(By.TAG_NAME, 'img'):
                 src = img.get_attribute('src') or img.get_attribute('data-src') or ''
-                w = img.get_attribute('width') or '0'
-                h = img.get_attribute('height') or '0'
-                if not es_foto_producto(src, w, h):
-                    continue
-                try: size = int(w) * int(h)
-                except: size = 9999  # sin dimensiones → asumir grande
-                candidatas.append((size, src))
-            candidatas.sort(reverse=True)
-            # Tomar solo las de tamaño razonable (> 10000px²) o las 5 primeras si no hay
-            grandes = [(s,u) for s,u in candidatas if s > 10000]
-            imgs = [u for _,u in (grandes or candidatas)[:5]]
+                if not es_foto_producto(src): continue
+                # Intentar obtener dimensiones reales via JS
+                try:
+                    w = driver.execute_script("return arguments[0].naturalWidth", img) or 0
+                    h = driver.execute_script("return arguments[0].naturalHeight", img) or 0
+                    # Excluir iconos cuadrados ≤ 400px
+                    if w > 0 and h > 0:
+                        if w == h and w <= 400: continue
+                        if w < 150 or h < 150: continue
+                except: w, h = 0, 0
+                imgs.append(src)
+                if len(imgs) >= 3: break
+
         imgs = list(dict.fromkeys(imgs))[:5]
         print(f"  {len(imgs)} imágenes")
 
