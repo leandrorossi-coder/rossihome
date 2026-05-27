@@ -5920,6 +5920,8 @@ function cajaDeMovimiento(mov) {
 function impactosCaja(venta) {
   if (venta.pago === 'AHORRO') return [];
   const p = venta.pago || '';
+  // CP/L30 sales: cobros go to movCaja individually via confirmarCobro/guardarPagoCuenta
+  if (isCPorL30(p)) return [];
 
   // Helpers
   const montoIngreso = (monto, pago, tieneGastos) => {
