@@ -9117,8 +9117,22 @@ async function cargarFotosMasivasProv(provId){
       const fname = file.name.toUpperCase();
       let prod = null;
 
-      // 1. Coincidencia por SKU si el producto tiene campo sku
+      // 1a. Coincidencia por SKU si el producto tiene campo sku
       prod = provProds.find(p => p.sku && fname.includes(p.sku.toUpperCase()));
+
+      // 1b. Extraer código del nombre de archivo y buscarlo en el nombre del producto
+      // Ej: RHEEM_TEC085RH_1.PNG → busca "TEC085RH" en nombre del producto
+      if (!prod) {
+        const partes = fname.replace(/\.\w+$/, '').split('_');
+        // El código está entre la marca (primer segmento) y el número (último)
+        for (let i = 1; i < partes.length - 1; i++) {
+          const codigo = partes[i];
+          if (codigo.length >= 4) {
+            const encontrado = provProds.find(p => (p.nombre||'').toUpperCase().includes(codigo));
+            if (encontrado) { prod = encontrado; break; }
+          }
+        }
+      }
 
       // 2. Coincidencia por marca + capacidad extraída del nombre de archivo (ej: SHERMAN_TPGP050MSH13_1.jpg)
       if (!prod) {
