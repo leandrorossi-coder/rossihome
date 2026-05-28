@@ -1578,6 +1578,32 @@ select option{text-transform:uppercase;}
         <label>Monto cobrado ($) <span style="font-size:11px;color:var(--muted);">— podés poner menos para pago parcial</span></label>
         <input type="number" id="cobrar-monto" min="0">
       </div>
+      <!-- Segundo medio de pago (solo anticipo) -->
+      <div id="cobrar-segundo" style="display:none;background:var(--cream2);border-radius:10px;padding:12px;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--muted);">2° medio de pago (opcional)</div>
+        <div class="fg" style="margin-bottom:8px;">
+          <label>Medio de pago</label>
+          <select id="cobrar-medio2">
+            <option value=""> — ninguno —</option>
+            <option value="EFECTIVO"> Efectivo</option>
+            <option value="CHEQUE"> Cheque</option>
+            <option value="QR_MP">QR Mercado Pago</option>
+            <option value="LINK_MP">Link de pago</option>
+            <option value="TC">Tarjeta de Crédito</option>
+            <option value="DEBITO">Tarjeta de Débito</option>
+            <option value="PREPAGA">Tarjeta Prepaga</option>
+            <option value="TRANSF_MP">Transferencia → Mercado Pago</option>
+            <option value="TRANSF_FLEX">Transferencia → Prex</option>
+            <option value="TRANSF_ROSA">Transferencia → Rosa</option>
+            <option value="TRANSF_GABRIELA">Transferencia → Gabriela González</option>
+            <option value="TRANSF_DOLORES">Transferencia → Dolores Heredia</option>
+          </select>
+        </div>
+        <div class="fg" style="margin-bottom:0;">
+          <label>Monto 2° medio ($)</label>
+          <input type="number" id="cobrar-monto2" min="0" placeholder="0">
+        </div>
+      </div>
       <div class="fg">
         <label>Fecha de cobro</label>
         <input type="date" id="cobrar-fecha">
@@ -1740,7 +1766,6 @@ select option{text-transform:uppercase;}
       <div class="fg"><label>Formas de pago a mostrar</label>
         <div style="display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px;" id="p1-pagos-check">
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="EFEC_TRANSF" onchange="calcPres1()"> Efectivo / Transferencia</label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="ANT" onchange="calcPres1()"> Anticipo + Saldo</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC1" onchange="calcPres1()"> TC 1 cuota</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC2" onchange="calcPres1()"> TC 2 cuotas</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="TC3" onchange="calcPres1()"> TC 3 cuotas</label>
@@ -3758,6 +3783,9 @@ function abrirCobrarAnticipo(vid) {
   document.getElementById('cobrar-monto').value=cp.anticipo;
   document.getElementById('cobrar-fecha').value=hoy();
   document.getElementById('cobrar-obs').value='';
+  if(document.getElementById('cobrar-comprobante')) document.getElementById('cobrar-comprobante').value='';
+  const seg = document.getElementById('cobrar-segundo');
+  if(seg){ seg.style.display='block'; document.getElementById('cobrar-medio2').value=''; document.getElementById('cobrar-monto2').value=''; }
   document.getElementById('ovl-cobrar').classList.add('on');
 }
 
@@ -3776,6 +3804,8 @@ function abrirCobrarCuota(vid, idx) {
   document.getElementById('cobrar-fecha').value=hoy();
   document.getElementById('cobrar-obs').value='';
   if(document.getElementById('cobrar-comprobante')) document.getElementById('cobrar-comprobante').value='';
+  const seg = document.getElementById('cobrar-segundo');
+  if(seg){ seg.style.display='block'; document.getElementById('cobrar-medio2').value=''; document.getElementById('cobrar-monto2').value=''; }
   document.getElementById('ovl-cobrar').classList.add('on');
 }
 
@@ -3786,40 +3816,57 @@ async function confirmarCobro() {
   const cp = v.cpData;
   const medio = document.getElementById('cobrar-medio').value;
   const monto = parseFloat(document.getElementById('cobrar-monto').value)||0;
+  const medio2 = document.getElementById('cobrar-medio2')?.value||'';
+  const monto2 = parseFloat(document.getElementById('cobrar-monto2')?.value||'0')||0;
   const fecha = document.getElementById('cobrar-fecha').value||hoy();
   const obs = document.getElementById('cobrar-obs').value.trim();
   const comprobante = document.getElementById('cobrar-comprobante')?.value?.trim()||'';
   if (!monto) { toast('! Ingresá un monto'); return; }
+  if (monto2 > 0 && !medio2) { toast('! Seleccioná el 2° medio de pago'); return; }
   if (!cp.cobros) cp.cobros = [];
   const yaCobrada = tipo==='cuota' && montoPagadoCuota(cp, idx) >= cp.cuota;
   if (yaCobrada) { if(!confirm('Esta cuota ya fue cobrada completamente. ¿Registrás un pago adicional igual?')) return; }
-  const cobro = {id:Date.now(), tipo, idx:tipo==='cuota'?idx:undefined, monto, medio, fecha, obs, comprobante, cobrador: usuarioActual?.nombre||''};
-  cp.cobros.push(cobro);
-  if (tipo==='anticipo') cp.anticipoPagado = true;
-  const cajaCobro = cajaDeMovimiento({pago: medio});
-  const movNuevo = { id:Date.now()+1, tipo:'ingreso', fecha, caja:cajaCobro, concepto:`Crédito ${tipo==='anticipo'?'Anticipo':`Cuota ${(idx||0)+1}`} - ${v.producto} - ${cliNom(v)}`, monto, medio, obs, cobrador: usuarioActual?.nombre||'' };
-  movCaja.unshift(movNuevo);
-  const esMPCobro = cajaCobro === 'MERCADO_PAGO';
-  const movExtras = [];
-  if (esMPCobro) {
-    cobro.gastoMP = true;
-    if (isTC(medio) && medio !== 'TC1' && MP_FEES[medio]) {
-      movExtras.push({ id:Date.now()+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-        concepto:`Costo interés ${medio} — ${cliNom(v)}`, monto: Math.round(monto * MP_FEES[medio]), auto:true });
+
+  const ts = Date.now();
+  const nuevosCobrosMem = [];
+  const nuevosMovMem = [];
+  const addCobro = (cobroData, medioC, montoC, tsOff) => {
+    const cajaCobro = cajaDeMovimiento({pago: medioC});
+    const cobro = {...cobroData, id:ts+tsOff, monto:montoC, medio:medioC, comprobante: tsOff===0?comprobante:''};
+    cp.cobros.push(cobro);
+    nuevosCobrosMem.push(cobro);
+    const movNuevo = { id:ts+tsOff+1, tipo:'ingreso', fecha, caja:cajaCobro,
+      concepto:`Crédito ${tipo==='anticipo'?'Anticipo':`Cuota ${(idx||0)+1}`} - ${v.producto} - ${cliNom(v)}`,
+      monto:montoC, medio:medioC, obs, cobrador: usuarioActual?.nombre||'' };
+    movCaja.unshift(movNuevo);
+    nuevosMovMem.push(movNuevo);
+    if (cajaCobro === 'MERCADO_PAGO') {
+      cobro.gastoMP = true;
+      const extras = [];
+      if (isTC(medioC) && medioC !== 'TC1' && MP_FEES[medioC]) {
+        extras.push({ id:ts+tsOff+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+          concepto:`Costo interés ${medioC} — ${cliNom(v)}`, monto: Math.round(montoC * MP_FEES[medioC]), auto:true });
+      }
+      const feeServicio = isTC(medioC) ? MP_FEES.TC1 : (MP_FEES[medioC]||0);
+      extras.push({ id:ts+tsOff+3, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+        concepto:`Cargo MP — ${cliNom(v)}`, monto: Math.round(montoC * feeServicio), auto:true });
+      movCaja.unshift(...extras.reverse());
+      nuevosMovMem.push(...extras);
     }
-    const feeServicio = isTC(medio) ? MP_FEES.TC1 : (MP_FEES[medio]||0);
-    movExtras.push({ id:Date.now()+3, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-      concepto:`Cargo MP — ${cliNom(v)}`, monto: Math.round(monto * feeServicio), auto:true });
-    movCaja.unshift(...movExtras.reverse());
-  }
+  };
+
+  const cobroBase = {tipo, idx:tipo==='cuota'?idx:undefined, fecha, obs, cobrador: usuarioActual?.nombre||''};
+  addCobro(cobroBase, medio, monto, 0);
+  if (monto2 > 0 && medio2) addCobro(cobroBase, medio2, monto2, 10);
+  if (tipo==='anticipo') cp.anticipoPagado = true;
+
   try {
     await guardarCajaData();
     await guardarVentas();
   } catch(e) {
-    // Revertir cambios en memoria si algún guardado falla
-    cp.cobros = cp.cobros.filter(c => c.id !== cobro.id);
+    nuevosCobrosMem.forEach(c => { cp.cobros = cp.cobros.filter(x => x.id !== c.id); });
     if (tipo==='anticipo') cp.anticipoPagado = false;
-    movCaja = movCaja.filter(m => m.id !== movNuevo.id && !movExtras.some(x=>x.id===m.id));
+    nuevosMovMem.forEach(m => { movCaja = movCaja.filter(x => x.id !== m.id); });
     toast('⚠ Error al guardar. Verificá tu conexión y reintentá.'); return;
   }
   actualizarBadgeCreditos();
@@ -4465,13 +4512,16 @@ function abrirPagoCuenta(vid) {
   document.getElementById('cp-cuenta-vid').value = vid;
   document.getElementById('cp-cuenta-monto').value = '';
   document.getElementById('cp-cuenta-obs').value = '';
+  const anticoNoPagado = cp.anticipo > 0 && !cp.anticipoPagado;
   document.getElementById('cp-cuenta-info').innerHTML =
     `Cliente: <strong>${cliNom(v)}</strong><br>Producto: ${prodNombre(v)}<br>` +
     `Total crédito: <strong>$${fmt(cp.totalCredito)}</strong><br>` +
-    (proxima
-      ? `<span style="color:var(--navy);font-size:12px;">→ Se aplicará a la cuota ${proxima.idx+1}${proxima.fecha?` (${fmtD(proxima.fecha)})`:''}` +
-        ` · Pendiente: <strong>$${fmt(cp.cuota - montoPagadoCuota(cp, proxima.idx))}</strong></span>`
-      : `<span style="color:var(--green);">✓ Todas las cuotas cobradas</span>`);
+    (anticoNoPagado
+      ? `<span style="color:var(--orange);font-size:12px;">⚠ Anticipo pendiente $${fmt(cp.anticipo)} — se cobrará primero</span>`
+      : proxima
+        ? `<span style="color:var(--navy);font-size:12px;">→ Se aplicará a la cuota ${proxima.idx+1}${proxima.fecha?` (${fmtD(proxima.fecha)})`:''}` +
+          ` · Pendiente: <strong>$${fmt(cp.cuota - montoPagadoCuota(cp, proxima.idx))}</strong></span>`
+        : `<span style="color:var(--green);">✓ Todas las cuotas cobradas</span>`);
   document.getElementById('ovl-cp-cuenta').classList.add('on');
 }
 
@@ -4485,15 +4535,25 @@ async function guardarPagoCuenta() {
   const medio = document.getElementById('cp-cuenta-medio').value;
   const fecha = hoy();
   const obs = document.getElementById('cp-cuenta-obs').value.trim();
-  const cercanas = cuotasMasCercanas(cp, fecha);
-  if (!cercanas.length) { toast('! Todas las cuotas ya están cobradas'); return; }
   const cajaCobro = cajaDeMovimiento({pago: medio});
+  let ts = Date.now();
+  // Aplicar primero al anticipo si está pendiente
+  if (cp.anticipo > 0 && !cp.anticipoPagado && monto > 0) {
+    const aplicar = Math.min(monto, cp.anticipo);
+    cp.cobros.push({ id: ts++, tipo:'anticipo', monto:aplicar, medio, fecha, obs, cobrador: usuarioActual?.nombre||'' });
+    movCaja.unshift({ id: ts++, tipo:'ingreso', fecha, caja:cajaCobro,
+      concepto:`Crédito Anticipo - ${v.producto} - ${cliNom(v)}`, monto:aplicar, medio, obs, cobrador: usuarioActual?.nombre||'' });
+    cp.anticipoPagado = true;
+    monto -= aplicar;
+  }
+  const cercanas = cuotasMasCercanas(cp, fecha);
+  if (!cercanas.length && monto > 0) { toast('! Anticipo cobrado · No hay cuotas pendientes'); }
   for (const cuota of cercanas) {
     if (monto <= 0) break;
     const pendiente = cp.cuota - montoPagadoCuota(cp, cuota.idx);
     const aplicar = Math.min(monto, pendiente);
-    cp.cobros.push({ id: Date.now() + cuota.idx, tipo:'cuota', idx:cuota.idx, monto:aplicar, medio, fecha, obs, cobrador: usuarioActual?.nombre||'' });
-    movCaja.unshift({ id: Date.now() + cuota.idx + 100, tipo:'ingreso', fecha, caja:cajaCobro,
+    cp.cobros.push({ id: ts++, tipo:'cuota', idx:cuota.idx, monto:aplicar, medio, fecha, obs, cobrador: usuarioActual?.nombre||'' });
+    movCaja.unshift({ id: ts++, tipo:'ingreso', fecha, caja:cajaCobro,
       concepto:`Crédito Cuota ${cuota.idx+1} - ${v.producto} - ${cliNom(v)}`, monto:aplicar, medio, obs, cobrador: usuarioActual?.nombre||'' });
     monto -= aplicar;
   }
@@ -4502,7 +4562,7 @@ async function guardarPagoCuenta() {
   actualizarBadgeCreditos();
   cM('ovl-cp-cuenta');
   renderCreditos();
-  toast('OK Pago aplicado a cuota(s) más cercana(s)');
+  toast('OK Pago aplicado');
 }
 
 // ===
@@ -5391,13 +5451,7 @@ function calcPres1() {
       cuota = `Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`;
       total = `$${fmt(ant+tot)}`;
     }
-    if (pago === 'ANT') {
-      const ant = Math.round(precio * ANTICIPO_PCT);
-      const saldo = precio - ant;
-      desc = 'Anticipo + Saldo';
-      cuota = `Anticipo $${fmt(ant)} + Saldo $${fmt(saldo)}`;
-      total = `$${fmt(precio)}`;
-    } else if (pago === 'ANT2C') {
+    if (pago === 'ANT2C') {
       const ant = Math.round(precio * ANTICIPO_PCT);
       const saldo = precio - ant;
       const cuo = Math.round(saldo / 2);
@@ -5866,6 +5920,8 @@ function cajaDeMovimiento(mov) {
 function impactosCaja(venta) {
   if (venta.pago === 'AHORRO') return [];
   const p = venta.pago || '';
+  // CP/L30 sales: cobros go to movCaja individually via confirmarCobro/guardarPagoCuenta
+  if (isCPorL30(p)) return [];
 
   // Helpers
   const montoIngreso = (monto, pago, tieneGastos) => {
@@ -6907,10 +6963,6 @@ function imprimirPresPDF(id) {
       if (pago==='EFEC_TRANSF') {
         desc = 'Efectivo / Transferencia';
         total = `$${fmt(contado)}`;
-      } else if (pago==='ANT') {
-        const ant = Math.round(precioConDesc * ANTICIPO_PCT);
-        const saldo = precioConDesc - ant;
-        desc = 'Anticipo + Saldo'; cuota = `Anticipo $${fmt(ant)} + Saldo $${fmt(saldo)}`; total = `$${fmt(precioConDesc)}`;
       } else if (pago==='EFECTIVO'||pago==='TRANSF') {
         desc = pago==='EFECTIVO'?'Efectivo':'Transferencia';
         total = `$${fmt(contado)}`;
@@ -9044,8 +9096,24 @@ async function cargarFotosMasivasProv(provId){
     toast('Procesando fotos...');
     const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
     let actualizados = 0;
+    // Comprime imagen a max 400px / 70% JPEG para que quepan muchas fotos en localStorage
+    const comprimirFoto = file => new Promise(r=>{
+      const fr=new FileReader();
+      fr.onload=e=>{
+        const img=new Image();
+        img.onload=()=>{
+          const MAX=400; let w=img.width,h=img.height;
+          if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+          const c=document.createElement('canvas'); c.width=w; c.height=h;
+          c.getContext('2d').drawImage(img,0,0,w,h);
+          r(c.toDataURL('image/jpeg',0.70));
+        };
+        img.src=e.target.result;
+      };
+      fr.readAsDataURL(file);
+    });
     for(const file of files){
-      const b64 = await new Promise(r=>{ const fr=new FileReader(); fr.onload=e=>r(e.target.result); fr.readAsDataURL(file); });
+      const b64 = await comprimirFoto(file);
       const fname = file.name.toUpperCase();
       let prod = null;
 
