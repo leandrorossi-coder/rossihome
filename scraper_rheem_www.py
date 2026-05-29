@@ -97,34 +97,27 @@ def cargar(page, url):
 def get_imgs(page):
     imgs = []
     try:
-        src_list = page.evaluate("""() => {
+        svg_src = page.evaluate("""() => {
             const header = document.querySelector('header, nav, .header, #header');
             const hBottom = header ? header.getBoundingClientRect().bottom + window.scrollY : 150;
             const footer = document.querySelector('footer, .footer, #footer');
             const fTop = footer ? footer.getBoundingClientRect().top + window.scrollY : 999999;
-            const isSvg = s => s && s.toLowerCase().includes('.svg');
             const allImgs = Array.from(document.querySelectorAll('img, object[data]'));
-            return allImgs.map(el => {
-                    const rect = el.getBoundingClientRect();
-                    const top = rect.top + window.scrollY;
-                    const src = el.getAttribute('data-src') || el.getAttribute('data') ||
-                                el.currentSrc || el.src || '';
-                    const w = el.naturalWidth || el.width || rect.width || 0;
-                    const h = el.naturalHeight || el.height || rect.height || 0;
-                    const area = isSvg(src) ? 999999 : w*h; // SVG siempre prioritario
-                    return {src, top, area};
-                })
-                .filter(x => x.top > hBottom && x.top < fTop &&
-                             (isSvg(x.src) || x.area > 10000) &&
-                             x.src && !x.src.startsWith('data:'))
-                .sort((a,b) => b.area - a.area)
-                .map(x => x.src);
+            for (const el of allImgs) {
+                const rect = el.getBoundingClientRect();
+                const top = rect.top + window.scrollY;
+                if (top <= hBottom || top >= fTop) continue;
+                const src = el.getAttribute('data-src') || el.getAttribute('data') ||
+                            el.currentSrc || el.src || '';
+                if (src && src.toLowerCase().includes('.svg') && !src.startsWith('data:'))
+                    return src;
+            }
+            return null;
         }""")
-        for src in (src_list or []):
-            if es_valida(src) and src not in imgs:
-                imgs.append(src)
+        if svg_src and es_valida(svg_src):
+            imgs.append(svg_src)
     except: pass
-    return list(dict.fromkeys(imgs))[:3]
+    return imgs[:1]
 
 def buscar_adicionales(page, skus_conocidos):
     """Busca productos en secciones específicas que no estén ya en la lista."""
