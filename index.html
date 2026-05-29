@@ -9096,7 +9096,7 @@ async function cargarFotosMasivasProv(provId){
     toast('Procesando fotos...');
     const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
     let actualizados = 0;
-    const comprimirFoto = (file, maxPx=900) => new Promise(r=>{
+    const comprimirFoto = (file, maxPx=600) => new Promise(r=>{
       const url = URL.createObjectURL(file);
       const img = new Image();
       img.onload = () => {
@@ -9107,20 +9107,20 @@ async function cargarFotosMasivasProv(provId){
         ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
         ctx.drawImage(img,0,0,w,h);
         const id=ctx.getImageData(0,0,w,h); const px=id.data;
-        const lum=(i)=>0.299*px[i]+0.587*px[i+1]+0.114*px[i+2];
         const UMBRAL=60;
-        // Flood fill desde las 4 esquinas — solo borra fondo conectado al borde
+        const isDark=(i)=>(0.299*px[i]+0.587*px[i+1]+0.114*px[i+2])<UMBRAL;
+        // Flood fill con stack de enteros (más rápido que array de pares)
         const visited=new Uint8Array(w*h);
-        const stack=[];
-        const seed=(x,y)=>{ const i=(y*w+x); if(!visited[i]&&lum(i*4)<UMBRAL){visited[i]=1;stack.push(x,y);} };
-        for(let x=0;x<w;x++){seed(x,0);seed(x,h-1);}
-        for(let y=0;y<h;y++){seed(0,y);seed(w-1,y);}
-        while(stack.length){
-          const y=stack.pop(), x=stack.pop();
+        const stack=new Int32Array(w*h*2); let sp=0;
+        const push=(x,y)=>{const i=y*w+x;if(!visited[i]&&isDark(i*4)){visited[i]=1;stack[sp++]=x;stack[sp++]=y;}};
+        for(let x=0;x<w;x++){push(x,0);push(x,h-1);}
+        for(let y=1;y<h-1;y++){push(0,y);push(w-1,y);}
+        while(sp>0){
+          const y=stack[--sp],x=stack[--sp];
           const pi=(y*w+x)*4;
-          px[pi]=255;px[pi+1]=255;px[pi+2]=255;px[pi+3]=255;
-          const check=(nx,ny)=>{if(nx>=0&&nx<w&&ny>=0&&ny<h){const ni=ny*w+nx;if(!visited[ni]&&lum(ni*4)<UMBRAL){visited[ni]=1;stack.push(nx,ny);}}};
-          check(x+1,y);check(x-1,y);check(x,y+1);check(x,y-1);
+          px[pi]=px[pi+1]=px[pi+2]=255;px[pi+3]=255;
+          if(x+1<w)push(x+1,y); if(x>0)push(x-1,y);
+          if(y+1<h)push(x,y+1); if(y>0)push(x,y-1);
         }
         ctx.putImageData(id,0,0);
         URL.revokeObjectURL(url);
