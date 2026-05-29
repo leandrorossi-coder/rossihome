@@ -10402,11 +10402,31 @@ async function sincronizarProvWeb(provId){
 function renderScrapingResultados(prods, srcUrl){
   const cont = document.getElementById('scrap-resultados');
   if(!prods.length){ cont.innerHTML='<div class="ibox">No se encontraron productos en el sitio.</div>'; return; }
-  document.getElementById('scrap-msg').textContent = `${prods.length} productos encontrados`;
+  const provId = parseInt(document.getElementById('ovl-scraping').dataset.provId||0);
+  const prov = proveedores.find(x=>x.id===provId);
+  const provNombre = (prov?.nombre||'').toUpperCase();
+  // Clasificar: existentes vs nuevos, y actualizar precios de existentes
+  let actualizados = 0;
+  const clasificados = prods.map(p => {
+    const existente = productos.find(x =>
+      (x.proveedor||'').toUpperCase()===provNombre &&
+      (x.nombre||'').toUpperCase()===(p.nombre||'').toUpperCase()
+    );
+    if(existente && prov && p.precio){
+      const precios = calcularPreciosProv(p.precio, prov);
+      existente.costo = precios.costo;
+      existente.precio = precios.precio;
+      actualizados++;
+    }
+    return {p, existente: !!existente};
+  });
+  if(actualizados>0){ guardarProds(); }
+  const nuevos = clasificados.filter(x=>!x.existente).length;
+  document.getElementById('scrap-msg').textContent = `${prods.length} productos encontrados · ${actualizados} precios actualizados · ${nuevos} nuevos`;
   const btnTodos = document.getElementById('btn-importar-todos');
-  if(btnTodos) btnTodos.style.display = '';
-  cont.innerHTML = prods.map((p,i)=>`
-    <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;">
+  if(btnTodos){ btnTodos.style.display = nuevos>0?'':'none'; btnTodos.textContent=`⬇ Importar ${nuevos} nuevos`; }
+  cont.innerHTML = clasificados.map(({p,existente},i)=>`
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:${existente?'#f6fff8':'#fff'};">
       <div style="display:flex;gap:10px;align-items:flex-start;">
         ${p.foto?`<img src="${p.foto}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">`:'<div style="width:60px;height:60px;background:var(--cream2);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">📦</div>'}
         <div style="flex:1;min-width:0;">
@@ -10417,7 +10437,9 @@ function renderScrapingResultados(prods, srcUrl){
             ${p.url?`<a href="${p.url}" target="_blank" style="font-size:10px;color:var(--gold);text-transform:none;">Ver en web ↗</a>`:''}
           </div>
         </div>
-        <button class="btn btn-gold btn-sm" onclick="importarProdScrap(${i})" style="flex-shrink:0;">Importar</button>
+        ${existente
+          ? `<span style="color:var(--green);font-size:12px;font-weight:600;flex-shrink:0;">✓ Actualizado</span>`
+          : `<button class="btn btn-gold btn-sm" onclick="importarProdScrap(${i})" style="flex-shrink:0;">Importar</button>`}
       </div>
     </div>
   `).join('');
