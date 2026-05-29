@@ -1,16 +1,21 @@
 """
 Scraper WINCO - winco.com.ar/products/
-Auto-descubre todos los productos y descarga todas sus fotos.
+Auto-descubre todos los productos y descarga:
+  - Todas las fotos
+  - Videos (YouTube embed o MP4 directo)
+  - Manuales (PDF)
+  - Descripción técnica
+  - Código original (SKU)
 
 Uso:
     python scraper_winco.py
 
 Requiere:
-    pip install playwright requests
+    pip install playwright requests yt-dlp
     playwright install chromium
 """
 
-import os, time, json, pathlib, re
+import os, time, json, pathlib, re, subprocess
 from playwright.sync_api import sync_playwright
 import requests
 
@@ -21,21 +26,20 @@ EXCLUIR_IMG = [
     'logo','sprite','flag','certif','iso','sello','award',
     'banner','hero','slide','background','icon','favicon',
     'whatsapp','social','placeholder','spinner','loading',
-    'youtube','video','og.png','og.jpg','data:image',
-    'woocommerce-placeholder',
+    'og.png','og.jpg','data:image','woocommerce-placeholder',
 ]
 
-def es_valida(src):
+def es_valida_img(src):
     if not src or src.startswith('data:'): return False
     sl = src.lower()
     return (any(ext in sl for ext in ['.jpg','.jpeg','.png','.webp']) and
             not any(x in sl for x in EXCLUIR_IMG))
 
-def descargar(url, ruta, sess):
+def descargar_binario(url, ruta, sess, tipos_validos=('image',)):
     try:
-        r = sess.get(url, timeout=25, stream=True)
+        r = sess.get(url, timeout=60, stream=True)
         ct = r.headers.get('content-type','')
-        if r.status_code == 200 and 'image' in ct:
+        if r.status_code == 200 and any(t in ct for t in tipos_validos):
             with open(ruta, 'wb') as f:
                 for chunk in r.iter_content(8192): f.write(chunk)
             return True
@@ -48,39 +52,33 @@ def cargar(page, url, espera=2.0):
     except: pass
     time.sleep(espera)
 
-# ── Descubrir links de productos ────────────────────────────────────────────
+# ── Descubrir links de productos ─────────────────────────────────────────────
 
 def es_link_producto(href):
-    """True si el href parece una página de producto individual (no categoría)."""
     if not href or 'winco.com.ar' not in href: return False
     path = href.replace('https://winco.com.ar','').rstrip('/')
     partes = [p for p in path.split('/') if p]
-    # /products/categoria/producto  → 3 partes
     return len(partes) >= 3 and partes[0] == 'products'
 
 def es_link_categoria(href):
-    """True si el href parece una categoría de productos."""
     if not href or 'winco.com.ar' not in href: return False
     path = href.replace('https://winco.com.ar','').rstrip('/')
     partes = [p for p in path.split('/') if p]
     return len(partes) == 2 and partes[0] == 'products'
 
 def get_todos_product_links(page):
-    """Recorre /products/ y todas las categorías para obtener links de productos."""
     print("Descubriendo productos...")
     links_prod = set()
     links_cat  = set()
 
-    # Paso 1: página principal de productos
     cargar(page, PRODUCTS_URL)
     hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
     for h in hrefs:
-        if es_link_producto(h):  links_prod.add(h.rstrip('/'))
+        if es_link_producto(h):    links_prod.add(h.rstrip('/'))
         elif es_link_categoria(h): links_cat.add(h.rstrip('/'))
 
     print(f"  {len(links_cat)} categorías · {len(links_prod)} productos directos")
 
-    # Paso 2: entrar a cada categoría (con paginación)
     for cat_url in sorted(links_cat):
         cat_name = cat_url.rstrip('/').split('/')[-1]
         pag_url  = cat_url
@@ -91,17 +89,14 @@ def get_todos_product_links(page):
             antes = len(links_prod)
             for h in hrefs:
                 if es_link_producto(h): links_prod.add(h.rstrip('/'))
-            nuevos = len(links_prod) - antes
-            print(f"  [{cat_name} p{pag}] +{nuevos} productos (total {len(links_prod)})")
+            print(f"  [{cat_name} p{pag}] +{len(links_prod)-antes} (total {len(links_prod)})")
 
-            # Paginación
             next_href = None
-            for sel in ['a.next.page-numbers', 'a[rel="next"]', '.next a', 'a:text("›")', 'a:text("siguiente")']:
+            for sel in ['a.next.page-numbers','a[rel="next"]','.next a','a:text("›")','a:text("siguiente")']:
                 try:
                     el = page.query_selector(sel)
                     if el:
-                        next_href = el.get_attribute('href')
-                        break
+                        next_href = el.get_attribute('href'); break
                 except: pass
             pag_url = next_href if next_href and next_href != pag_url else None
             pag += 1
@@ -109,10 +104,10 @@ def get_todos_product_links(page):
     print(f"\nTotal productos encontrados: {len(links_prod)}\n")
     return sorted(links_prod)
 
-# ── Scraping de página de producto ──────────────────────────────────────────
+# ── Extractores por campo ─────────────────────────────────────────────────────
 
 def extraer_nombre(page):
-    for sel in ['h1.product_title', 'h1.entry-title', 'h1', 'h2.product-name', '.product-name h1']:
+    for sel in ['h1.product_title','h1.entry-title','h1','h2.product-name']:
         try:
             for el in page.locator(sel).all():
                 t = el.inner_text().strip()
@@ -121,73 +116,66 @@ def extraer_nombre(page):
     return ''
 
 def extraer_codigo(page):
-    """Busca el código/SKU original del producto."""
-    # Intentar campo SKU estándar de WooCommerce
+    for sel in ['.sku','[class*="sku"]','span.sku','[itemprop="sku"]']:
+        try:
+            el = page.query_selector(sel)
+            if el:
+                t = el.inner_text().strip()
+                if t and t.lower() not in ('n/a','-',''): return t
+        except: pass
+    try:
+        html = page.content()
+        m = re.search(r'(?:código|codigo|sku|modelo|ref\.?|referencia)[:\s]+([A-Z0-9\-_\.]+)', html, re.IGNORECASE)
+        if m:
+            cod = m.group(1).strip()
+            if 2 < len(cod) < 40: return cod
+    except: pass
+    return ''
+
+def extraer_precio(page):
+    for sel in ['.price ins .amount','.price .amount','.woocommerce-Price-amount','p.price .amount','[class*="price"]']:
+        try:
+            for el in page.locator(sel).all():
+                t = re.sub(r'[^\d]', '', el.inner_text().strip())
+                if t.isdigit() and int(t) > 0: return int(t)
+        except: pass
+    return 0
+
+def extraer_descripcion(page):
+    """Extrae la descripción técnica / ficha del producto."""
     for sel in [
-        '.sku',
-        '[class*="sku"]',
-        '.product-meta .sku',
-        'span.sku',
-        '[itemprop="sku"]',
+        '.woocommerce-product-details__short-description',
+        '#tab-description',
+        '.product-description',
+        '[class*="description"]',
+        '.entry-content',
     ]:
         try:
             el = page.query_selector(sel)
             if el:
                 t = el.inner_text().strip()
-                if t and t.lower() not in ('n/a', '-', ''): return t
+                # Limpiar texto: eliminar líneas vacías múltiples
+                t = re.sub(r'\n{3,}', '\n\n', t)
+                if len(t) > 20: return t
         except: pass
-
-    # Buscar en texto de la página: "Código:", "Modelo:", "SKU:", "Ref:"
-    try:
-        html = page.content()
-        for pattern in [
-            r'(?:código|codigo|sku|modelo|ref\.?|referencia)[:\s]+([A-Z0-9\-_\.]+)',
-        ]:
-            m = re.search(pattern, html, re.IGNORECASE)
-            if m:
-                cod = m.group(1).strip()
-                if 2 < len(cod) < 40: return cod
-    except: pass
     return ''
 
-def extraer_precio(page):
-    """Extrae precio numérico (ya incluye IVA según proveedor)."""
-    for sel in [
-        '.price ins .amount', '.price .amount', '.woocommerce-Price-amount',
-        'p.price .amount', 'span.price', '[class*="price"]',
-    ]:
-        try:
-            for el in page.locator(sel).all():
-                t = el.inner_text().strip()
-                t_clean = re.sub(r'[^\d,\.]', '', t).replace(',','.')
-                # Tomar solo la parte entera si hay decimales
-                t_clean = t_clean.split('.')[0] if '.' in t_clean else t_clean
-                if t_clean.isdigit() and int(t_clean) > 0:
-                    return int(t_clean)
-        except: pass
-    return 0
-
 def extraer_imagenes(page):
-    """Extrae todas las URLs de imágenes del producto (excluye miniaturas duplicadas)."""
-    urls = []
-    seen = set()
-
+    """Todas las fotos del producto en máxima resolución."""
+    urls, seen = [], set()
     try:
-        # Galería WooCommerce estándar
         srcs = page.evaluate("""() => {
             const imgs = [];
-            // 1. Imágenes de la galería principal
+            // Galería WooCommerce: data-large_image tiene full-size
             document.querySelectorAll('.woocommerce-product-gallery img, .product-gallery img, [class*="gallery"] img, .product-images img').forEach(img => {
                 const src = img.getAttribute('data-large_image') || img.getAttribute('data-src') || img.currentSrc || img.src || '';
                 if(src && !src.startsWith('data:')) imgs.push(src);
             });
-            // 2. Links de la galería (apuntan a imagen full-size)
+            // Links de galería → full-size directamente
             document.querySelectorAll('.woocommerce-product-gallery a, [class*="gallery"] a').forEach(a => {
                 const href = a.getAttribute('href') || '';
-                if(href && (href.includes('.jpg') || href.includes('.jpeg') || href.includes('.png') || href.includes('.webp')))
-                    imgs.push(href);
+                if(href && /\.(jpe?g|png|webp)(\?|$)/i.test(href)) imgs.push(href);
             });
-            // 3. Imágenes principales de producto
             if(!imgs.length) {
                 document.querySelectorAll('.product img, article img, main img').forEach(img => {
                     const src = img.getAttribute('data-large_image') || img.getAttribute('data-src') || img.currentSrc || img.src || '';
@@ -197,36 +185,110 @@ def extraer_imagenes(page):
             return [...new Set(imgs)];
         }""")
         for src in srcs:
-            if es_valida(src) and src not in seen:
-                seen.add(src)
-                urls.append(src)
+            if es_valida_img(src) and src not in seen:
+                seen.add(src); urls.append(src)
     except: pass
-
     return urls
 
+def extraer_videos(page):
+    """Extrae URLs de videos: YouTube embeds y MP4 directos."""
+    videos = []
+    try:
+        data = page.evaluate("""() => {
+            const results = [];
+            // YouTube iframes
+            document.querySelectorAll('iframe[src*="youtube"], iframe[src*="youtu.be"]').forEach(el => {
+                results.push({tipo: 'youtube', url: el.src});
+            });
+            // Videos HTML5 directos
+            document.querySelectorAll('video source, video[src]').forEach(el => {
+                const src = el.getAttribute('src') || '';
+                if(src) results.push({tipo: 'mp4', url: src});
+            });
+            // Links a videos
+            document.querySelectorAll('a[href*=".mp4"], a[href*="youtube"], a[href*="youtu.be"]').forEach(a => {
+                results.push({tipo: 'link', url: a.href});
+            });
+            return results;
+        }""")
+        videos = data
+    except: pass
+    return videos
+
+def extraer_manuales(page):
+    """Extrae links a PDFs (manuales, fichas técnicas)."""
+    pdfs = []
+    try:
+        data = page.evaluate("""() => {
+            const results = [];
+            document.querySelectorAll('a[href]').forEach(a => {
+                const href = a.href || '';
+                if(href.toLowerCase().includes('.pdf')) {
+                    const texto = (a.innerText || a.title || '').trim();
+                    results.push({url: href, nombre: texto || 'manual'});
+                }
+            });
+            return results;
+        }""")
+        pdfs = data
+    except: pass
+    return pdfs
+
 def extraer_categoria(url):
-    """Extrae la categoría desde la URL: /products/categoria/producto → 'categoria'"""
     partes = url.replace('https://winco.com.ar','').rstrip('/').split('/')
     partes = [p for p in partes if p]
     return partes[1].replace('-',' ').title() if len(partes) >= 3 else ''
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+# ── Descarga de video (yt-dlp) ───────────────────────────────────────────────
+
+def descargar_video(video, carpeta_prod, slug, idx, sess):
+    """Descarga un video. YouTube → yt-dlp. MP4 directo → requests."""
+    url  = video.get('url','')
+    tipo = video.get('tipo','')
+    if not url: return None
+
+    if 'youtube' in url or 'youtu.be' in url:
+        # Extraer ID limpio
+        yt_match = re.search(r'(?:embed/|watch\?v=|youtu\.be/)([A-Za-z0-9_-]{11})', url)
+        if not yt_match: return None
+        yt_url  = f"https://www.youtube.com/watch?v={yt_match.group(1)}"
+        out_tpl = os.path.join(carpeta_prod, f"WINCO_{slug}_video_{idx}.%(ext)s")
+        try:
+            resultado = subprocess.run(
+                ['yt-dlp', '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                 '--merge-output-format', 'mp4',
+                 '-o', out_tpl, yt_url],
+                capture_output=True, text=True, timeout=120
+            )
+            # Buscar el archivo generado
+            for f in os.listdir(carpeta_prod):
+                if f.startswith(f"WINCO_{slug}_video_{idx}"):
+                    return os.path.join(carpeta_prod, f)
+        except Exception as e:
+            print(f"    yt-dlp error: {e}")
+        return None
+
+    elif tipo in ('mp4','link') and url.endswith('.mp4'):
+        ruta = os.path.join(carpeta_prod, f"WINCO_{slug}_video_{idx}.mp4")
+        if descargar_binario(url, ruta, sess, tipos_validos=('video','application/octet')):
+            return ruta
+    return None
+
+# ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    carpeta = str(pathlib.Path.home() / 'Downloads' / 'fotos_winco')
-    os.makedirs(carpeta, exist_ok=True)
-    print(f"Fotos → {carpeta}\n")
+    base_carpeta = pathlib.Path.home() / 'Downloads' / 'winco_scraping'
+    base_carpeta.mkdir(parents=True, exist_ok=True)
+    print(f"Archivos → {base_carpeta}\n")
 
     sess = requests.Session()
     sess.headers['User-Agent'] = (
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-        'AppleWebKit/537.36 (KHTML, like Gecko) '
-        'Chrome/124.0.0.0 Safari/537.36'
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     )
 
-    productos   = []
-    sin_nombre  = []
-    sin_foto    = []
+    productos  = []
+    con_error  = []
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(
@@ -240,89 +302,129 @@ def main():
             locale='es-AR',
         )
         page = ctx.new_page()
-        # Evitar detección básica de bot
         page.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
 
-        # Descubrir todos los productos
         links = get_todos_product_links(page)
-
         if not links:
-            print("No se encontraron productos. Verificar URL o estructura del sitio.")
+            print("No se encontraron productos. Verificar URL.")
             browser.close()
             return
 
         print(f"Scrapeando {len(links)} productos...\n")
 
         for i, url in enumerate(links, 1):
-            print(f"[{i}/{len(links)}] {url.split('/')[-1]}")
+            slug = re.sub(r'[^a-zA-Z0-9_-]', '_', url.rstrip('/').split('/')[-1])[:35]
+            print(f"[{i}/{len(links)}] {slug}")
+
             try:
                 cargar(page, url)
 
-                nombre  = extraer_nombre(page)
-                codigo  = extraer_codigo(page)
-                precio  = extraer_precio(page)
-                img_urls = extraer_imagenes(page)
-                categoria = extraer_categoria(url)
+                nombre      = extraer_nombre(page)
+                codigo      = extraer_codigo(page)
+                precio      = extraer_precio(page)
+                descripcion = extraer_descripcion(page)
+                img_urls    = extraer_imagenes(page)
+                vid_data    = extraer_videos(page)
+                pdf_data    = extraer_manuales(page)
+                categoria   = extraer_categoria(url)
 
                 if not nombre:
                     print("  ⚠ Sin nombre — saltando")
-                    sin_nombre.append(url)
-                    continue
+                    con_error.append(url); continue
 
                 print(f"  ✓ {nombre}")
-                if codigo:  print(f"  Cód: {codigo}")
-                if precio:  print(f"  $ {precio:,}")
-                print(f"  {len(img_urls)} imagen(es)")
+                if codigo:      print(f"  Cód: {codigo}")
+                if precio:      print(f"  $ {precio:,}")
+                if descripcion: print(f"  Desc: {descripcion[:80].replace(chr(10),' ')}...")
+                print(f"  {len(img_urls)} foto(s) · {len(vid_data)} video(s) · {len(pdf_data)} manual(es)")
 
-                # Descargar fotos
+                # Carpeta por producto
+                carpeta_prod = str(base_carpeta / slug)
+                os.makedirs(carpeta_prod, exist_ok=True)
+
+                # ── Fotos ──
                 fotos_locales = []
-                slug = re.sub(r'[^a-zA-Z0-9_-]', '_', url.rstrip('/').split('/')[-1])[:30]
                 for j, img_url in enumerate(img_urls, 1):
                     ext = img_url.split('?')[0].split('.')[-1][:4].lower()
-                    if ext not in ['jpg','jpeg','png','webp']: ext = 'jpg'
-                    ruta = os.path.join(carpeta, f"WINCO_{slug}_{j}.{ext}")
-                    if descargar(img_url, ruta, sess):
+                    if ext not in ('jpg','jpeg','png','webp'): ext = 'jpg'
+                    ruta = os.path.join(carpeta_prod, f"WINCO_{slug}_{j}.{ext}")
+                    if descargar_binario(img_url, ruta, sess):
                         fotos_locales.append(ruta)
-                        print(f"    ✅ {os.path.basename(ruta)}")
+                        print(f"    📷 {os.path.basename(ruta)}")
                     else:
-                        print(f"    ❌ {img_url[:70]}")
+                        print(f"    ❌ foto {img_url[:60]}")
 
-                if not fotos_locales:
-                    sin_foto.append(nombre)
+                # ── Videos ──
+                videos_locales = []
+                for j, vid in enumerate(vid_data, 1):
+                    print(f"    🎬 Descargando video {j}...")
+                    ruta_vid = descargar_video(vid, carpeta_prod, slug, j, sess)
+                    if ruta_vid:
+                        videos_locales.append(ruta_vid)
+                        print(f"    ✅ {os.path.basename(ruta_vid)}")
+                    else:
+                        print(f"    ❌ video {vid.get('url','')[:60]}")
+
+                # ── Manuales (PDF) ──
+                manuales_locales = []
+                for j, pdf in enumerate(pdf_data, 1):
+                    pdf_url  = pdf.get('url','')
+                    pdf_nom  = pdf.get('nombre','manual')
+                    pdf_nom  = re.sub(r'[^a-zA-Z0-9_\-]', '_', pdf_nom)[:30]
+                    ruta_pdf = os.path.join(carpeta_prod, f"WINCO_{slug}_manual_{j}_{pdf_nom}.pdf")
+                    if descargar_binario(pdf_url, ruta_pdf, sess, tipos_validos=('application/pdf','application/octet')):
+                        manuales_locales.append(ruta_pdf)
+                        print(f"    📄 {os.path.basename(ruta_pdf)}")
+                    else:
+                        print(f"    ❌ PDF {pdf_url[:60]}")
+
+                # ── Guardar descripción en .txt ──
+                if descripcion:
+                    ruta_txt = os.path.join(carpeta_prod, f"WINCO_{slug}_descripcion.txt")
+                    with open(ruta_txt, 'w', encoding='utf-8') as f:
+                        f.write(f"{nombre}\n{'='*len(nombre)}\n\n{descripcion}\n")
 
                 productos.append({
-                    'nombre':         nombre,
-                    'codigoOriginal': codigo,
-                    'precio':         precio,
-                    'categoria':      categoria,
-                    'url':            url,
-                    'fotos_locales':  fotos_locales,
+                    'nombre':          nombre,
+                    'codigoOriginal':  codigo,
+                    'precio':          precio,
+                    'descripcion':     descripcion,
+                    'categoria':       categoria,
+                    'url':             url,
+                    'fotos_locales':   fotos_locales,
+                    'videos_locales':  videos_locales,
+                    'manuales_locales':manuales_locales,
                 })
 
             except Exception as e:
                 print(f"  Error: {e}")
-                sin_nombre.append(url)
+                con_error.append(url)
 
             time.sleep(1.2)
 
         browser.close()
 
-    # ── Resumen ──────────────────────────────────────────────────────────────
+    # ── Resumen ───────────────────────────────────────────────────────────────
+    total_fotos    = sum(len(p['fotos_locales'])    for p in productos)
+    total_videos   = sum(len(p['videos_locales'])   for p in productos)
+    total_manuales = sum(len(p['manuales_locales']) for p in productos)
+
     print(f"\n{'='*60}")
-    print(f"✅ {len(productos)} productos scrapeados")
-    if sin_nombre: print(f"⚠  Sin nombre ({len(sin_nombre)}): primeros 5 → {sin_nombre[:5]}")
-    if sin_foto:   print(f"📷 Sin foto ({len(sin_foto)}): primeros 5 → {sin_foto[:5]}")
+    print(f"✅ {len(productos)} productos")
+    print(f"   📷 {total_fotos} fotos")
+    print(f"   🎬 {total_videos} videos")
+    print(f"   📄 {total_manuales} manuales")
+    if con_error: print(f"   ⚠  {len(con_error)} con error")
 
     json_path = str(pathlib.Path.home() / 'Downloads' / 'winco_productos.json')
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(productos, f, ensure_ascii=False, indent=2)
 
-    print(f"\nJSON guardado en: {json_path}")
-    print(f"Fotos guardadas en: {carpeta}")
+    print(f"\nJSON → {json_path}")
+    print(f"Archivos → {base_carpeta}/[producto]/")
     print("\nPróximos pasos:")
-    print("  1. Zippeá la carpeta fotos_winco")
-    print("  2. Subí las fotos desde: Proveedores → Winco Argentina → Cargar fotos")
-    print("  3. Importá el JSON desde: Proveedores → Winco Argentina → Importar lista")
+    print("  1. Importá el JSON: Proveedores → Winco Argentina → Importar lista")
+    print("  2. Subí fotos: Proveedores → Winco Argentina → Cargar fotos")
 
 if __name__ == '__main__':
     main()
