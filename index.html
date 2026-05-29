@@ -653,6 +653,7 @@ select option{text-transform:uppercase;}
       </select>
       <select id="precio-sort" onchange="renderPrecios()" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;font-family:'Outfit',sans-serif;background:var(--white);">
         <option value="">Orden original</option>
+        <option value="marca-tipo-litros">Marca → Tipo → Litros ↑</option>
         <option value="nom-az">Nombre A→Z</option>
         <option value="nom-za">Nombre Z→A</option>
         <option value="precio-asc">Precio ↑</option>
@@ -696,6 +697,7 @@ select option{text-transform:uppercase;}
       </select>
       <select id="cat-sort" onchange="renderCatalogo()" style="border:1.5px solid var(--border);border-radius:9px;padding:7px 10px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
         <option value="">Orden original</option>
+        <option value="marca-tipo-litros">Marca → Tipo → Litros ↑</option>
         <option value="nom-az">Nombre A-Z</option>
         <option value="nom-za">Nombre Z-A</option>
         <option value="precio-asc">Precio ↑</option>
@@ -4887,6 +4889,16 @@ function toggleCatView(){
   if(btn)btn.innerHTML=catalogoView==='grid'?'&#8862; Grilla':'&#9776; Lista';
   renderCatalogo();
 }
+function sortMarcaTipoLitros(a, b) {
+  const marca = (a.proveedor||'').localeCompare(b.proveedor||'');
+  if (marca !== 0) return marca;
+  const getTipo = n => { n=(n||'').toUpperCase(); if(n.includes('ELEC')||n.includes('ELÉC')) return 0; if(n.includes('GAS')||n.includes('MULTIGAS')) return 1; return 2; };
+  const tipo = getTipo(a.nombre) - getTipo(b.nombre);
+  if (tipo !== 0) return tipo;
+  const getLitros = n => { const m=(n||'').match(/(\d+)\s*LITROS?/i); return m ? parseInt(m[1]) : 9999; };
+  return getLitros(a.nombre) - getLitros(b.nombre);
+}
+
 function renderCatalogo(){
   const q=(document.getElementById('cat-q').value||'').toLowerCase();
   const catF=(document.getElementById('cat-cat').value||'');
@@ -4958,6 +4970,7 @@ function renderCatalogo(){
   else if(sortF==='nom-za') lista.sort((a,b)=>(b.nombre||'').localeCompare(a.nombre||''));
   else if(sortF==='precio-asc') lista.sort((a,b)=>(a.precio||0)-(b.precio||0));
   else if(sortF==='precio-desc') lista.sort((a,b)=>(b.precio||0)-(a.precio||0));
+  else if(sortF==='marca-tipo-litros') lista.sort(sortMarcaTipoLitros);
 
   const empty=document.getElementById('empty-catalogo');
   const gridCont=document.getElementById('cat-grid-cont');
@@ -9914,6 +9927,7 @@ function preciosListaFiltrada() {
   else if (sort === 'nom-za') lista.sort((a,b)=>(b.nombre||'').localeCompare(a.nombre||''));
   else if (sort === 'precio-asc') lista.sort((a,b)=>(a.precio||0)-(b.precio||0));
   else if (sort === 'precio-desc') lista.sort((a,b)=>(b.precio||0)-(a.precio||0));
+  else if (sort === 'marca-tipo-litros') lista.sort(sortMarcaTipoLitros);
   else if (sort === 'margen-asc') lista.sort((a,b)=>{
     const mA = (a.costo>0&&a.precio>0) ? (a.precio-a.costo)/a.precio : 1;
     const mB = (b.costo>0&&b.precio>0) ? (b.precio-b.costo)/b.precio : 1;
