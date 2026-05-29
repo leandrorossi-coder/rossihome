@@ -2314,7 +2314,12 @@ async function guardarEnScript() {
         } catch(e) { productosParaGuardar = productos; }
       }
     }
-    const datos = { ventas, productos: productosParaGuardar, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, proveedores, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, caracteristicas, usuarios, gastosConceptos, lastSavedAt: ahora, version:2, productosDirty };
+    // Filtrar fotos base64 antes de enviar a Sheets (demasiado grandes — solo Drive URLs se sincronizan)
+    const sinBase64 = prods => prods.map(p => {
+      const fotos = (p.fotos||[]).filter(f => f && !f.startsWith('data:'));
+      return fotos.length === p.fotos?.length ? p : {...p, fotos, fotoPrincipal: 0};
+    });
+    const datos = { ventas, productos: sinBase64(productosParaGuardar), presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, proveedores, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, caracteristicas, usuarios, gastosConceptos, lastSavedAt: ahora, version:2, productosDirty };
     localStorage.setItem('rh_lastCloudSave', String(ahora));
     const resp = await fetch(SCRIPT_URL, {
       method: 'POST',
