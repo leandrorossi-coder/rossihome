@@ -97,25 +97,37 @@ def cargar(page, url):
 def get_imgs(page):
     imgs = []
     try:
-        svg_src = page.evaluate("""() => {
+        src = page.evaluate("""() => {
             const header = document.querySelector('header, nav, .header, #header');
             const hBottom = header ? header.getBoundingClientRect().bottom + window.scrollY : 150;
             const footer = document.querySelector('footer, .footer, #footer');
             const fTop = footer ? footer.getBoundingClientRect().top + window.scrollY : 999999;
-            const allImgs = Array.from(document.querySelectorAll('img, object[data]'));
+            const allImgs = Array.from(document.querySelectorAll('img'));
+            // Primero buscar JPG/PNG (fondo blanco)
             for (const el of allImgs) {
                 const rect = el.getBoundingClientRect();
                 const top = rect.top + window.scrollY;
                 if (top <= hBottom || top >= fTop) continue;
-                const src = el.getAttribute('data-src') || el.getAttribute('data') ||
-                            el.currentSrc || el.src || '';
-                if (src && src.toLowerCase().includes('.svg') && !src.startsWith('data:'))
-                    return src;
+                const s = el.getAttribute('data-src') || el.currentSrc || el.src || '';
+                const sl = s.toLowerCase();
+                if (s && !s.startsWith('data:') && (sl.includes('.jpg') || sl.includes('.jpeg') || sl.includes('.png') || sl.includes('.webp'))) {
+                    const w = el.naturalWidth || el.width || 0;
+                    const h = el.naturalHeight || el.height || 0;
+                    if (w * h > 10000) return s;
+                }
+            }
+            // Fallback: SVG si no hay JPG/PNG
+            for (const el of allImgs) {
+                const rect = el.getBoundingClientRect();
+                const top = rect.top + window.scrollY;
+                if (top <= hBottom || top >= fTop) continue;
+                const s = el.getAttribute('data-src') || el.currentSrc || el.src || '';
+                if (s && !s.startsWith('data:') && s.toLowerCase().includes('.svg')) return s;
             }
             return null;
         }""")
-        if svg_src and es_valida(svg_src):
-            imgs.append(svg_src)
+        if src and es_valida(src):
+            imgs.append(src)
     except: pass
     return imgs[:1]
 
