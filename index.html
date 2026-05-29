@@ -9096,8 +9096,20 @@ async function cargarFotosMasivasProv(provId){
     toast('Procesando fotos...');
     const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
     let actualizados = 0;
-    const leerBase64 = file => new Promise(r=>{
-      const fr=new FileReader(); fr.onload=e=>r(e.target.result); fr.readAsDataURL(file);
+    const comprimirFoto = (file, maxPx=900) => new Promise(r=>{
+      const fr=new FileReader();
+      fr.onload=e=>{
+        const img=new Image();
+        img.onload=()=>{
+          let w=img.width,h=img.height;
+          if(w>maxPx||h>maxPx){if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}else{w=Math.round(w*maxPx/h);h=maxPx;}}
+          const c=document.createElement('canvas'); c.width=w; c.height=h;
+          c.getContext('2d').drawImage(img,0,0,w,h);
+          r(c.toDataURL('image/jpeg',0.82));
+        };
+        img.src=e.target.result;
+      };
+      fr.readAsDataURL(file);
     });
     const subirADrive = async (b64, filename) => {
       try {
@@ -9107,23 +9119,30 @@ async function cargarFotosMasivasProv(provId){
         return json.ok ? json.url : null;
       } catch(e) { return null; }
     };
+    // Busca código exacto como palabra completa (no como substring de otro código)
+    const codigoExacto = (nombre, codigo) => {
+      const n = nombre.toUpperCase();
+      const idx = n.indexOf(codigo);
+      if (idx < 0) return false;
+      const after = n[idx + codigo.length];
+      return !after || !/[A-Z0-9]/.test(after);
+    };
     for(const file of files){
-      const b64 = await leerBase64(file);
+      const b64 = await comprimirFoto(file);
       const fname = file.name.toUpperCase();
       let prod = null;
 
       // 1a. Coincidencia por SKU si el producto tiene campo sku
       prod = provProds.find(p => p.sku && fname.includes(p.sku.toUpperCase()));
 
-      // 1b. Extraer código del nombre de archivo y buscarlo en el nombre del producto
+      // 1b. Extraer código del nombre de archivo y buscarlo como palabra completa en el nombre
       // Ej: RHEEM_TEC085RH_1.PNG → busca "TEC085RH" en nombre del producto
       if (!prod) {
         const partes = fname.replace(/\.\w+$/, '').split('_');
-        // El código está entre la marca (primer segmento) y el número (último)
         for (let i = 1; i < partes.length - 1; i++) {
           const codigo = partes[i];
           if (codigo.length >= 4) {
-            const encontrado = provProds.find(p => (p.nombre||'').toUpperCase().includes(codigo));
+            const encontrado = provProds.find(p => codigoExacto(p.nombre||'', codigo));
             if (encontrado) { prod = encontrado; break; }
           }
         }
