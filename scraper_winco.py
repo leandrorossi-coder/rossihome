@@ -55,16 +55,29 @@ def cargar(page, url, espera=2.0):
 # ── Descubrir links de productos ─────────────────────────────────────────────
 
 def es_link_producto(href):
+    """URL de producto: /products/?slug=xxx  o  /products/categoria/slug/"""
     if not href or 'winco.com.ar' not in href: return False
-    path = href.replace('https://winco.com.ar','').rstrip('/')
+    # Formato query param: ?slug=xxx
+    if re.search(r'/products/\?slug=', href): return True
+    # Formato path: /products/categoria/slug (3+ segmentos)
+    path = href.split('?')[0].replace('https://winco.com.ar','').rstrip('/')
     partes = [p for p in path.split('/') if p]
     return len(partes) >= 3 and partes[0] == 'products'
 
 def es_link_categoria(href):
+    """URL de categoría: /products/?category=xxx  o  /products/categoria/"""
     if not href or 'winco.com.ar' not in href: return False
-    path = href.replace('https://winco.com.ar','').rstrip('/')
+    # Formato query param: ?category=xxx
+    if re.search(r'/products/\?category=', href): return True
+    # Formato path: /products/categoria (exactamente 2 segmentos)
+    path = href.split('?')[0].replace('https://winco.com.ar','').rstrip('/')
     partes = [p for p in path.split('/') if p]
     return len(partes) == 2 and partes[0] == 'products'
+
+def get_cat_name(cat_url):
+    m = re.search(r'[?&]category=([^&]+)', cat_url)
+    if m: return m.group(1)
+    return cat_url.rstrip('/').split('/')[-1]
 
 def get_todos_product_links(page):
     print("Descubriendo productos...")
@@ -74,13 +87,13 @@ def get_todos_product_links(page):
     cargar(page, PRODUCTS_URL)
     hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
     for h in hrefs:
-        if es_link_producto(h):    links_prod.add(h.rstrip('/'))
-        elif es_link_categoria(h): links_cat.add(h.rstrip('/'))
+        if es_link_producto(h):    links_prod.add(h)
+        elif es_link_categoria(h): links_cat.add(h)
 
     print(f"  {len(links_cat)} categorías · {len(links_prod)} productos directos")
 
     for cat_url in sorted(links_cat):
-        cat_name = cat_url.rstrip('/').split('/')[-1]
+        cat_name = get_cat_name(cat_url)
         pag_url  = cat_url
         pag      = 1
         while pag_url:
@@ -88,7 +101,7 @@ def get_todos_product_links(page):
             hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
             antes = len(links_prod)
             for h in hrefs:
-                if es_link_producto(h): links_prod.add(h.rstrip('/'))
+                if es_link_producto(h): links_prod.add(h)
             print(f"  [{cat_name} p{pag}] +{len(links_prod)-antes} (total {len(links_prod)})")
 
             next_href = None
@@ -174,7 +187,7 @@ def extraer_imagenes(page):
             // Links de galería → full-size directamente
             document.querySelectorAll('.woocommerce-product-gallery a, [class*="gallery"] a').forEach(a => {
                 const href = a.getAttribute('href') || '';
-                if(href && /\.(jpe?g|png|webp)(\?|$)/i.test(href)) imgs.push(href);
+                if(href && /[.](jpe?g|png|webp)([?]|$)/i.test(href)) imgs.push(href);
             });
             if(!imgs.length) {
                 document.querySelectorAll('.product img, article img, main img').forEach(img => {
@@ -235,7 +248,11 @@ def extraer_manuales(page):
     return pdfs
 
 def extraer_categoria(url):
-    partes = url.replace('https://winco.com.ar','').rstrip('/').split('/')
+    # Formato ?category=xxx
+    m = re.search(r'[?&]category=([^&]+)', url)
+    if m: return m.group(1).replace('-',' ').title()
+    # Formato path /products/categoria/slug
+    partes = url.split('?')[0].replace('https://winco.com.ar','').rstrip('/').split('/')
     partes = [p for p in partes if p]
     return partes[1].replace('-',' ').title() if len(partes) >= 3 else ''
 
