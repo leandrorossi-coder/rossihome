@@ -91,51 +91,54 @@ def get_todos_product_links(page):
     links_prod = set()
     links_cat  = set()
 
-    # El sitio carga todos los productos en /products/ con scroll infinito
-    # Estrategia 1: scroll progresivo en la página principal
-    print("  Cargando /products/ con scroll infinito...")
-    cargar(page, PRODUCTS_URL, espera=4.0)
+    def scrape_pagina(url, etiqueta):
+        """Carga una URL, scrollea hasta el fondo esperando AJAX, y recolecta links."""
+        cargar(page, url, espera=4.0)
+        # Esperar que aparezca al menos una tarjeta de producto
+        try:
+            page.wait_for_selector('a[href*="?slug="]', timeout=8000)
+        except: pass
 
-    ronda = 0
-    sin_cambio = 0
-    while sin_cambio < 3:
-        ronda += 1
-        altura_antes = page.evaluate("document.body.scrollHeight")
-        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        time.sleep(2.0)
-        altura_despues = page.evaluate("document.body.scrollHeight")
+        prods_prev = len(links_prod)
+        sin_cambio = 0
+        ronda = 0
+        while sin_cambio < 3 and ronda < 50:
+            ronda += 1
+            n_antes = page.evaluate("() => document.querySelectorAll('a[href*=\"?slug=\"]').length")
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            try:
+                page.wait_for_function(
+                    f"() => document.querySelectorAll('a[href*=\"?slug=\"]').length > {n_antes}",
+                    timeout=4000
+                )
+            except: pass
+            time.sleep(0.8)
+            # Botón "Ver más" / "Cargar más"
+            for texto in ['Ver más', 'Cargar más', 'Mostrar más', 'Ver todos']:
+                try:
+                    btn = page.get_by_text(texto, exact=False).first
+                    if btn and btn.is_visible():
+                        btn.click(); time.sleep(2.0); break
+                except: pass
+            hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
+            for h in hrefs:
+                if es_link_producto(h): links_prod.add(h)
+            nuevos = len(links_prod) - prods_prev
+            if nuevos == 0: sin_cambio += 1
+            else: sin_cambio = 0; prods_prev = len(links_prod)
+        print(f"  [{etiqueta}] {len(links_prod) - (prods_prev - (len(links_prod)-prods_prev))} productos")
 
-        hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
-        antes = len(links_prod)
-        for h in hrefs:
-            if es_link_producto(h): links_prod.add(h)
+    # Página principal
+    scrape_pagina(PRODUCTS_URL, 'Todas')
 
-        nuevos = len(links_prod) - antes
-        print(f"  [scroll {ronda}] +{nuevos} productos (total {len(links_prod)}) altura:{altura_despues}px")
-
-        if altura_despues == altura_antes and nuevos == 0:
-            sin_cambio += 1
-        else:
-            sin_cambio = 0
-
-        if ronda > 60: break  # seguridad
-
-    # Estrategia 2: intentar paginación clásica /products/page/N/
-    print("  Intentando paginación clásica...")
-    for pag in range(2, 30):
-        pag_url = f"{PRODUCTS_URL}page/{pag}/"
-        cargar(page, pag_url, espera=3.0)
-        # Si redirige o da 404, el título no tendrá productos
-        titulo = page.title()
-        if 'page' not in pag_url.lower() or '404' in titulo or 'not found' in titulo.lower():
-            break
-        hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
-        antes = len(links_prod)
-        for h in hrefs:
-            if es_link_producto(h): links_prod.add(h)
-        nuevos = len(links_prod) - antes
-        print(f"  [pag {pag}] +{nuevos} (total {len(links_prod)})")
-        if nuevos == 0: break
+    # Cada categoría (por si tienen productos extra no visibles en la principal)
+    for cat_slug, cat_nombre in CATEGORIAS:
+        for url in [f"{BASE}/products/{cat_slug}/",
+                    f"{PRODUCTS_URL}?category={cat_slug}"]:
+            antes = len(links_prod)
+            scrape_pagina(url, cat_nombre)
+            if len(links_prod) > antes:
+                break  # ya encontró productos con esta URL
 
     print(f"\nTotal productos encontrados: {len(links_prod)}\n")
     return sorted(links_prod)
