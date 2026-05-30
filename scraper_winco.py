@@ -55,29 +55,25 @@ def cargar(page, url, espera=2.0):
 # ── Descubrir links de productos ─────────────────────────────────────────────
 
 def es_link_producto(href):
-    """URL de producto: /products/?slug=xxx  o  /products/categoria/slug/"""
+    """URL de producto: /products/categoria/?slug=xxx"""
     if not href or 'winco.com.ar' not in href: return False
-    # Formato query param: ?slug=xxx
-    if re.search(r'/products/\?slug=', href): return True
-    # Formato path: /products/categoria/slug (3+ segmentos)
-    path = href.split('?')[0].replace('https://winco.com.ar','').rstrip('/')
-    partes = [p for p in path.split('/') if p]
-    return len(partes) >= 3 and partes[0] == 'products'
+    # Tiene ?slug= → es un producto
+    return '?slug=' in href and '/products/' in href
 
 def es_link_categoria(href):
-    """URL de categoría: /products/?category=xxx  o  /products/categoria/"""
+    """URL de categoría: /products/categoria/ (sin ?slug=)"""
     if not href or 'winco.com.ar' not in href: return False
-    # Formato query param: ?category=xxx
-    if re.search(r'/products/\?category=', href): return True
-    # Formato path: /products/categoria (exactamente 2 segmentos)
+    if '?slug=' in href: return False          # producto, no categoría
+    if '?category=' in href: return False      # filtro, no categoría directa
     path = href.split('?')[0].replace('https://winco.com.ar','').rstrip('/')
     partes = [p for p in path.split('/') if p]
+    # Exactamente /products/categoria
     return len(partes) == 2 and partes[0] == 'products'
 
 def get_cat_name(cat_url):
-    m = re.search(r'[?&]category=([^&]+)', cat_url)
-    if m: return m.group(1)
-    return cat_url.rstrip('/').split('/')[-1]
+    path = cat_url.split('?')[0].replace('https://winco.com.ar','').rstrip('/')
+    partes = [p for p in path.split('/') if p]
+    return partes[-1] if partes else cat_url
 
 def get_todos_product_links(page):
     print("Descubriendo productos...")
@@ -97,7 +93,10 @@ def get_todos_product_links(page):
         pag_url  = cat_url
         pag      = 1
         while pag_url:
-            cargar(page, pag_url, espera=1.5)
+            cargar(page, pag_url, espera=3.0)
+            # Scroll para activar lazy-loading
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            time.sleep(1.5)
             hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
             antes = len(links_prod)
             for h in hrefs:
@@ -248,13 +247,12 @@ def extraer_manuales(page):
     return pdfs
 
 def extraer_categoria(url):
-    # Formato ?category=xxx
-    m = re.search(r'[?&]category=([^&]+)', url)
-    if m: return m.group(1).replace('-',' ').title()
-    # Formato path /products/categoria/slug
-    partes = url.split('?')[0].replace('https://winco.com.ar','').rstrip('/').split('/')
-    partes = [p for p in partes if p]
-    return partes[1].replace('-',' ').title() if len(partes) >= 3 else ''
+    # /products/categoria/?slug=xxx → 'Categoria'
+    path = url.split('?')[0].replace('https://winco.com.ar','').rstrip('/')
+    partes = [p for p in path.split('/') if p]
+    if len(partes) >= 2 and partes[0] == 'products':
+        return partes[1].replace('-',' ').title()
+    return ''
 
 # ── Descarga de video (yt-dlp) ───────────────────────────────────────────────
 
