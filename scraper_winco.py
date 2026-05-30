@@ -66,10 +66,9 @@ def cargar(page, url, espera=2.0):
 # ── Descubrir links de productos ─────────────────────────────────────────────
 
 def es_link_producto(href):
-    """URL de producto: /products/categoria/?slug=xxx"""
+    """URL de producto: cualquier link de winco con ?slug="""
     if not href or 'winco.com.ar' not in href: return False
-    # Tiene ?slug= → es un producto
-    return '?slug=' in href and '/products/' in href
+    return '?slug=' in href
 
 def es_link_categoria(href):
     """URL de categoría: /products/categoria/ (sin ?slug=)"""
@@ -91,54 +90,35 @@ def get_todos_product_links(page):
     links_prod = set()
     links_cat  = set()
 
-    def scrape_pagina(url, etiqueta):
-        """Carga una URL, scrollea hasta el fondo esperando AJAX, y recolecta links."""
-        cargar(page, url, espera=4.0)
-        # Esperar que aparezca al menos una tarjeta de producto
-        try:
-            page.wait_for_selector('a[href*="?slug="]', timeout=8000)
+    def cargar_y_scrollear(url, etiqueta):
+        cargar(page, url, espera=5.0)
+        try: page.wait_for_selector('a[href*="?slug="]', timeout=10000)
         except: pass
 
-        prods_prev = len(links_prod)
+        antes = len(links_prod)
         sin_cambio = 0
-        ronda = 0
-        while sin_cambio < 3 and ronda < 50:
-            ronda += 1
-            n_antes = page.evaluate("() => document.querySelectorAll('a[href*=\"?slug=\"]').length")
+        for ronda in range(60):
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            try:
-                page.wait_for_function(
-                    f"() => document.querySelectorAll('a[href*=\"?slug=\"]').length > {n_antes}",
-                    timeout=4000
-                )
-            except: pass
-            time.sleep(0.8)
-            # Botón "Ver más" / "Cargar más"
-            for texto in ['Ver más', 'Cargar más', 'Mostrar más', 'Ver todos']:
-                try:
-                    btn = page.get_by_text(texto, exact=False).first
-                    if btn and btn.is_visible():
-                        btn.click(); time.sleep(2.0); break
-                except: pass
+            time.sleep(2.5)
             hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
             for h in hrefs:
                 if es_link_producto(h): links_prod.add(h)
-            nuevos = len(links_prod) - prods_prev
-            if nuevos == 0: sin_cambio += 1
-            else: sin_cambio = 0; prods_prev = len(links_prod)
-        print(f"  [{etiqueta}] {len(links_prod) - (prods_prev - (len(links_prod)-prods_prev))} productos")
+            nuevos = len(links_prod) - antes
+            print(f"  [{etiqueta} scroll {ronda+1}] total: {len(links_prod)}")
+            if len(links_prod) == antes: sin_cambio += 1
+            else: sin_cambio = 0; antes = len(links_prod)
+            if sin_cambio >= 3: break
 
-    # Página principal
-    scrape_pagina(PRODUCTS_URL, 'Todas')
+    # Página principal con scroll
+    cargar_y_scrollear(PRODUCTS_URL, 'Todas')
 
-    # Cada categoría (por si tienen productos extra no visibles en la principal)
+    # Cada categoría como respaldo
     for cat_slug, cat_nombre in CATEGORIAS:
-        for url in [f"{BASE}/products/{cat_slug}/",
-                    f"{PRODUCTS_URL}?category={cat_slug}"]:
-            antes = len(links_prod)
-            scrape_pagina(url, cat_nombre)
-            if len(links_prod) > antes:
-                break  # ya encontró productos con esta URL
+        antes = len(links_prod)
+        cargar_y_scrollear(f"{BASE}/products/{cat_slug}/", cat_nombre)
+        if len(links_prod) == antes:
+            # Intentar con query param
+            cargar_y_scrollear(f"{PRODUCTS_URL}?category={cat_slug}", cat_nombre)
 
     print(f"\nTotal productos encontrados: {len(links_prod)}\n")
     return sorted(links_prod)
@@ -343,14 +323,14 @@ def main():
     con_error  = []
 
     with sync_playwright() as pw:
+        # Usar Chrome real instalado (bypasea Cloudflare)
         browser = pw.chromium.launch(
-            headless=True,
-            args=['--no-sandbox','--disable-dev-shm-usage',
-                  '--disable-blink-features=AutomationControlled']
+            channel='chrome',
+            headless=False,
+            args=['--disable-blink-features=AutomationControlled']
         )
         ctx = browser.new_context(
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            viewport={'width':1280,'height':800},
+            viewport={'width':1280,'height':900},
             locale='es-AR',
         )
         page = ctx.new_page()
