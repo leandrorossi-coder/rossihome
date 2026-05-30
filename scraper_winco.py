@@ -22,6 +22,17 @@ import requests
 BASE = 'https://winco.com.ar'
 PRODUCTS_URL = BASE + '/products/'
 
+# Categorías confirmadas del sitio (slug → nombre display)
+CATEGORIAS = [
+    ('audio',            'Audio'),
+    ('climatizacion',    'Climatización'),
+    ('cocina',           'Cocina'),
+    ('cuidado-personal', 'Cuidado Personal'),
+    ('desayuno',         'Desayuno'),
+    ('herramientas',     'Herramientas'),
+    ('hogar',            'Hogar'),
+]
+
 EXCLUIR_IMG = [
     'logo','sprite','flag','certif','iso','sello','award',
     'banner','hero','slide','background','icon','favicon',
@@ -80,31 +91,32 @@ def get_todos_product_links(page):
     links_prod = set()
     links_cat  = set()
 
-    cargar(page, PRODUCTS_URL)
-    hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
-    for h in hrefs:
-        if es_link_producto(h):    links_prod.add(h)
-        elif es_link_categoria(h): links_cat.add(h)
-
-    print(f"  {len(links_cat)} categorías · {len(links_prod)} productos directos")
-
-    for cat_url in sorted(links_cat):
-        cat_name = get_cat_name(cat_url)
+    # Usar categorías hardcodeadas (el sitio usa JS navigation, no hrefs estándar)
+    for cat_slug, cat_nombre in CATEGORIAS:
+        cat_url  = f"{BASE}/products/{cat_slug}/"
         pag_url  = cat_url
         pag      = 1
         while pag_url:
             cargar(page, pag_url, espera=3.0)
-            # Scroll para activar lazy-loading
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            time.sleep(1.5)
+
+            # Scroll progresivo para lazy-loading
+            altura_prev = 0
+            for _ in range(10):
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                time.sleep(1.0)
+                altura = page.evaluate("document.body.scrollHeight")
+                if altura == altura_prev: break
+                altura_prev = altura
+
             hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
             antes = len(links_prod)
             for h in hrefs:
                 if es_link_producto(h): links_prod.add(h)
-            print(f"  [{cat_name} p{pag}] +{len(links_prod)-antes} (total {len(links_prod)})")
+            print(f"  [{cat_nombre} p{pag}] +{len(links_prod)-antes} (total {len(links_prod)})")
 
             next_href = None
-            for sel in ['a.next.page-numbers','a[rel="next"]','.next a','a:text("›")','a:text("siguiente")']:
+            for sel in ['a.next.page-numbers','a[rel="next"]','.next a',
+                        'a:text("›")','a:text("Siguiente")','a:text("siguiente")']:
                 try:
                     el = page.query_selector(sel)
                     if el:
@@ -127,21 +139,31 @@ def extraer_nombre(page):
         except: pass
     return ''
 
-def extraer_codigo(page):
+def extraer_codigo(page, url=''):
+    """Extrae el código W-xxxx del producto."""
+    # 1. Desde la URL: slug termina en -wNNNN (ej: afeitadora-afeita-barba-w831)
+    slug = url.rstrip('/').split('/')[-1].split('?slug=')[-1]
+    m = re.search(r'-(w\d+[a-z]*)$', slug, re.IGNORECASE)
+    if m: return m.group(1).upper()
+
+    # 2. Campo SKU estándar de WooCommerce
     for sel in ['.sku','[class*="sku"]','span.sku','[itemprop="sku"]']:
         try:
             el = page.query_selector(sel)
             if el:
                 t = el.inner_text().strip()
-                if t and t.lower() not in ('n/a','-',''): return t
+                # Filtrar textos inválidos (nav links, etc.)
+                if t and len(t) < 30 and re.match(r'^W\d+', t, re.IGNORECASE):
+                    return t.upper()
         except: pass
+
+    # 3. Buscar W-code en el nombre del producto
     try:
-        html = page.content()
-        m = re.search(r'(?:código|codigo|sku|modelo|ref\.?|referencia)[:\s]+([A-Z0-9\-_\.]+)', html, re.IGNORECASE)
-        if m:
-            cod = m.group(1).strip()
-            if 2 < len(cod) < 40: return cod
+        nombre = extraer_nombre(page)
+        m = re.search(r'\b(W\d+[A-Z0-9]*)\b', nombre, re.IGNORECASE)
+        if m: return m.group(1).upper()
     except: pass
+
     return ''
 
 def extraer_precio(page):
@@ -328,14 +350,18 @@ def main():
         print(f"Scrapeando {len(links)} productos...\n")
 
         for i, url in enumerate(links, 1):
-            slug = re.sub(r'[^a-zA-Z0-9_-]', '_', url.rstrip('/').split('/')[-1])[:35]
+            # Extraer slug limpio de la URL (?slug=xxx o último segmento del path)
+            raw_slug = url.rstrip('/').split('/')[-1]
+            if raw_slug.startswith('?slug='): raw_slug = raw_slug[6:]
+            raw_slug = raw_slug.split('?slug=')[-1]
+            slug = re.sub(r'[^a-zA-Z0-9_-]', '_', raw_slug)[:35]
             print(f"[{i}/{len(links)}] {slug}")
 
             try:
                 cargar(page, url)
 
                 nombre      = extraer_nombre(page)
-                codigo      = extraer_codigo(page)
+                codigo      = extraer_codigo(page, url)
                 precio      = extraer_precio(page)
                 descripcion = extraer_descripcion(page)
                 img_urls    = extraer_imagenes(page)
