@@ -91,39 +91,51 @@ def get_todos_product_links(page):
     links_prod = set()
     links_cat  = set()
 
-    # Usar categorías hardcodeadas (el sitio usa JS navigation, no hrefs estándar)
-    for cat_slug, cat_nombre in CATEGORIAS:
-        cat_url  = f"{BASE}/products/{cat_slug}/"
-        pag_url  = cat_url
-        pag      = 1
-        while pag_url:
-            cargar(page, pag_url, espera=3.0)
+    # El sitio carga todos los productos en /products/ con scroll infinito
+    # Estrategia 1: scroll progresivo en la página principal
+    print("  Cargando /products/ con scroll infinito...")
+    cargar(page, PRODUCTS_URL, espera=4.0)
 
-            # Scroll progresivo para lazy-loading
-            altura_prev = 0
-            for _ in range(10):
-                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                time.sleep(1.0)
-                altura = page.evaluate("document.body.scrollHeight")
-                if altura == altura_prev: break
-                altura_prev = altura
+    ronda = 0
+    sin_cambio = 0
+    while sin_cambio < 3:
+        ronda += 1
+        altura_antes = page.evaluate("document.body.scrollHeight")
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        time.sleep(2.0)
+        altura_despues = page.evaluate("document.body.scrollHeight")
 
-            hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
-            antes = len(links_prod)
-            for h in hrefs:
-                if es_link_producto(h): links_prod.add(h)
-            print(f"  [{cat_nombre} p{pag}] +{len(links_prod)-antes} (total {len(links_prod)})")
+        hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
+        antes = len(links_prod)
+        for h in hrefs:
+            if es_link_producto(h): links_prod.add(h)
 
-            next_href = None
-            for sel in ['a.next.page-numbers','a[rel="next"]','.next a',
-                        'a:text("›")','a:text("Siguiente")','a:text("siguiente")']:
-                try:
-                    el = page.query_selector(sel)
-                    if el:
-                        next_href = el.get_attribute('href'); break
-                except: pass
-            pag_url = next_href if next_href and next_href != pag_url else None
-            pag += 1
+        nuevos = len(links_prod) - antes
+        print(f"  [scroll {ronda}] +{nuevos} productos (total {len(links_prod)}) altura:{altura_despues}px")
+
+        if altura_despues == altura_antes and nuevos == 0:
+            sin_cambio += 1
+        else:
+            sin_cambio = 0
+
+        if ronda > 60: break  # seguridad
+
+    # Estrategia 2: intentar paginación clásica /products/page/N/
+    print("  Intentando paginación clásica...")
+    for pag in range(2, 30):
+        pag_url = f"{PRODUCTS_URL}page/{pag}/"
+        cargar(page, pag_url, espera=3.0)
+        # Si redirige o da 404, el título no tendrá productos
+        titulo = page.title()
+        if 'page' not in pag_url.lower() or '404' in titulo or 'not found' in titulo.lower():
+            break
+        hrefs = page.eval_on_selector_all('a[href]', 'els => els.map(e => e.href)')
+        antes = len(links_prod)
+        for h in hrefs:
+            if es_link_producto(h): links_prod.add(h)
+        nuevos = len(links_prod) - antes
+        print(f"  [pag {pag}] +{nuevos} (total {len(links_prod)})")
+        if nuevos == 0: break
 
     print(f"\nTotal productos encontrados: {len(links_prod)}\n")
     return sorted(links_prod)
