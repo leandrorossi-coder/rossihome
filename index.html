@@ -9213,6 +9213,16 @@ async function cargarFotosMasivasProv(provId){
         }
       }
 
+      // 1c. Winco: extraer W-code del slug en el nombre de archivo
+      // Ej: WINCO_afeitadora-afeita-barba-w831_1.jpg → W831
+      if (!prod) {
+        const wMatch = fname.match(/-(W\d+[A-Z0-9]*)[_\-.]/i);
+        if (wMatch) {
+          const wCode = wMatch[1].toUpperCase();
+          prod = provProds.find(p => (p.codigoOriginal||'').toUpperCase() === wCode);
+        }
+      }
+
       // 3. Fallback: palabras comunes entre nombre y archivo
       if (!prod) {
         const fnameClean = fname.replace(/[-_]/g,' ');
