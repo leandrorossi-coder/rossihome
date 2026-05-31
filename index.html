@@ -9326,6 +9326,7 @@ function verProductosProv(provId){
       <button class="btn btn-danger btn-sm" onclick="eliminarTodosProductosProv(${provId})">🗑 Eliminar todos</button>
       <button class="btn btn-gold btn-sm" onclick="recalcularPreciosProv(${provId})">🔄 Recalcular precios</button>
       <button class="btn btn-blue btn-sm" onclick="cargarFotosMasivasProv(${provId})">🖼 Cargar fotos</button>
+      ${prov.nombre.toUpperCase().includes('WINCO')?`<button class="btn btn-blue btn-sm" onclick="cargarCarpetaFotosWinco(${provId})">📁 Cargar carpeta Winco</button>`:''}
       <button class="btn btn-sm" style="background:#eee;" onclick="borrarFotosProv(${provId})">🗑 Borrar fotos</button>
     </div>`:''}
     ${prov.nombre.toUpperCase().includes('WINCO')?`<div style="margin-bottom:10px;"><button class="btn btn-green btn-sm" onclick="importarCatalogoWinco(${provId})">📋 Importar catálogo (${WINCO_CATALOG_DATA.length} productos)</button></div>`:''}
@@ -9374,6 +9375,95 @@ async function importarCatalogoWinco(provId){
   cM('ovl-lista-prov');
   renderPrecios();
   if(document.getElementById('pg-catalogo').classList.contains('on')) renderCatalogo();
+}
+
+async function cargarCarpetaFotosWinco(provId){
+  const prov = proveedores.find(p=>p.id===provId); if(!prov)return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.webkitdirectory = true;
+  input.multiple = true;
+  input.onchange = async function(){
+    const allFiles = [...input.files].filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f.name));
+    if(!allFiles.length){ toast('No se encontraron imágenes en la carpeta'); return; }
+    const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
+    let actualizados = 0, sinMatch = 0;
+    const comprimirFoto = (file, maxPx=600) => new Promise(r=>{
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        let w=img.width||maxPx, h=img.height||maxPx;
+        if(w>maxPx||h>maxPx){if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}else{w=Math.round(w*maxPx/h);h=maxPx;}}
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        const ctx=c.getContext('2d');
+        ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        URL.revokeObjectURL(url);
+        r(c.toDataURL('image/jpeg',0.85));
+      };
+      img.src = url;
+    });
+    const subirADrive = async (b64, filename) => {
+      try {
+        const res = await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({action:'uploadImage', base64:b64, filename:filename})});
+        const json = await res.json();
+        return json.ok ? json.url : null;
+      } catch(e) { return null; }
+    };
+    toast(`Procesando ${allFiles.length} imágenes...`);
+    for(const file of allFiles){
+      const fname = file.name.toUpperCase();
+      // Para archivos en subcarpetas (webkitRelativePath = "slug/WINCO_slug_1.jpg")
+      // el slug de la carpeta padre identifica el producto
+      const relPath = (file.webkitRelativePath || file.name).toUpperCase();
+      let prod = null;
+      // 1. Extraer W-code del nombre de archivo: WINCO_slug-w831_1.jpg → W831
+      const wMatch = fname.match(/-(W\d+[A-Z0-9]*)[_\-.]/i);
+      if (wMatch) {
+        const wCode = wMatch[1].toUpperCase();
+        prod = provProds.find(p => (p.codigoOriginal||'').toUpperCase() === wCode);
+      }
+      // 2. Usar el slug de la subcarpeta para buscar el W-code
+      if (!prod) {
+        const parts = relPath.split(/[/\\]/);
+        if (parts.length >= 2) {
+          const slugFolder = parts[parts.length - 2]; // nombre de la subcarpeta
+          const wMatchFolder = slugFolder.match(/-(W\d+[A-Z0-9]*)/i) || slugFolder.match(/^(W\d+[A-Z0-9]*)/i);
+          if (wMatchFolder) {
+            const wCode = wMatchFolder[1].toUpperCase();
+            prod = provProds.find(p => (p.codigoOriginal||'').toUpperCase() === wCode);
+          }
+          // 3. Buscar por palabras del slug en el nombre del producto
+          if (!prod) {
+            const slugWords = slugFolder.toLowerCase().replace(/[-_]/g,' ').split(' ').filter(w=>w.length>3);
+            prod = provProds.find(p => {
+              const n = (p.nombre||'').toLowerCase();
+              return slugWords.filter(w=>n.includes(w)).length >= 2;
+            });
+          }
+        }
+      }
+      if(prod){
+        toast(`Subiendo ${file.name}...`);
+        const b64 = await comprimirFoto(file);
+        const driveUrl = await subirADrive(b64, file.name);
+        const fotoVal = driveUrl || b64;
+        prod.fotos = prod.fotos || [];
+        if(!prod.fotos.includes(fotoVal)) prod.fotos.push(fotoVal);
+        prod.fotoPrincipal = prod.fotoPrincipal || 0;
+        actualizados++;
+      } else {
+        sinMatch++;
+      }
+    }
+    await guardarProds();
+    toast(`✅ ${actualizados} fotos asignadas. ${sinMatch} sin match.`);
+    cM('ovl-lista-prov');
+    renderPrecios();
+    if(document.getElementById('pg-catalogo').classList.contains('on')) renderCatalogo();
+  };
+  input.click();
 }
 
 async function eliminarTodosProductosProv(provId){
