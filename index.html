@@ -3704,8 +3704,7 @@ function renderPills() {
   // Admin ve todo; local solo ventas del local (sin distribuidora)
   let usadas=[...new Set(ventas.map(v=>v.vendedora))];
   if(rol===ROLES.LOCAL) usadas=usadas.filter(v=>v!=='DISTRIBUIDORA');
-  cont.innerHTML=`<button class="pill ${filtroVend==='TODAS'?'on':''}" onclick="setFV('TODAS')">Todas</button>`;
-  usadas.forEach(v=>{ cont.innerHTML+=`<button class="pill ${filtroVend===v?'on':''}" onclick="setFV('${v}')">${v}</button>`; });
+  cont.innerHTML=`<button class="pill ${filtroVend==='TODAS'?'on':''}" onclick="setFV('TODAS')">Todas</button>`+usadas.map(v=>`<button class="pill ${filtroVend===v?'on':''}" onclick="setFV('${_hesc(v)}')">${_hesc(v)}</button>`).join('');
 }
 function setFV(v){ filtroVend=v; ventasVerTodas=false; renderPills(); renderVentas(); }
 
@@ -4817,7 +4816,8 @@ async function guardarProd(){
   };
   if(editProdId){
     const idx=productos.findIndex(p=>p.id===editProdId);
-    if(idx>=0)productos[idx]={...productos[idx],...data};
+    if(idx<0){toast('! Error: producto no encontrado');return;}
+    productos[idx]={...productos[idx],...data};
     toast('OK Producto actualizado');
   } else {
     productos.unshift({id:Date.now(),...data});
@@ -8264,6 +8264,7 @@ async function cambiarEstadoVenta(id, estado) {
   const v = ventas.find(x => x.id == id);
   if (!v) return;
   v.estado = estado;
+  v.estadoEntrega = estado;
   await guardarVentas();
   toast('OK Estado actualizado');
 }
@@ -10193,6 +10194,7 @@ async function ciclarEstadoEntrega(id){
   const ord = ['pendiente','camino','entregado'];
   const cur = v.estadoEntrega||'pendiente';
   v.estadoEntrega = ord[(ord.indexOf(cur)+1)%ord.length];
+  v.estado = v.estadoEntrega;
   await guardarVentas(); renderVentas();
   logActividad('Venta #'+(v.nroVenta||v.id)+' → '+v.estadoEntrega);
 }
