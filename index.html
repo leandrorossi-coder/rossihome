@@ -1713,6 +1713,15 @@ select option{text-transform:uppercase;}
         </label>
         <div class="foto-grid" id="ap-fotos-grid"></div>
       </div>
+      <!-- Componentes (combo) -->
+      <div class="sec">Componentes del combo <span style="font-size:11px;font-weight:400;color:var(--muted);">(el precio se calcula automáticamente como la suma)</span></div>
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input type="text" id="ap-comp-buscar" placeholder="Buscar producto para agregar..." oninput="buscarComponente()" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:7px 11px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--cream);">
+        </div>
+        <div id="ap-comp-sugerencias" style="display:none;background:var(--white);border:1.5px solid var(--border);border-radius:9px;max-height:160px;overflow-y:auto;margin-bottom:6px;"></div>
+        <div id="ap-comp-lista" style="font-size:13px;"></div>
+      </div>
       <div class="fg" style="margin-top:9px;"><label>Descripción</label><textarea id="ap-desc" rows="2"></textarea></div>
       <div class="btn-row">
         <button class="btn btn-ghost" onclick="cM('ovl-prod')">Cancelar</button>
@@ -2132,6 +2141,7 @@ let editProdId  = null;
 let editFotos   = []; // fotos temporales en el modal de producto
 let editFotoPrincipal = 0;
 let editVideos  = []; // videos temporales en el modal de producto
+let editComponentes = []; // ids de productos componentes del combo
 let usuarioActual = null; // { nombre, rol }
 let catalogoView = 'grid'; // 'grid' | 'list'
 // === Nuevos estados ===
@@ -2450,7 +2460,7 @@ async function sincronizarDesdeNube(manual=false) {
 }
 
 async function guardarVentas()  { await sSet('rh_v', ventas);   programarGuardado(); }
-async function guardarProds()   { productosDirty = true; await sSet('rh_p', productos); programarGuardado(); }
+async function guardarProds()   { actualizarCombos(); productosDirty = true; await sSet('rh_p', productos); programarGuardado(); }
 async function guardarUsers()   { await sSet('rh_u', usuarios);  programarGuardado(); }
 async function guardarPresupuestos() { await sSet('rh_pres', presupuestos); programarGuardado(); }
 async function guardarCategorias(){ await sSet(SK_CATEGORIAS, categorias); programarGuardado(); }
@@ -4664,7 +4674,7 @@ function poblarSelectSubcat(selectedVal){
 }
 function abrirAddProd(){
   if(!esLocal()){toast('Sin permiso');return;}
-  editProdId=null; editFotos=[]; editFotoPrincipal=0; editVideos=[];
+  editProdId=null; editFotos=[]; editFotoPrincipal=0; editVideos=[]; editComponentes=[];
   document.getElementById('prod-titulo').textContent='Agregar Producto';
   document.getElementById('btn-prod-guardar').textContent='OK Guardar';
   ['ap-nom','ap-prov','ap-precio','ap-pmayor','ap-costo','ap-desc','ap-etiquetas'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
@@ -4673,14 +4683,14 @@ function abrirAddProd(){
   poblarSelectCat('');
   poblarSelectSubcat('');
   const ap_marc=document.getElementById('ap-marca'); if(ap_marc)ap_marc.value='';
-  renderFotosGrid(); renderVideosLista();
+  renderFotosGrid(); renderVideosLista(); renderComponentesLista();
   document.getElementById('ovl-prod').classList.add('on');
 }
 function editarProd(id){
   if(!esLocal()){toast('Sin permiso');return;}
   const p=productos.find(x=>x.id===id); if(!p)return;
   editProdId=id;
-  editFotos=[...(p.fotos||[])]; editFotoPrincipal=p.fotoPrincipal||0; editVideos=[...(p.videos||[])];
+  editFotos=[...(p.fotos||[])]; editFotoPrincipal=p.fotoPrincipal||0; editVideos=[...(p.videos||[])]; editComponentes=[...(p.componentes||[])];
   document.getElementById('prod-titulo').textContent='Editar Producto';
   document.getElementById('btn-prod-guardar').textContent='OK Guardar Cambios';
   document.getElementById('ap-nom').value=p.nombre||'';
@@ -4699,7 +4709,7 @@ function editarProd(id){
   const ap_url=document.getElementById('ap-url-ficha'); if(ap_url)ap_url.value=p.urlFicha||'';
   const ap_man=document.getElementById('ap-manuales'); if(ap_man)ap_man.value=(p.manuales||[]).join('\n');
   onProvChange_prod(); // refresh brand variant selector
-  renderFotosGrid(); renderVideosLista();
+  renderFotosGrid(); renderVideosLista(); renderComponentesLista();
   document.getElementById('ovl-prod').classList.add('on');
 }
 async function guardarProd(){
@@ -4729,6 +4739,7 @@ async function guardarProd(){
     urlFicha: document.getElementById('ap-url-ficha')?.value.trim()||'',
     manuales: (document.getElementById('ap-manuales')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean),
     videos: [...editVideos],
+    componentes: editComponentes.length ? [...editComponentes] : undefined,
   };
   if(editProdId){
     const idx=productos.findIndex(p=>p.id===editProdId);
@@ -4809,7 +4820,7 @@ async function eliminarProd(id){
 function duplicarProd(id) {
   if(!esLocal()){toast('Sin permiso');return;}
   const p = productos.find(x=>x.id===id); if(!p) return;
-  editProdId = null; editFotos = [...(p.fotos||[])]; editFotoPrincipal = p.fotoPrincipal||0; editVideos = [...(p.videos||[])];
+  editProdId = null; editFotos = [...(p.fotos||[])]; editFotoPrincipal = p.fotoPrincipal||0; editVideos = [...(p.videos||[])]; editComponentes = [...(p.componentes||[])];
   document.getElementById('prod-titulo').textContent = 'Duplicar Producto';
   document.getElementById('btn-prod-guardar').textContent = 'OK Guardar';
   const set = (eid, val) => { const el=document.getElementById(eid); if(el) el.value=val||''; };
@@ -4828,7 +4839,7 @@ function duplicarProd(id) {
   const ap_stock=document.getElementById('ap-stock'); if(ap_stock) ap_stock.value=p.stock||'disponible';
   const ap_dest=document.getElementById('ap-destacado'); if(ap_dest) ap_dest.checked=!!p.destacado;
   const ap_marc=document.getElementById('ap-marca'); if(ap_marc) ap_marc.value=p.marca||'';
-  renderFotosGrid(); renderVideosLista();
+  renderFotosGrid(); renderVideosLista(); renderComponentesLista();
   document.getElementById('ovl-prod').classList.add('on');
 }
 function compartirProducto(id) {
@@ -4943,6 +4954,50 @@ function renderVideosLista(){
       : `<span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📁 ${nombre}</span>`;
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">${preview}${label}<button onclick="borrarVideo(${i})" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:16px;padding:0 4px;">×</button></div>`;
   }).join('');
+}
+
+function buscarComponente(){
+  const q = (document.getElementById('ap-comp-buscar')?.value||'').toLowerCase().trim();
+  const sug = document.getElementById('ap-comp-sugerencias');
+  if(!q||q.length<2){ sug.style.display='none'; return; }
+  const excluir = new Set(editComponentes);
+  if(editProdId) excluir.add(editProdId);
+  const matches = productos.filter(p=>!excluir.has(p.id)&&(p.nombre||'').toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){ sug.style.display='none'; return; }
+  sug.style.display='block';
+  sug.innerHTML = matches.map(p=>`<div onclick="agregarComponente(${p.id})" style="padding:7px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''">${p.nombre} <span style="color:var(--muted);font-size:11px;">$${fmt(p.precio)}</span></div>`).join('');
+}
+function agregarComponente(id){
+  if(!editComponentes.includes(id)) editComponentes.push(id);
+  const inp = document.getElementById('ap-comp-buscar'); if(inp) inp.value='';
+  document.getElementById('ap-comp-sugerencias').style.display='none';
+  renderComponentesLista();
+}
+function quitarComponente(id){
+  editComponentes = editComponentes.filter(x=>x!==id);
+  renderComponentesLista();
+}
+function renderComponentesLista(){
+  const lista = document.getElementById('ap-comp-lista'); if(!lista) return;
+  if(!editComponentes.length){ lista.innerHTML='<span style="font-size:12px;color:var(--muted);">Sin componentes — es un producto individual.</span>'; return; }
+  const total = editComponentes.reduce((s,id)=>{ const p=productos.find(x=>x.id===id); return s+(p?p.precio:0); },0);
+  lista.innerHTML = editComponentes.map(id=>{
+    const p = productos.find(x=>x.id===id);
+    if(!p) return '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="flex:1;">${p.nombre}</span><span style="color:var(--muted);">$${fmt(p.precio)}</span><button onclick="quitarComponente(${id})" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:16px;padding:0 4px;">×</button></div>`;
+  }).join('') + `<div style="text-align:right;font-weight:700;font-size:14px;margin-top:6px;color:var(--navy);">Total combo: $${fmt(total)}</div>`;
+  // Auto-actualizar precio en el campo
+  const ap_precio = document.getElementById('ap-precio');
+  if(ap_precio && total>0) ap_precio.value = total;
+}
+function actualizarCombos(){
+  let cambios = 0;
+  for(const prod of productos){
+    if(!prod.componentes||!prod.componentes.length) continue;
+    const total = prod.componentes.reduce((s,id)=>{ const c=productos.find(x=>x.id===id); return s+(c?c.precio:0); },0);
+    if(total>0 && prod.precio!==total){ prod.precio=total; cambios++; }
+  }
+  return cambios;
 }
 
 // ===
