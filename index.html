@@ -4596,6 +4596,14 @@ function renderPrecios(){
   // Hide non-visible products from all views except supplier panel
   lista = lista.filter(p => p.visible !== false && p.enLista !== false);
   if(q)lista=lista.filter(p=>p.nombre.toLowerCase().includes(q)||(p.proveedor||'').toLowerCase().includes(q)||(p.codigoOriginal||'').toLowerCase().includes(q));
+  // Orden alfabético; combos de Muebles French van justo después de su producto base
+  const sortKey = p => {
+    const n = (p.nombre||'').toUpperCase();
+    const esFrench = (p.proveedor||'').toLowerCase().includes('french');
+    if (esFrench && /^COMBO\s/i.test(n)) return n.replace(/^COMBO\s+/i,'') + '';
+    return n;
+  };
+  lista = [...lista].sort((a,b) => sortKey(a).localeCompare(sortKey(b), 'es', {sensitivity:'base'}));
   document.getElementById('cnt-precios').textContent=`${lista.length} productos`;
   const cont=document.getElementById('lista-precios'),empty=document.getElementById('empty-precios');
   if(!lista.length){cont.innerHTML='';empty.style.display='block';return;}
