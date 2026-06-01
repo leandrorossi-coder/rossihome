@@ -9388,6 +9388,7 @@ async function cargarFotosMasivasProv(provId){
     toast('Procesando fotos...');
     const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===prov.nombre.toLowerCase());
     let actualizados = 0;
+    const sinProducto = [];
     const comprimirFoto = (file, maxPx=600) => new Promise(r=>{
       const url = URL.createObjectURL(file);
       const img = new Image();
@@ -9487,13 +9488,20 @@ async function cargarFotosMasivasProv(provId){
         }
       }
 
-      // 1c. Winco: extraer W-code del slug en el nombre de archivo
-      // Ej: WINCO_afeitadora-afeita-barba-w831_1.jpg → W831
+      // 1c. Winco: buscar W-code en el nombre de archivo (cualquier formato)
+      // Ej: W208USB.jpg / W208USB_1.jpg / WINCO_W208USB_1.jpg / winco-w208usb.jpg
       if (!prod) {
-        const wMatch = fname.match(/-(W\d+[A-Z0-9]*)[_\-.]/i);
+        const wMatch = fname.match(/(?:^|[-_])(W\d+[A-Z0-9]*)(?:[._-]|\.\w+$|$)/i);
         if (wMatch) {
           const wCode = wMatch[1].toUpperCase();
           prod = provProds.find(p => (p.codigoOriginal||'').toUpperCase() === wCode);
+        }
+      }
+      // 1d. Winco: el nombre de archivo es exactamente el código (W208USB.jpg o W208USB_1.jpg)
+      if (!prod) {
+        const nameOnly = fname.replace(/\.\w+$/, '').replace(/[_-]\d+$/, '').toUpperCase();
+        if (/^W\d/.test(nameOnly)) {
+          prod = provProds.find(p => (p.codigoOriginal||'').toUpperCase() === nameOnly);
         }
       }
 
@@ -9508,17 +9516,21 @@ async function cargarFotosMasivasProv(provId){
       }
 
       if(prod){
-        toast(`Subiendo ${file.name} a Drive...`);
+        toast(`Subiendo ${file.name}...`);
         const driveUrl = await subirADrive(b64, file.name);
         const fotoVal = driveUrl || b64;
         prod.fotos = prod.fotos || [];
         if(!prod.fotos.includes(fotoVal)) prod.fotos.push(fotoVal);
         prod.fotoPrincipal = prod.fotoPrincipal || 0;
         actualizados++;
+      } else {
+        sinProducto.push(file.name);
       }
     }
     await guardarProds();
-    toast(`OK ${actualizados} fotos cargadas en ${[...new Set(provProds.filter(p=>p.fotos&&p.fotos.length).map(p=>p.nombre))].length} productos`);
+    const prodsCon = [...new Set(provProds.filter(p=>p.fotos&&p.fotos.length).map(p=>p.nombre))].length;
+    toast(`OK ${actualizados} fotos cargadas en ${prodsCon} productos${sinProducto.length?` · ${sinProducto.length} sin coincidencia`:''}`, 5000);
+    if(sinProducto.length) console.log('Fotos sin producto:', sinProducto);
     verProductosProv(provId);
   };
   input.click();
