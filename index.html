@@ -2514,7 +2514,7 @@ async function cargarDatos() {
     const prov=(pr.proveedor||'').toUpperCase();
     const marca=(pr.marca||'').toUpperCase();
     const nom=(pr.nombre||'').trim();
-    if(prov==='RHEEM SA'&&!pr.marca){
+    if(prov==='RHEEM SA'&&pr.codigoOriginal==='RHEEM'){
       const cod=_rhCodigos[nom];
       if(cod){pr.codigoOriginal=cod;pr.marca='RHEEM';pr.nombre=nom.replace(' '+cod+' RHEEM',' RHEEM').replace(/\s+/g,' ').trim();_migRHS=true;}
     } else if(marca==='SAIAR'&&pr.codigoOriginal==='SAIAR'){
