@@ -2085,21 +2085,25 @@ const ROLES = {
   VENDEDOR: 'vendedor'
 };
 
-// Contraseñas por defecto — se pueden cambiar desde admin
+// Contraseñas por defecto almacenadas como SHA-256 (nunca en texto plano)
 const USERS_DEFAULT = {
-  'LEANDRO':   { pass:'AgusJoseLosAmo0227.', rol:ROLES.ADMIN },
-  'ROSA':      { pass:'rosa123', rol:ROLES.LOCAL },
-  'GABRIELA':  { pass:'gabriela123', rol:ROLES.LOCAL },
-  'CAROLINA':  { pass:'carol123', rol:ROLES.VENDEDOR },
-  'SUSANA':    { pass:'susana123', rol:ROLES.VENDEDOR },
-  'ROCIO':     { pass:'rocio123', rol:ROLES.VENDEDOR },
-  'ORIANA':    { pass:'oriana123', rol:ROLES.VENDEDOR },
-  'STELLA':    { pass:'stella123', rol:ROLES.VENDEDOR },
-  'ADRIAN':    { pass:'adrian123', rol:ROLES.VENDEDOR },
-  'VALENTINO': { pass:'valentin123', rol:ROLES.VENDEDOR },
-  'CECILIA':   { pass:'cecilia123', rol:ROLES.VENDEDOR },
-  'ROMINA':    { pass:'romina123', rol:ROLES.VENDEDOR },
+  'LEANDRO':   { pass:'bc40d75b7a7195c83346f56df17f6c34b3d4aa02121c73e3dd6ff763a77afa78', rol:ROLES.ADMIN },
+  'ROSA':      { pass:'b355f39816ff136c65cae7087e0348c2b7c949bf9c1a31362a8731eac96c20aa', rol:ROLES.LOCAL },
+  'GABRIELA':  { pass:'efc37f9a15b94b336b4c75eac1489e24a5d57ac1ffb96f498b8b778fbf379400', rol:ROLES.LOCAL },
+  'CAROLINA':  { pass:'6868b751d7c664a9492079bfb2858c86cc95f9480270413e334ed09fe94cf10d', rol:ROLES.VENDEDOR },
+  'SUSANA':    { pass:'426657ded5712f11be8099239a72be23e16130d21ae05de332dda7e75fdd9b10', rol:ROLES.VENDEDOR },
+  'ROCIO':     { pass:'2131c65bf715f3f1af43a56f798b5c2722b69aa25b0471a86b8b71501e458d47', rol:ROLES.VENDEDOR },
+  'ORIANA':    { pass:'620ea7c655194ba50286936e3a6774ec4c44f3d8da141e33af74597c757578a8', rol:ROLES.VENDEDOR },
+  'STELLA':    { pass:'baa5da5778dd2b8222ac34b0d31a4c4cfc6c04c10519147a0372d2b7a868e403', rol:ROLES.VENDEDOR },
+  'ADRIAN':    { pass:'4ded3da94e01245f2a401bbbafb80128c80e4f6febeb04e1a684c2503a8d9dc2', rol:ROLES.VENDEDOR },
+  'VALENTINO': { pass:'5ab81cfe8c578e032076072eadd5e5cb86f8d80f6a07ea1e7ddd5fffdc9fddcf', rol:ROLES.VENDEDOR },
+  'CECILIA':   { pass:'68d52af84e644a792f28558cef2b863ed7c3596479b161ffc786779509af0ffa', rol:ROLES.VENDEDOR },
+  'ROMINA':    { pass:'4b8a8463fc4e5f73a1c00c702282ce58c75f7e7be17b7f182f9950b403cfb9e9', rol:ROLES.VENDEDOR },
 };
+async function hashPass(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 
 // Tabs por rol
 const TABS_POR_ROL = {
@@ -2539,6 +2543,14 @@ async function cargarDatos() {
   });
   if(_migWP) await sSet('rh_p', productos);
   const u=await sGet('rh_u'); if(u) usuarios=u;
+  // Migrar contraseñas en texto plano a SHA-256 (una sola vez)
+  let _migPass=false;
+  for(const ud of Object.values(usuarios)){
+    if(ud.pass && !/^[0-9a-f]{64}$/.test(ud.pass)){
+      ud.pass=await hashPass(ud.pass); _migPass=true;
+    }
+  }
+  if(_migPass) await guardarUsers();
   const ps=await sGet('rh_pres'); if(ps) presupuestos=ps;
   const mc=await sGet(SK_CAJA); if(mc) movCaja=mc;
   const cs=await sGet(SK_SUELDOS); if(cs) configSueldos={...configSueldos,...cs};
@@ -2753,13 +2765,14 @@ const esLocal = () => usuarioActual?.rol===ROLES.LOCAL || esAdmin();
 // ===
 // LOGIN / LOGOUT
 // ===
-function doLogin() {
+async function doLogin() {
   const user = document.getElementById('login-user').value.trim().toUpperCase();
   const pass = document.getElementById('login-pass').value;
   const err  = document.getElementById('login-err');
 
   if (!usuarios[user]) { err.style.display='block'; err.textContent='Usuario no encontrado'; return; }
-  if (usuarios[user].pass !== pass) { err.style.display='block'; err.textContent='Contraseña incorrecta'; return; }
+  const hashed = await hashPass(pass);
+  if (usuarios[user].pass !== hashed) { err.style.display='block'; err.textContent='Contraseña incorrecta'; return; }
 
   usuarioActual = { nombre: user, rol: usuarios[user].rol };
   err.style.display = 'none';
@@ -5438,7 +5451,7 @@ async function guardarPass(){
   const pass=document.getElementById('pass-nueva').value;
   if(!pass||pass.length<4){toast('! La contraseña debe tener al menos 4 caracteres');return;}
   if(!usuarios[user]){toast('Usuario no encontrado');return;}
-  usuarios[user].pass=pass;
+  usuarios[user].pass=await hashPass(pass);
   await guardarUsers(); cM('ovl-pass'); toast(`OK Contraseña de ${user} actualizada`);
 }
 
