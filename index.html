@@ -2161,6 +2161,8 @@ let creditosSortSaldo = false; // false = por riesgo (default), true = por saldo
 let nroVentaCounter = 0;
 const SK_PEDIDOS='rh_ped_v1', SK_ACTIVIDAD='rh_act_v1', SK_METAS='rh_metas_v1', SK_PLANTILLAS='rh_plant_v1', SK_MILOCAL='rh_milocal_v1', SK_ARQUEOS='rh_arq_v1', SK_NROVENTA='rh_nroventa_v1', SK_PROVEEDORES='rh_prov_v1';
 const SK_CATEGORIAS = 'rh_cat_v2';
+const SK_CARACTERISTICAS = 'rh_car_v1';
+const _hesc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
 function obtenerProximoNroVenta(){
   return Math.max(0, ...ventas.map(v => parseInt(v.nroVenta||0)||0)) + 1;
@@ -2577,6 +2579,7 @@ async function cargarDatos() {
   const aq=await sGet(SK_ARQUEOS); if(aq) arqueos=aq;
   const nv=await sGet(SK_NROVENTA); if(nv) nroVentaCounter=nv;
   const cats=await sGet(SK_CATEGORIAS); if(cats&&cats.length>0) categorias=cats;
+  const caracts=await sGet(SK_CARACTERISTICAS); if(caracts&&caracts.length>0) caracteristicas=caracts;
   // Migrate old string format
   if(categorias.length>0 && typeof categorias[0]==='string'){
     categorias=categorias.map((c,i)=>({id:Date.now()+i,nombre:c,subcategorias:[]}));
@@ -2653,6 +2656,7 @@ function agregarCaracteristica() {
   if (!/^\d+$/.test(val)) { toast('! Solo números'); return; }
   if (caracteristicas.includes(val)) { toast('Ya existe'); return; }
   caracteristicas.push(val);
+  sSet(SK_CARACTERISTICAS, caracteristicas);
   programarGuardado();
   poblarSelectCar();
   const sel = document.getElementById('f-tel-car');
@@ -3048,7 +3052,7 @@ function buscarProd() {
       : `<div style="width:32px;height:32px;border-radius:5px;background:var(--cream2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">📷</div>`;
     return `<div class="ac-row" onmousedown="selProd(${p.id})" style="gap:8px;">
       ${thumbHtml}
-      <div style="flex:1;min-width:0;"><div class="ac-nom">${p.nombre}</div><div class="ac-sub">${p.proveedor||''}</div></div>
+      <div style="flex:1;min-width:0;"><div class="ac-nom">${_hesc(p.nombre)}</div><div class="ac-sub">${_hesc(p.proveedor||'')}</div></div>
       <div class="ac-p">$${fmt(p.precio)}</div>
     </div>`;
   }).join('');
@@ -3148,7 +3152,7 @@ function buscarProdItem(id, q) {
     const thumbHtml = foto ? `<img src="${foto}" style="width:28px;height:28px;border-radius:5px;object-fit:cover;flex-shrink:0;">` : '';
     return `<div class="ac-row" onmousedown="selProdItem(${id},${p.id})" style="gap:8px;">
       ${thumbHtml}
-      <div style="flex:1;min-width:0;"><div class="ac-nom">${p.nombre}</div></div>
+      <div style="flex:1;min-width:0;"><div class="ac-nom">${_hesc(p.nombre)}</div></div>
       <div class="ac-p">$${fmt(p.precio)}</div>
     </div>`;
   }).join('');
@@ -3232,7 +3236,7 @@ async function guardar() {
   if(btnG){btnG.disabled=true;btnG.textContent='Guardando...';}
   try {
   const fecha  = document.getElementById('f-fecha').value||hoy();
-  const vend   = document.getElementById('f-vend').value||usuarioActual.nombre;
+  const vend   = document.getElementById('f-vend').value||usuarioActual?.nombre||'';
   const prod   = document.getElementById('f-prod').value.trim()||'—';
   const precio = parseFloat(document.getElementById('f-precio').value)||0;
   if (!precio || precio <= 0) { toast('⚠ El precio debe ser mayor a $0'); _guardandoVenta=false; if(btnG){btnG.disabled=false;btnG.textContent=btnGOrig;} return; }
@@ -3570,7 +3574,7 @@ function buscarProdVR(q) {
       : `<div style="width:32px;height:32px;border-radius:5px;background:var(--cream2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">📷</div>`;
     return `<div class="ac-row" onmousedown="selProdVR(${p.id})" style="gap:8px;">
       ${thumb}
-      <div style="flex:1;min-width:0;"><div class="ac-nom">${p.nombre}</div><div class="ac-sub">${p.proveedor||''}</div></div>
+      <div style="flex:1;min-width:0;"><div class="ac-nom">${_hesc(p.nombre)}</div><div class="ac-sub">${_hesc(p.proveedor||'')}</div></div>
       <div class="ac-p">$${fmt(p.precio)}</div>
     </div>`;
   }).join('');
@@ -4283,7 +4287,7 @@ function renderCreditos() {
           <div>${cp.frecuencia} · ${cp.nCuotas}c · $${fmt(cp.cuota)}/c</div>
           ${interesReal>0?`<div style="color:var(--green);font-size:10px;">Interés: $${fmt(interesReal)}</div>`:''}
           <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
-            ${v.tel?`<button class="btn btn-sm" style="background:#25D366;color:#fff;font-size:10px;padding:2px 6px;" onclick="waRecordatorio('${v.tel}','${cliNom(v).replace(/'/g,'')}',1,${cp.nCuotas},${cp.cuota},'${fechas[0]||''}')">WA</button>`:''}
+            ${v.tel?`<button class="btn btn-sm" style="background:#25D366;color:#fff;font-size:10px;padding:2px 6px;" onclick="waRecordatorio('${v.tel.replace(/'/g,'')}','${cliNom(v).replace(/['"\\]/g,'')}',1,${cp.nCuotas},${cp.cuota},'${(fechas[0]||'').replace(/'/g,'')}')">WA</button>`:''}
             <button class="btn btn-sm" style="font-size:10px;padding:2px 6px;" onclick="verHistorialCobros(${v.id})">Historial</button>
             ${esAdmin()?`<button class="btn btn-sm" style="font-size:10px;padding:2px 6px;" onclick="abrirRefinanciar(${v.id})">Refin.</button>`:''}
             ${(esAdmin()||esLocal())?`<button class="btn btn-sm" style="font-size:10px;padding:2px 6px;" onclick="togglePausarCredito(${v.id})">${pausado?'Reanudar':'Pausar'}</button>`:''}
@@ -4796,6 +4800,7 @@ async function guardarProd(){
     pMayor:parseFloat(document.getElementById('ap-pmayor')?.value)||0,
     costo:parseFloat(document.getElementById('ap-costo').value)||0,
     desc:document.getElementById('ap-desc').value.trim(),
+    descripcion:document.getElementById('ap-desc').value.trim(),
     categoria:document.getElementById('ap-cat').value||'',
     subcategoria:document.getElementById('ap-subcat')?.value||'',
     marca:document.getElementById('ap-marca')?.value.trim()||'',
@@ -4898,7 +4903,7 @@ function duplicarProd(id) {
   set('ap-precio', p.precio||'');
   set('ap-pmayor', p.pMayor||'');
   set('ap-costo', p.costo||'');
-  set('ap-desc', p.desc||'');
+  set('ap-desc', p.desc||p.descripcion||'');
   set('ap-etiquetas', (p.etiquetas||[]).join(', '));
   set('ap-codigo-orig', p.codigoOriginal||'');
   set('ap-url-ficha', p.urlFicha||'');
@@ -5281,7 +5286,7 @@ function exportarCatalogo(){
   else if(sortF==='precio-desc') lista.sort((a,b)=>(b.precio||0)-(a.precio||0));
   const esc=v=>'"'+(String(v||'').replace(/"/g,'""'))+'"';
   const hdr='Nombre;Proveedor;Marca;Categoría;Subcategoría;Stock;Precio Lista;Descripción';
-  const rows=lista.map(p=>[esc(p.nombre),esc(p.proveedor),esc(p.marca),esc(p.categoria),esc(p.subcategoria),esc(p.stock||'disponible'),p.precio||0,esc(p.descripcion)].join(';'));
+  const rows=lista.map(p=>[esc(p.nombre),esc(p.proveedor),esc(p.marca),esc(p.categoria),esc(p.subcategoria),esc(p.stock||'disponible'),p.precio||0,esc(p.desc||p.descripcion)].join(';'));
   const csv='﻿'+hdr+'\n'+rows.join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
@@ -5610,7 +5615,7 @@ function buscarProdPres() {
   if (!hits.length) { ac.classList.remove('on'); return; }
   ac.innerHTML = hits.map(p =>
     `<div class="ac-row" onmousedown="selProdPres(${p.id})">
-      <div><div class="ac-nom">${p.nombre}</div><div class="ac-sub">${p.proveedor||''}</div></div>
+      <div><div class="ac-nom">${_hesc(p.nombre)}</div><div class="ac-sub">${_hesc(p.proveedor||'')}</div></div>
       <div class="ac-p">$${fmt(p.precio)}</div>
     </div>`).join('');
   ac.classList.add('on');
@@ -6866,7 +6871,7 @@ function renderReportes() {
   },0);
   const ganancia = total - totalCosto - totalFeesMP;
   const margenPct = total>0 ? Math.round(ganancia/total*100) : 0;
-  const maxVenta = Math.max(...lista.map(v=>v.precio));
+  const maxVenta = lista.length ? Math.max(...lista.map(v=>v.precio)) : 0;
 
   // ── STATS ──
   document.getElementById('rep-stats').innerHTML = `
@@ -10827,7 +10832,7 @@ function renderScrapingResultados(prods, srcUrl){
         ${p.foto?`<img src="${p.foto}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0;" onerror="this.style.display='none'">`:'<div style="width:60px;height:60px;background:var(--cream2);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;">📦</div>'}
         <div style="flex:1;min-width:0;">
           <div style="font-weight:600;font-size:13px;">${p.nombre}</div>
-          ${p.descripcion?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${p.descripcion}</div>`:''}
+          ${(p.desc||p.descripcion)?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${_hesc(p.desc||p.descripcion)}</div>`:''}
           <div style="display:flex;gap:8px;margin-top:5px;align-items:center;flex-wrap:wrap;">
             ${p.precio?`<div style="font-weight:700;color:var(--navy);font-size:14px;">$${fmt(p.precio)}</div>`:'<div style="font-size:11px;color:var(--muted);">Sin precio</div>'}
             ${p.url?`<a href="${p.url}" target="_blank" style="font-size:10px;color:var(--gold);text-transform:none;">Ver en web ↗</a>`:''}
