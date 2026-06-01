@@ -8759,6 +8759,7 @@ function renderProveedores(){
         <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:flex-start;">
           ${p.metodo==='sync'&&p.web?`<button class="btn btn-green btn-sm" onclick="sincronizarProvWeb(${p.id})">🔄 Sync</button>`:''}
           ${p.metodo==='lista'?`<label class="btn btn-blue btn-sm" style="cursor:pointer;">📄 Subir lista<input type="file" accept=".csv,.txt,.xlsx,.xls" style="display:none;" onchange="procesarListaProv(event,${p.id})"></label>`:''}
+          <label class="btn btn-green btn-sm" style="cursor:pointer;" title="CSV o Excel con columnas CODIGO y PRECIO">💰 Actualizar precios<input type="file" accept=".csv,.txt,.xlsx,.xls" style="display:none;" onchange="actualizarPreciosProv(event,${p.id})"></label>
           <button class="btn btn-ghost btn-sm" onclick="verProductosProv(${p.id})">Ver productos</button>
           <button class="btn btn-gold btn-sm" onclick="editarProveedor(${p.id})">Editar</button>
           ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarProveedor(${p.id})">X</button>`:''}
@@ -8766,6 +8767,71 @@ function renderProveedores(){
       </div>
     </div>`;
   }).join('');
+}
+
+async function actualizarPreciosProv(event, provId){
+  const file = event.target.files[0];
+  if(!file) return;
+  const prov = proveedores.find(p=>p.id===provId);
+  if(!prov) return;
+  const provProds = productos.filter(p=>(p.proveedor||'').toLowerCase()===(prov.nombre||'').toLowerCase());
+  if(!provProds.length){ toast('! Sin productos para este proveedor'); return; }
+
+  let filas = [];
+  try {
+    const esExcel = /\.(xlsx|xls)$/i.test(file.name);
+    if(esExcel){
+      if(typeof XLSX==='undefined'){ toast('! Librería Excel no disponible'); return; }
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      filas = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    } else {
+      const txt = await file.text();
+      filas = txt.split('\n').map(l=>l.split(/[,;|\t]/));
+    }
+  } catch(e){ toast('! Error leyendo archivo'); return; }
+
+  // Detect header row and find CODIGO / PRECIO columns
+  let codCol=-1, precioCol=-1;
+  const header = (filas[0]||[]).map(c=>(c+'').toUpperCase().trim());
+  header.forEach((h,i)=>{
+    if(/COD/.test(h)) codCol=i;
+    if(/PREC|PRICE|VALOR|LISTA/.test(h)) precioCol=i;
+  });
+  const startRow = (codCol>=0&&precioCol>=0) ? 1 : 0;
+  // If no header detected, assume col 0 = code, col 1 = price
+  if(codCol<0) codCol=0;
+  if(precioCol<0) precioCol=1;
+
+  // Build code→price map
+  const mapa = {};
+  for(let i=startRow; i<filas.length; i++){
+    const row = filas[i];
+    const cod = (row[codCol]+'').trim().toUpperCase();
+    const raw = (row[precioCol]+'').replace(/[^\d]/g,'');
+    const precio = parseInt(raw);
+    if(cod && precio>0) mapa[cod]=precio;
+  }
+
+  if(!Object.keys(mapa).length){ toast('! No se encontraron datos válidos (CODIGO, PRECIO)'); return; }
+
+  let actualizados=0, sinCambio=0, noEncontrado=0;
+  provProds.forEach(p=>{
+    const cod=(p.codigoOriginal||'').toUpperCase();
+    if(mapa[cod]!==undefined){
+      if(p.precio!==mapa[cod]){ p.precio=mapa[cod]; actualizados++; }
+      else sinCambio++;
+    } else noEncontrado++;
+  });
+
+  if(actualizados>0){
+    await guardarProds();
+    renderPrecios();
+    renderCatalogo();
+  }
+  toast(`✅ ${actualizados} precios actualizados · ${sinCambio} sin cambio · ${noEncontrado} sin coincidencia`);
+  event.target.value='';
 }
 
 function onProvMetodoChange(){
