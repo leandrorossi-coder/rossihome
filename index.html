@@ -9469,36 +9469,46 @@ async function cargarCarpetaFotosWinco(provId){
       } catch(e) { return null; }
     };
     toast(`Procesando ${allFiles.length} imágenes...`);
+    // Pre-construir mapa codigoOriginal → producto para búsqueda rápida
+    const codigoMap = new Map();
+    provProds.forEach(p => { if(p.codigoOriginal) codigoMap.set(p.codigoOriginal.toUpperCase(), p); });
+
     for(const file of allFiles){
-      const fname = file.name.toUpperCase();
-      // Para archivos en subcarpetas (webkitRelativePath = "slug/WINCO_slug_1.jpg")
-      // el slug de la carpeta padre identifica el producto
+      const fname = file.name.toUpperCase().replace(/\.\w+$/, ''); // sin extensión
       const relPath = (file.webkitRelativePath || file.name).toUpperCase();
+      const parts = relPath.split(/[/\\]/);
+      const slugFolder = (parts.length >= 2 ? parts[parts.length - 2] : fname).toUpperCase();
       let prod = null;
-      // 1. Extraer W-code del nombre de archivo: WINCO_slug-w831_1.jpg → W831
-      const wMatch = fname.match(/-(W\d+[A-Z0-9]*)[_\-.]/i);
-      if (wMatch) {
-        const wCode = wMatch[1].toUpperCase();
-        prod = provProds.find(p => (p.codigoOriginal||'').toUpperCase() === wCode);
-      }
-      // 2. Usar el slug de la subcarpeta para buscar el W-code
+
+      // 1. Buscar cualquier codigoOriginal como segmento exacto en slug o filename
+      // Ej: slug "AFEITADORA-BARBA-W831" → segmentos ["AFEITADORA","BARBA","W831"] → W831 ✓
       if (!prod) {
-        const parts = relPath.split(/[/\\]/);
-        if (parts.length >= 2) {
-          const slugFolder = parts[parts.length - 2]; // nombre de la subcarpeta
-          const wMatchFolder = slugFolder.match(/-(W\d+[A-Z0-9]*)/i) || slugFolder.match(/^(W\d+[A-Z0-9]*)/i);
-          if (wMatchFolder) {
-            const wCode = wMatchFolder[1].toUpperCase();
-            prod = provProds.find(p => (p.codigoOriginal||'').toUpperCase() === wCode);
+        const segs = new Set([...slugFolder.split(/[-_]/), ...fname.split(/[-_]/), ...fname.split('_')]);
+        for (const [cod, p] of codigoMap) {
+          if (segs.has(cod)) { prod = p; break; }
+        }
+      }
+
+      // 2. codigoOriginal como substring dentro del slug (para códigos sin separador claro)
+      if (!prod) {
+        for (const [cod, p] of codigoMap) {
+          if (cod.length >= 3 && (slugFolder.includes(cod) || fname.includes(cod))) {
+            prod = p; break;
           }
-          // 3. Buscar por palabras del slug en el nombre del producto
-          if (!prod) {
-            const slugWords = slugFolder.toLowerCase().replace(/[-_]/g,' ').split(' ').filter(w=>w.length>3);
-            prod = provProds.find(p => {
-              const n = (p.nombre||'').toLowerCase();
-              return slugWords.filter(w=>n.includes(w)).length >= 2;
-            });
+        }
+      }
+
+      // 3. Palabras del slug contra nombre del producto (≥ 2 palabras largas en común)
+      if (!prod) {
+        const slugWords = slugFolder.toLowerCase().replace(/[-_]/g,' ').split(' ').filter(w=>w.length>4);
+        if (slugWords.length >= 2) {
+          let bestMatch = null, bestCount = 1;
+          for (const p of provProds) {
+            const n = (p.nombre||'').toLowerCase();
+            const count = slugWords.filter(w=>n.includes(w)).length;
+            if (count > bestCount) { bestCount = count; bestMatch = p; }
           }
+          if (bestMatch) prod = bestMatch;
         }
       }
       if(prod){
