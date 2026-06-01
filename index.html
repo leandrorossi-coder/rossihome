@@ -2469,6 +2469,10 @@ async function cargarDatos() {
   // Cache local primero (instantáneo)
   const v=await sGet('rh_v'); if(v) ventas=v;
   const p=await sGet('rh_p'); if(p&&p.length>0) productos=p;
+  // Migración: renombrar 'WINCO ARGENTINA' → 'Winco' en todos los productos
+  let _migWinco=false;
+  productos.forEach(pr=>{ if((pr.proveedor||'').toUpperCase()==='WINCO ARGENTINA'){pr.proveedor='Winco';_migWinco=true;} });
+  if(_migWinco) await sSet('rh_p', productos);
   const u=await sGet('rh_u'); if(u) usuarios=u;
   const ps=await sGet('rh_pres'); if(ps) presupuestos=ps;
   const mc=await sGet(SK_CAJA); if(mc) movCaja=mc;
