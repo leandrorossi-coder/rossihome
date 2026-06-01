@@ -1691,6 +1691,19 @@ select option{text-transform:uppercase;}
         <span style="font-size:11px;color:var(--muted);margin-top:2px;" id="ap-marca-var-info"></span>
       </div>
       <div class="fg"><label>Manuales / documentación (URLs, una por línea)</label><textarea id="ap-manuales" rows="2" placeholder="https://... (manual de uso)&#10;https://... (manual instalación)&#10;https://... (formulario garantía)"></textarea></div>
+      <!-- Videos -->
+      <div class="sec">Videos del producto</div>
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input type="text" id="ap-video-url" placeholder="Link de YouTube o URL de video..." style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:7px 11px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--cream);">
+          <button class="btn btn-ghost btn-sm" onclick="agregarVideoUrl()">+ Agregar</button>
+        </div>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-block;">
+          + Subir video
+          <input type="file" id="ap-video-file" accept="video/*,.mp4,.avi,.mov,.mkv,.wmv,.webm" style="display:none;" onchange="agregarVideoArchivo(event)">
+        </label>
+        <div id="ap-videos-lista" style="margin-top:8px;"></div>
+      </div>
       <!-- Fotos -->
       <div class="sec">Fotos del producto</div>
       <div>
@@ -2118,6 +2131,7 @@ let editVentaId = null;
 let editProdId  = null;
 let editFotos   = []; // fotos temporales en el modal de producto
 let editFotoPrincipal = 0;
+let editVideos  = []; // videos temporales en el modal de producto
 let usuarioActual = null; // { nombre, rol }
 let catalogoView = 'grid'; // 'grid' | 'list'
 // === Nuevos estados ===
@@ -4642,7 +4656,7 @@ function poblarSelectSubcat(selectedVal){
 }
 function abrirAddProd(){
   if(!esLocal()){toast('Sin permiso');return;}
-  editProdId=null; editFotos=[]; editFotoPrincipal=0;
+  editProdId=null; editFotos=[]; editFotoPrincipal=0; editVideos=[];
   document.getElementById('prod-titulo').textContent='Agregar Producto';
   document.getElementById('btn-prod-guardar').textContent='OK Guardar';
   ['ap-nom','ap-prov','ap-precio','ap-pmayor','ap-costo','ap-desc','ap-etiquetas'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
@@ -4651,14 +4665,14 @@ function abrirAddProd(){
   poblarSelectCat('');
   poblarSelectSubcat('');
   const ap_marc=document.getElementById('ap-marca'); if(ap_marc)ap_marc.value='';
-  renderFotosGrid();
+  renderFotosGrid(); renderVideosLista();
   document.getElementById('ovl-prod').classList.add('on');
 }
 function editarProd(id){
   if(!esLocal()){toast('Sin permiso');return;}
   const p=productos.find(x=>x.id===id); if(!p)return;
   editProdId=id;
-  editFotos=[...(p.fotos||[])]; editFotoPrincipal=p.fotoPrincipal||0;
+  editFotos=[...(p.fotos||[])]; editFotoPrincipal=p.fotoPrincipal||0; editVideos=[...(p.videos||[])];
   document.getElementById('prod-titulo').textContent='Editar Producto';
   document.getElementById('btn-prod-guardar').textContent='OK Guardar Cambios';
   document.getElementById('ap-nom').value=p.nombre||'';
@@ -4677,7 +4691,7 @@ function editarProd(id){
   const ap_url=document.getElementById('ap-url-ficha'); if(ap_url)ap_url.value=p.urlFicha||'';
   const ap_man=document.getElementById('ap-manuales'); if(ap_man)ap_man.value=(p.manuales||[]).join('\n');
   onProvChange_prod(); // refresh brand variant selector
-  renderFotosGrid();
+  renderFotosGrid(); renderVideosLista();
   document.getElementById('ovl-prod').classList.add('on');
 }
 async function guardarProd(){
@@ -4706,6 +4720,7 @@ async function guardarProd(){
     codigoOriginal: document.getElementById('ap-codigo-orig')?.value.trim()||'',
     urlFicha: document.getElementById('ap-url-ficha')?.value.trim()||'',
     manuales: (document.getElementById('ap-manuales')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean),
+    videos: [...editVideos],
   };
   if(editProdId){
     const idx=productos.findIndex(p=>p.id===editProdId);
@@ -4786,7 +4801,7 @@ async function eliminarProd(id){
 function duplicarProd(id) {
   if(!esLocal()){toast('Sin permiso');return;}
   const p = productos.find(x=>x.id===id); if(!p) return;
-  editProdId = null; editFotos = [...(p.fotos||[])]; editFotoPrincipal = p.fotoPrincipal||0;
+  editProdId = null; editFotos = [...(p.fotos||[])]; editFotoPrincipal = p.fotoPrincipal||0; editVideos = [...(p.videos||[])];
   document.getElementById('prod-titulo').textContent = 'Duplicar Producto';
   document.getElementById('btn-prod-guardar').textContent = 'OK Guardar';
   const set = (eid, val) => { const el=document.getElementById(eid); if(el) el.value=val||''; };
@@ -4805,7 +4820,7 @@ function duplicarProd(id) {
   const ap_stock=document.getElementById('ap-stock'); if(ap_stock) ap_stock.value=p.stock||'disponible';
   const ap_dest=document.getElementById('ap-destacado'); if(ap_dest) ap_dest.checked=!!p.destacado;
   const ap_marc=document.getElementById('ap-marca'); if(ap_marc) ap_marc.value=p.marca||'';
-  renderFotosGrid();
+  renderFotosGrid(); renderVideosLista();
   document.getElementById('ovl-prod').classList.add('on');
 }
 function compartirProducto(id) {
@@ -4818,7 +4833,9 @@ function compartirProducto(id) {
   const desc = p.desc ? `\n\n${p.desc}` : '';
   const marca = p.marca ? ` | ${p.marca}` : '';
   const cat = p.categoria ? ` | ${p.categoria}${p.subcategoria?' > '+p.subcategoria:''}` : '';
-  const texto = `*${local}*\n\n*${p.nombre}*${marca}${cat}${precio}${pmayor}${entrega}${desc}\n\n_Consultá disponibilidad y más info_`;
+  const vids = (p.videos||[]).filter(v=>typeof v==='string');
+  const videosText = vids.length ? '\n\n🎬 ' + vids.join('\n🎬 ') : '';
+  const texto = `*${local}*\n\n*${p.nombre}*${marca}${cat}${precio}${pmayor}${entrega}${desc}${videosText}\n\n_Consultá disponibilidad y más info_`;
   if(navigator.share){
     navigator.share({title: p.nombre, text: texto}).catch(()=>{});
     return;
@@ -4878,6 +4895,46 @@ function borrarFoto(i){
   editFotos.splice(i,1);
   if(editFotoPrincipal>=editFotos.length)editFotoPrincipal=Math.max(0,editFotos.length-1);
   renderFotosGrid();
+}
+function youtubeId(url){
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+function agregarVideoUrl(){
+  const inp = document.getElementById('ap-video-url');
+  const url = (inp.value||'').trim();
+  if(!url){ toast('Ingresá una URL'); return; }
+  if(editVideos.includes(url)){ toast('Ya está en la lista'); return; }
+  editVideos.push(url);
+  inp.value='';
+  renderVideosLista();
+}
+function agregarVideoArchivo(event){
+  const file = event.target.files[0]; if(!file) return;
+  const url = URL.createObjectURL(file);
+  editVideos.push({blob: url, nombre: file.name, _file: file});
+  event.target.value='';
+  renderVideosLista();
+}
+function borrarVideo(i){
+  editVideos.splice(i,1);
+  renderVideosLista();
+}
+function renderVideosLista(){
+  const lista = document.getElementById('ap-videos-lista'); if(!lista) return;
+  if(!editVideos.length){ lista.innerHTML=''; return; }
+  lista.innerHTML = editVideos.map((v,i)=>{
+    const url = typeof v === 'string' ? v : v.blob||'';
+    const nombre = typeof v === 'string' ? v : v.nombre||'video';
+    const ytId = typeof v === 'string' ? youtubeId(v) : null;
+    const preview = ytId
+      ? `<img src="https://img.youtube.com/vi/${ytId}/default.jpg" style="width:48px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
+      : `<span style="font-size:20px;">🎬</span>`;
+    const label = ytId
+      ? `<a href="${url}" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">▶ YouTube — ${url}</a>`
+      : `<span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📁 ${nombre}</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">${preview}${label}<button onclick="borrarVideo(${i})" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:16px;padding:0 4px;">×</button></div>`;
+  }).join('');
 }
 
 // ===

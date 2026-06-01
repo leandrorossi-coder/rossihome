@@ -223,20 +223,53 @@ def extraer_videos(page):
     """Extrae URLs de videos: YouTube embeds y MP4 directos."""
     videos = []
     try:
+        # Scroll to bottom to trigger lazy loading of iframes/videos
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        page.wait_for_timeout(1500)
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight * 0.5)")
+        page.wait_for_timeout(800)
+
         data = page.evaluate("""() => {
             const results = [];
-            // YouTube iframes
+            const seen = new Set();
+            const add = (tipo, url) => {
+                if(!url || seen.has(url)) return;
+                seen.add(url);
+                results.push({tipo, url});
+            };
+            // YouTube iframes (cargados)
             document.querySelectorAll('iframe[src*="youtube"], iframe[src*="youtu.be"]').forEach(el => {
-                results.push({tipo: 'youtube', url: el.src});
+                add('youtube', el.src);
             });
+            // YouTube en data-src (lazy load)
+            document.querySelectorAll('[data-src*="youtube"], [data-src*="youtu.be"]').forEach(el => {
+                add('youtube', el.getAttribute('data-src'));
+            });
+            // YouTube en atributos data-* genéricos
+            document.querySelectorAll('[data-video-id]').forEach(el => {
+                const vid = el.getAttribute('data-video-id');
+                if(vid) add('youtube', 'https://www.youtube.com/watch?v=' + vid);
+            });
+            // YouTube en href de botones/links
+            document.querySelectorAll('a[href*="youtube.com/watch"], a[href*="youtu.be/"]').forEach(a => {
+                add('youtube', a.href);
+            });
+            // Buscar en onclick y otros atributos
+            document.querySelectorAll('[onclick*="youtube"], [onclick*="youtu.be"]').forEach(el => {
+                const m = el.getAttribute('onclick').match(/https?:\\/\\/(?:www\\.)?(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/)([A-Za-z0-9_-]{11})/);
+                if(m) add('youtube', 'https://www.youtube.com/watch?v=' + m[1]);
+            });
+            // Buscar en innerHTML del documento completo (último recurso)
+            const html = document.documentElement.innerHTML;
+            const ytRe = /https?:\\/\\/(?:www\\.)?(?:youtube\\.com\\/(?:watch\\?v=|embed\\/)|youtu\\.be\\/)([A-Za-z0-9_-]{11})/g;
+            let m;
+            while((m = ytRe.exec(html)) !== null) {
+                add('youtube', 'https://www.youtube.com/watch?v=' + m[1]);
+            }
             // Videos HTML5 directos
             document.querySelectorAll('video source, video[src]').forEach(el => {
                 const src = el.getAttribute('src') || '';
-                if(src) results.push({tipo: 'mp4', url: src});
-            });
-            // Links a videos
-            document.querySelectorAll('a[href*=".mp4"], a[href*="youtube"], a[href*="youtu.be"]').forEach(a => {
-                results.push({tipo: 'link', url: a.href});
+                if(src) add('mp4', src);
             });
             return results;
         }""")
@@ -420,6 +453,14 @@ def main():
                     with open(ruta_txt, 'w', encoding='utf-8') as f:
                         f.write(f"{nombre}\n{'='*len(nombre)}\n\n{descripcion}\n")
 
+                # Guardar URLs de YouTube por separado (para importar al catálogo)
+                yt_urls = [v['url'] for v in vid_data if 'youtube' in v.get('url','') or 'youtu.be' in v.get('url','')]
+                if yt_urls:
+                    ruta_yt = os.path.join(carpeta_prod, f"WINCO_{slug}_youtube.txt")
+                    with open(ruta_yt, 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(yt_urls))
+                    print(f"    🎬 YouTube: {yt_urls[0][:60]}")
+
                 productos.append({
                     'nombre':          nombre,
                     'codigoOriginal':  codigo,
@@ -429,6 +470,7 @@ def main():
                     'url':             url,
                     'fotos_locales':   fotos_locales,
                     'videos_locales':  videos_locales,
+                    'videos_youtube':  yt_urls,
                     'manuales_locales':manuales_locales,
                 })
 
