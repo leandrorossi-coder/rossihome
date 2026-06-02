@@ -9726,35 +9726,32 @@ async function cargarCarpetaFotosWinco(provId){
         }
       }
 
-      // 3. Palabras del slug contra nombre del producto (≥ 1 palabra larga en común, match único)
+      // 3. Palabras del slug contra nombre del producto (≥ 2 palabras largas en común)
       if (!prod) {
         const slugWords = slugFolder.toLowerCase().replace(/[-_]/g,' ').split(' ').filter(w=>w.length>4);
-        if (slugWords.length >= 1) {
-          let bestMatch = null, bestCount = 0;
-          let ambiguo = false;
+        if (slugWords.length >= 2) {
+          let bestMatch = null, bestCount = 1;
           for (const p of provProds) {
-            if (p.fotos && p.fotos.length) continue; // ya tiene foto, saltar
             const n = (p.nombre||'').toLowerCase();
             const count = slugWords.filter(w=>n.includes(w)).length;
-            if (count > bestCount) { bestCount = count; bestMatch = p; ambiguo = false; }
-            else if (count === bestCount && bestCount > 0 && p !== bestMatch) { ambiguo = true; }
+            if (count > bestCount) { bestCount = count; bestMatch = p; }
           }
-          if (bestMatch && bestCount >= 1 && !ambiguo) prod = bestMatch;
+          if (bestMatch) prod = bestMatch;
         }
       }
 
-      // 4. Color en carpeta para desambiguar variantes (w34-azul → W34A, w34-rosa → W34V, etc.)
+      // 4. Color en carpeta para desambiguar variantes (w34-azul → W34A, w34-rosa → W34R, etc.)
       if (!prod) {
         const colorMap = {azul:'A',blue:'A',rojo:'R',red:'R',rosa:'R',verde:'V',green:'V',gris:'G',grey:'G',gray:'G',negro:'N',black:'N',blanco:'B',white:'B',naranja:'O',amarillo:'Y'};
         const slugLow = slugFolder.toLowerCase();
-        const wBase = (slugLow.match(/[-_](w\d+)[-_]/) || [])[1];
-        if (wBase) {
+        const wBaseM = slugLow.match(/[-_](w\d+)[-_]/);
+        if (wBaseM) {
+          const wBase = wBaseM[1];
           const colorKey = Object.keys(colorMap).find(c => slugLow.includes(c));
           if (colorKey) {
             const candidato = (wBase + colorMap[colorKey]).toUpperCase();
             prod = codigoMap.get(candidato) || null;
           }
-          // Si no hay color o no matcheó, intentar con todos los que empiezan con la base
           if (!prod) {
             const candidatos = [...codigoMap.entries()].filter(([c])=>c.startsWith(wBase.toUpperCase()));
             if (candidatos.length === 1) prod = candidatos[0][1];
