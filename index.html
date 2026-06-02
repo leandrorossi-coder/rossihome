@@ -3990,7 +3990,7 @@ async function confirmarCobro() {
   }
   actualizarBadgeCreditos();
   cM('ovl-cobrar');
-  if(!document.getElementById('chk-no-recibo')?.checked) generarReciboCredito(v, cobro);
+  if(!document.getElementById('chk-no-recibo')?.checked) generarReciboCredito(v, nuevosCobrosMem[0]);
   renderCreditos();
   toast('OK Cobro registrado');
 }
