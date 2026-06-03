@@ -3688,8 +3688,16 @@ async function guardarVentaRapida() {
 // ===
 function buildCuotas(v) {
   if(!v.cpData)return[];
-  const{cuota,frecuencia,nCuotas,fechaVenta}=v.cpData,step=paso(frecuencia);
-  return Array.from({length:nCuotas},(_,i)=>({num:i+1,fecha:addD(fechaVenta,step*(i+1)),monto:cuota,pagada:v.cuotasPagadas?!!v.cuotasPagadas[i]:false}));
+  const cp=v.cpData;
+  // Sistema nuevo: usa buildFechasCuotas + estadoCuotaCP
+  if(cp.fechaPrimeraCuota){
+    const fechas=buildFechasCuotas(cp);
+    return fechas.map((fecha,i)=>({num:i+1,fecha,monto:cp.cuota,pagada:estadoCuotaCP(cp,i)==='pagada'}));
+  }
+  // Sistema viejo (fallback para ventas antiguas)
+  const{cuota,frecuencia,nCuotas}=cp,step=paso(frecuencia);
+  const fechaRef=cp.fechaVenta||v.fecha||hoy();
+  return Array.from({length:nCuotas},(_,i)=>({num:i+1,fecha:addD(fechaRef,step*(i+1)),monto:cuota,pagada:v.cuotasPagadas?!!v.cuotasPagadas[i]:false}));
 }
 function estCuota(c) {
   const h=hoy();
@@ -3837,7 +3845,10 @@ function verDetalle(id) {
         <div class="cn">${c.num}</div>
         <div style="flex:1;font-size:12px;"><strong>${fmtD(c.fecha)}</strong> &nbsp;$${fmt(c.monto)}</div>
         <span style="font-size:11px;font-weight:600;">${lbEst[est]}</span>
-        ${!c.pagada?`<button class="btn btn-green btn-sm" onclick="marcarCuota(${id},${c.num-1},true)">Cobrar</button>`:`<button class="btn btn-ghost btn-sm" onclick="marcarCuota(${id},${c.num-1},false)">Deshacer</button>`}
+        ${v.cpData?.cobros!==undefined
+          ? (!c.pagada?`<button class="btn btn-green btn-sm" onclick="abrirCobrarCuota(${id},${c.num-1})">Cobrar</button>`:`<span style="font-size:11px;color:var(--green);">✓ Cobrada</span>`)
+          : (!c.pagada?`<button class="btn btn-green btn-sm" onclick="marcarCuota(${id},${c.num-1},true)">Cobrar</button>`:`<button class="btn btn-ghost btn-sm" onclick="marcarCuota(${id},${c.num-1},false)">Deshacer</button>`)
+        }
       </div>`}).join('')}`:
   '';
   document.getElementById('det-titulo').textContent=prodNombre(v).substring(0,60);
