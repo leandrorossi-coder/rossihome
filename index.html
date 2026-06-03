@@ -3269,7 +3269,6 @@ async function guardar() {
   const esMixto = document.getElementById('chk-mixto').checked;
   const pagoSimple = document.getElementById('f-pago').value||'EFECTIVO';
   const pago = esMixto && pagosVenta.length > 0 ? (pagosVenta.length===1 ? pagosVenta[0].pago : 'MIXTO') : pagoSimple;
-  const pagosDetalle = esMixto && pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precio, label: PAGO_LBL[pagoSimple]||pagoSimple}];
 
   const cantidad  = Math.max(1, parseInt(document.getElementById('f-cantidad')?.value)||1);
   const fechaEntrega = document.getElementById('f-fecha-entrega')?.value||'';
@@ -3283,6 +3282,7 @@ async function guardar() {
   const precioLista = Math.max(0, subtotalBruto - descuento); // precio lista (lo que vale el producto)
   // Para TC: el precio registrado es el total que paga el cliente en cuotas
   const precioVenta = isTC(pago) ? Math.round(precioLista * (TC_RC[pago]||1)) : precioLista;
+  const pagosDetalle = esMixto && pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precioVenta, label: PAGO_LBL[pagoSimple]||pagoSimple}];
   // nroVenta autoincrement
   const nroVenta = obtenerProximoNroVenta();
 
@@ -3489,6 +3489,8 @@ function limpiar() {
   const ee=document.getElementById('f-estado-entrega'); if(ee)ee.value='pendiente';
   const chkFE=document.getElementById('chk-fecha-entrega'); if(chkFE)chkFE.checked=false;
   const inpFE=document.getElementById('f-fecha-entrega'); if(inpFE){inpFE.value='';inpFE.style.display='none';}
+  // Desbloquear campos CP que puedan haber quedado bloqueados por edición con cobros
+  ['cp-lista','cp-ant','cp-ncuotas','cp-freq','cp-fecha1','cp-pct-ant','cp-sin-interes','cp-cuota-manual'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=false;el.title='';}});
   // Vendedor por default: LOCAL PARADA ROBLES
   const sel=document.getElementById('f-vend');
   if(sel && !sel.disabled) sel.value='LOCAL PARADA ROBLES';
@@ -3545,13 +3547,22 @@ function editarVenta(id) {
     if(v.cpData){
       document.getElementById('cp-lista').value=v.cpData.precioLista||v.precio||'';
       document.getElementById('cp-ant').value=v.cpData.anticipo||'';
-      document.getElementById('cp-ncuotas').value=v.cpData.nCuotas||2; // después de onPago() para no pisarse
+      document.getElementById('cp-ncuotas').value=v.cpData.nCuotas||2;
       document.getElementById('cp-freq').value=v.cpData.frecuencia||'mensual';
       document.getElementById('cp-fecha1').value=v.cpData.fechaPrimeraCuota||'';
       document.getElementById('cp-pct-ant').value='0';
       const siChk=document.getElementById('cp-sin-interes');
       if(siChk) siChk.checked = (v.cpData.interes===0 || (v.cpData.nCuotas||1)<=1);
       recalcCP();
+      // Si ya tiene cobros, bloquear parámetros del crédito para evitar inconsistencia
+      const tieneCobros=(v.cpData.cobros||[]).filter(c=>c.tipo==='cuota').length>0 || v.cpData.anticipoPagado;
+      if(tieneCobros){
+        ['cp-lista','cp-ant','cp-ncuotas','cp-freq','cp-fecha1','cp-pct-ant','cp-sin-interes','cp-cuota-manual'].forEach(id=>{
+          const el=document.getElementById(id); if(el){el.disabled=true;el.title='No se puede modificar: ya tiene cobros registrados';}
+        });
+        const aviso=document.getElementById('blk-cp');
+        if(aviso){const d=document.createElement('div');d.style.cssText='background:#fff3cd;border:1px solid #f0ad4e;border-radius:7px;padding:7px 10px;font-size:12px;color:#856404;margin-top:6px;';d.textContent='⚠ Crédito con cobros registrados — parámetros bloqueados para evitar inconsistencias.';aviso.appendChild(d);}
+      }
     }
     if(v.ahorroData){
       const ahMP=document.getElementById('ahorro-monto-pactado'); if(ahMP) ahMP.value=v.ahorroData.montoFinal||'';
@@ -4093,6 +4104,25 @@ async function confirmarCobro() {
   if (!cp.cobros) cp.cobros = [];
   const yaCobrada = tipo==='cuota' && montoPagadoCuota(cp, idx) >= cp.cuota;
   if (yaCobrada) { if(!confirm('Esta cuota ya fue cobrada completamente. ¿Registrás un pago adicional igual?')) return; }
+  // Advertir sobrepago: si el monto supera lo pendiente de esta cuota, ofrecer imputar el excedente
+  if (tipo==='cuota') {
+    const pendienteCuota = Math.max(0, cp.cuota - montoPagadoCuota(cp, idx));
+    const excedente = (monto + monto2) - pendienteCuota;
+    if (excedente > 0 && pendienteCuota > 0) {
+      const resp = confirm(`El cobro ($${fmt(monto+monto2)}) supera lo pendiente de esta cuota ($${fmt(pendienteCuota)}) por $${fmt(excedente)}.\n¿Imputar el excedente a la próxima cuota pendiente?`);
+      if (resp) {
+        // Buscar próxima cuota pendiente
+        const fechas = buildFechasCuotas(cp);
+        for (let i = 0; i < cp.nCuotas; i++) {
+          if (i === idx) continue;
+          if (estadoCuotaCP(cp, i) !== 'pagada') {
+            cp.cobros.push({ id: Date.now()+500, tipo:'cuota', idx:i, monto:excedente, medio, fecha, obs:'Excedente cuota '+(idx+1), cobrador:usuarioActual?.nombre||'' });
+            break;
+          }
+        }
+      }
+    }
+  }
 
   const ts = Date.now();
   const nuevosCobrosMem = [];
