@@ -3310,6 +3310,10 @@ async function guardar() {
     const freq     = document.getElementById('cp-freq').value;
     const fechaAnt = fecha;
     const fecha1   = document.getElementById('cp-fecha1').value||'';
+    if (fecha1 && fecha1 < fecha) {
+      toast('La fecha de 1° cuota no puede ser anterior a la fecha de venta');
+      _guardandoVenta=false; if(btnG){btnG.disabled=false;btnG.textContent=btnGOrig;} return;
+    }
     const saldo    = lista - ant;
     const sinInteresG = document.getElementById('cp-sin-interes')?.checked || n <= 1;
     const interes  = isL30(pago) ? 0 : (sinInteresG ? 0 : (CP_INT[freq]?.[n]||0));
@@ -3443,10 +3447,13 @@ const SK_BORRADOR = 'rh_borrador_v';
 function guardarBorrador() {
   if (editVentaId) return; // no guardar borrador durante una edición
   const campos = ['f-fecha','f-vend','f-prod','f-precio','f-cantidad','f-costo','f-descuento',
-    'f-apellido','f-nombre','f-dni','f-tel','f-dir','f-obs','f-pago','f-fecha-entrega','f-estado-entrega'];
+    'f-apellido','f-nombre','f-dni','f-tel','f-dir','f-obs','f-pago','f-fecha-entrega','f-estado-entrega',
+    'cp-lista','cp-ant','cp-ncuotas','cp-freq','cp-fecha1','cp-pct-ant','cp-cuota-manual',
+    'ahorro-monto-pactado','ahorro-pct-ant'];
   const data = {};
   campos.forEach(id => { const el = document.getElementById(id); if(el) data[id] = el.value; });
   const chkContado = document.getElementById('chk-contado'); if(chkContado) data['chk-contado'] = chkContado.checked;
+  const chkSinInt = document.getElementById('cp-sin-interes'); if(chkSinInt) data['cp-sin-interes'] = chkSinInt.checked;
   data.ventaItems = ventaItems;
   data.pagosVenta = pagosVenta;
   try { localStorage.setItem(SK_BORRADOR, JSON.stringify(data)); } catch(e){}
@@ -3465,9 +3472,12 @@ function restaurarBorrador() {
       localStorage.removeItem(SK_BORRADOR); return;
     }
     const campos = ['f-fecha','f-vend','f-prod','f-precio','f-cantidad','f-costo','f-descuento',
-      'f-apellido','f-nombre','f-dni','f-tel','f-dir','f-obs','f-pago','f-fecha-entrega','f-estado-entrega'];
+      'f-apellido','f-nombre','f-dni','f-tel','f-dir','f-obs','f-pago','f-fecha-entrega','f-estado-entrega',
+      'cp-lista','cp-ant','cp-ncuotas','cp-freq','cp-fecha1','cp-pct-ant','cp-cuota-manual',
+      'ahorro-monto-pactado','ahorro-pct-ant'];
     campos.forEach(id => { const el = document.getElementById(id); if(el && data[id]!==undefined) el.value = data[id]; });
     const chkContado = document.getElementById('chk-contado'); if(chkContado && data['chk-contado']!==undefined) chkContado.checked = data['chk-contado'];
+    const chkSinInt = document.getElementById('cp-sin-interes'); if(chkSinInt && data['cp-sin-interes']!==undefined) chkSinInt.checked = data['cp-sin-interes'];
     if (data['f-fecha-entrega']) { const chkFE=document.getElementById('chk-fecha-entrega'); if(chkFE){chkFE.checked=true; const inpFE=document.getElementById('f-fecha-entrega'); if(inpFE)inpFE.style.display='';} }
     if (data.ventaItems && data.ventaItems.length) initItemsVenta(data.ventaItems);
     if (data.pagosVenta && data.pagosVenta.length) { pagosVenta = data.pagosVenta; const chkM = document.getElementById('chk-mixto'); if(chkM){chkM.checked=true;} const blkM=document.getElementById('blk-mixto');if(blkM)blkM.style.display='block'; renderPagosVenta(); }
@@ -3535,7 +3545,7 @@ function editarVenta(id) {
     // Restaurar items
     const editItems = v.items && v.items.length ? v.items : [{prod:v.producto||'', cantidad:v.cantidad||1, precioUnit:v.precioBruto||v.precio||0, costo:v.costo||0}];
     initItemsVenta(editItems);
-    const chkCE=document.getElementById('chk-contado'); if(chkCE) chkCE.checked=!!(v.descContado>0);
+    const chkCE=document.getElementById('chk-contado'); if(chkCE) chkCE.checked=!!(v.descContado>0||v.pctContado>0);
     const descAdicEl=document.getElementById('f-descuento'); if(descAdicEl) descAdicEl.value=v.pctAdicional||'';
     const eeEl=document.getElementById('f-estado-entrega'); if(eeEl) eeEl.value=v.estadoEntrega||v.estado||'pendiente';
     if(v.fechaEntrega){const chkFE=document.getElementById('chk-fecha-entrega');const inpFE=document.getElementById('f-fecha-entrega');if(chkFE&&inpFE){chkFE.checked=true;inpFE.style.display='';inpFE.value=v.fechaEntrega;}}
@@ -3744,6 +3754,10 @@ function abrirDevolucion(id) {
   if(v.cancelada){toast('La venta está cancelada');return;}
   const yaDevuelto = (v.devoluciones||[]).reduce((s,d)=>s+(d.monto||0),0);
   const disponible = v.precio - yaDevuelto;
+  // Medio del cobro original para pre-seleccionar
+  const medioOriginal = v.pagosDetalle?.[0]?.pago || v.cpData?.cobros?.[0]?.medio || v.pago || 'EFECTIVO';
+  const medioDevOpts = ['EFECTIVO','TRANSF_FLEX','TRANSF_GABRIELA','TRANSF_ROSA','QR_MP'];
+  const medioSugerido = medioDevOpts.includes(medioOriginal) ? medioOriginal : 'EFECTIVO';
   if(disponible<=0){toast('Esta venta ya fue devuelta completamente');return;}
   const modal=document.createElement('div');
   modal.id='ovl-devolucion';
@@ -3763,12 +3777,9 @@ function abrirDevolucion(id) {
     </div>
     <div class="fg" style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;text-transform:uppercase;color:#888;">Forma de devolución</label>
       <select id="dev-medio" style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;">
-        <option value="EFECTIVO">Efectivo</option>
-        <option value="TRANSF_FLEX">Transferencia Flex</option>
-        <option value="TRANSF_GABRIELA">Transferencia Gabriela</option>
-        <option value="TRANSF_ROSA">Transferencia Rosa</option>
-        <option value="QR_MP">QR Mercado Pago</option>
+        ${medioDevOpts.map(m=>`<option value="${m}" ${m===medioSugerido?'selected':''}>${PAGO_LBL[m]||m}</option>`).join('')}
       </select>
+      ${medioSugerido!=='EFECTIVO'?`<div style="font-size:11px;color:#888;margin-top:3px;">Sugerido según cobro original</div>`:''}
     </div>
     <div class="fg" style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;text-transform:uppercase;color:#888;">Motivo (opcional)</label>
       <input type="text" id="dev-motivo" placeholder="Ej: producto defectuoso, talle incorrecto..." style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;">
