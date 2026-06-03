@@ -531,12 +531,21 @@ select option{text-transform:uppercase;}
       <div id="f-margen-display" style="display:none;font-size:12px;padding:5px 10px;border-radius:7px;margin-bottom:8px;"></div>
 
       <!-- ESTADO DE ENTREGA -->
-      <div class="fg"><label>Estado de Entrega</label>
-        <select id="f-estado-entrega">
-          <option value="pendiente">Pendiente</option>
-          <option value="camino">En Camino</option>
-          <option value="entregado">Entregado</option>
-        </select>
+      <div class="r2">
+        <div class="fg"><label>Estado de Entrega</label>
+          <select id="f-estado-entrega">
+            <option value="pendiente">Pendiente</option>
+            <option value="camino">En Camino</option>
+            <option value="entregado">Entregado</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label style="display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="chk-fecha-entrega" onchange="toggleFechaEntrega()">
+            Fecha de Entrega
+          </label>
+          <input type="date" id="f-fecha-entrega" style="display:none;margin-top:4px;">
+        </div>
       </div>
 
       <!-- OBSERVACIONES -->
@@ -3451,6 +3460,7 @@ function restaurarBorrador() {
       'f-apellido','f-nombre','f-dni','f-tel','f-dir','f-obs','f-pago','f-fecha-entrega','f-estado-entrega'];
     campos.forEach(id => { const el = document.getElementById(id); if(el && data[id]!==undefined) el.value = data[id]; });
     const chkContado = document.getElementById('chk-contado'); if(chkContado && data['chk-contado']!==undefined) chkContado.checked = data['chk-contado'];
+    if (data['f-fecha-entrega']) { const chkFE=document.getElementById('chk-fecha-entrega'); if(chkFE){chkFE.checked=true; const inpFE=document.getElementById('f-fecha-entrega'); if(inpFE)inpFE.style.display='';} }
     if (data.ventaItems && data.ventaItems.length) initItemsVenta(data.ventaItems);
     if (data.pagosVenta && data.pagosVenta.length) { pagosVenta = data.pagosVenta; const chkM = document.getElementById('chk-mixto'); if(chkM){chkM.checked=true;} const blkM=document.getElementById('blk-mixto');if(blkM)blkM.style.display='block'; renderPagosVenta(); }
     onPago(); recalc();
@@ -3471,6 +3481,8 @@ function limpiar() {
   });
   const ftelNum=document.getElementById('f-tel-num'); if(ftelNum)ftelNum.value='';
   const ee=document.getElementById('f-estado-entrega'); if(ee)ee.value='pendiente';
+  const chkFE=document.getElementById('chk-fecha-entrega'); if(chkFE)chkFE.checked=false;
+  const inpFE=document.getElementById('f-fecha-entrega'); if(inpFE){inpFE.value='';inpFE.style.display='none';}
   // Vendedor por default: LOCAL PARADA ROBLES
   const sel=document.getElementById('f-vend');
   if(sel && !sel.disabled) sel.value='LOCAL PARADA ROBLES';
@@ -3511,6 +3523,7 @@ function editarVenta(id) {
     const chkCE=document.getElementById('chk-contado'); if(chkCE) chkCE.checked=!!(v.descContado>0);
     const descAdicEl=document.getElementById('f-descuento'); if(descAdicEl) descAdicEl.value=v.pctAdicional||'';
     const eeEl=document.getElementById('f-estado-entrega'); if(eeEl) eeEl.value=v.estadoEntrega||v.estado||'pendiente';
+    if(v.fechaEntrega){const chkFE=document.getElementById('chk-fecha-entrega');const inpFE=document.getElementById('f-fecha-entrega');if(chkFE&&inpFE){chkFE.checked=true;inpFE.style.display='';inpFE.value=v.fechaEntrega;}}
     document.getElementById('f-apellido').value=v.apellido||'';
     document.getElementById('f-nombre').value=v.nombre||'';
     document.getElementById('f-dni').value=v.dni||'';
@@ -8289,6 +8302,14 @@ function seleccionarCliente(id) {
 }
 
 // Toggle consumidor final
+function toggleFechaEntrega() {
+  const chk = document.getElementById('chk-fecha-entrega');
+  const inp = document.getElementById('f-fecha-entrega');
+  if (!chk || !inp) return;
+  inp.style.display = chk.checked ? '' : 'none';
+  if (!chk.checked) inp.value = '';
+}
+
 function toggleConsFinal() {
   const cf = document.getElementById('chk-cons-final').checked;
   const blk = document.getElementById('blk-datos-cliente');
