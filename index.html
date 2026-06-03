@@ -3715,6 +3715,74 @@ async function marcarCuota(vid,idx,pagar) {
   await guardarVentas(); renderCreditos(); verDetalle(vid);
   toast(pagar?'OK Cuota cobrada':'Desmarcada');
 }
+function abrirDevolucion(id) {
+  if(!esAdmin()){toast('Sin permiso');return;}
+  const v=ventas.find(x=>x.id===id); if(!v)return;
+  if(v.cancelada){toast('La venta está cancelada');return;}
+  const yaDevuelto = (v.devoluciones||[]).reduce((s,d)=>s+(d.monto||0),0);
+  const disponible = v.precio - yaDevuelto;
+  if(disponible<=0){toast('Esta venta ya fue devuelta completamente');return;}
+  const modal=document.createElement('div');
+  modal.id='ovl-devolucion';
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML=`<div style="background:#fff;border-radius:14px;padding:20px;max-width:400px;width:95%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <strong style="font-size:15px;">Devolución — Venta #${v.nroVenta||v.id}</strong>
+      <button onclick="document.getElementById('ovl-devolucion').remove()" style="border:none;background:none;font-size:22px;cursor:pointer;color:#888;">×</button>
+    </div>
+    <div style="background:var(--cream2,#f5f0e8);border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:13px;">
+      <div><strong>${cliNom(v)||'Sin cliente'}</strong> · ${v.producto||''}</div>
+      <div style="color:var(--muted,#888);margin-top:2px;">Precio original: $${fmt(v.precio)} · Disponible para devolver: $${fmt(disponible)}</div>
+    </div>
+    <div class="fg" style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;text-transform:uppercase;color:#888;">Monto a devolver</label>
+      <input type="number" id="dev-monto" value="${disponible}" min="1" max="${disponible}" style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:16px;font-weight:700;box-sizing:border-box;" oninput="document.getElementById('dev-tipo').textContent=parseFloat(this.value||0)>=${disponible}?'Devolución total':'Devolución parcial'">
+      <div id="dev-tipo" style="font-size:11px;color:#888;margin-top:3px;">${disponible===v.precio?'Devolución total':'Devolución parcial'}</div>
+    </div>
+    <div class="fg" style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;text-transform:uppercase;color:#888;">Forma de devolución</label>
+      <select id="dev-medio" style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;">
+        <option value="EFECTIVO">Efectivo</option>
+        <option value="TRANSF_FLEX">Transferencia Flex</option>
+        <option value="TRANSF_GABRIELA">Transferencia Gabriela</option>
+        <option value="TRANSF_ROSA">Transferencia Rosa</option>
+        <option value="QR_MP">QR Mercado Pago</option>
+      </select>
+    </div>
+    <div class="fg" style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;text-transform:uppercase;color:#888;">Motivo (opcional)</label>
+      <input type="text" id="dev-motivo" placeholder="Ej: producto defectuoso, talle incorrecto..." style="width:100%;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;box-sizing:border-box;">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button onclick="document.getElementById('ovl-devolucion').remove()" style="flex:1;padding:10px;background:#f5f0e8;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button>
+      <button onclick="confirmarDevolucion(${id})" style="flex:1;padding:10px;background:#c05010;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Confirmar Devolución</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function confirmarDevolucion(id) {
+  if(!esAdmin()){toast('Sin permiso');return;}
+  const v=ventas.find(x=>x.id===id); if(!v)return;
+  const monto=parseFloat(document.getElementById('dev-monto').value)||0;
+  const medio=document.getElementById('dev-medio').value;
+  const motivo=document.getElementById('dev-motivo').value.trim();
+  if(!monto||monto<=0){toast('Ingresá el monto');return;}
+  const yaDevuelto=(v.devoluciones||[]).reduce((s,d)=>s+(d.monto||0),0);
+  if(monto>v.precio-yaDevuelto){toast('El monto supera lo disponible');return;}
+  if(!confirm(`¿Confirmar devolución de $${fmt(monto)} por ${PAGO_LBL[medio]||medio}?`)){return;}
+  if(!v.devoluciones)v.devoluciones=[];
+  const devId=Date.now();
+  v.devoluciones.push({id:devId,fecha:hoy(),monto,medio,motivo,operador:usuarioActual.nombre});
+  // Egreso en caja
+  const caja=cajaDeMovimiento({pago:medio});
+  movCaja.unshift({id:devId+1,tipo:'egreso',fecha:hoy(),caja,concepto:`Devolución venta #${v.nroVenta||v.id} — ${v.producto||''} — ${cliNom(v)}${motivo?' ('+motivo+')':''}`,monto,medio,auto:true,ventaNro:v.nroVenta});
+  await guardarCajaData();
+  await guardarVentas();
+  document.getElementById('ovl-devolucion')?.remove();
+  cM('ovl-det');
+  renderVentas();
+  if(document.getElementById('pg-caja').classList.contains('on'))renderCaja();
+  toast(`OK Devolución de $${fmt(monto)} registrada`);
+}
+
 async function cancelarVenta(id) {
   if(!esAdmin()){toast('Sin permiso');return;}
   const v=ventas.find(x=>x.id===id); if(!v)return;
@@ -3847,7 +3915,7 @@ function renderVentas() {
     const cuotas=buildCuotas(v),pend=cuotas.filter(c=>!c.pagada).length;
     const puedeEditar=esLocal();
     return`<tr style="${v.cancelada?'opacity:.55;background:#fff0f0;text-decoration:line-through;':''}" >
-      <td style="color:var(--muted);font-size:11px;">${totalFiltrado-i}${v.cancelada?'<br><span style="font-size:9px;color:#c00;text-decoration:none;font-weight:700;">CANCEL</span>':''}</td>
+      <td style="color:var(--muted);font-size:11px;">${totalFiltrado-i}${v.cancelada?'<br><span style="font-size:9px;color:#c00;text-decoration:none;font-weight:700;">CANCEL</span>':''}${(v.devoluciones?.length&&!v.cancelada)?'<br><span style="font-size:9px;color:#c05010;font-weight:700;">DEV</span>':''}</td>
       <td style="white-space:nowrap;font-size:12px;">${fmtD(v.fecha)}</td>
       <td style="font-size:12px;">${v.vendedora}</td>
       <td style="max-width:150px;font-size:13px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.items&&v.items.length>1?v.items.map(x=>x.prod||'—').join(' + '):v.producto}</td>
@@ -3910,9 +3978,18 @@ function verDetalle(id) {
     ${v.obs?`<div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:13px;color:var(--muted);font-style:italic;margin-bottom:10px;">${v.obs}</div>`:''}
     ${cuotasHTML}
     ${v.cancelada?`<div style="background:#fee;border:1.5px solid #e44;border-radius:8px;padding:9px 13px;font-size:13px;color:#c00;font-weight:600;margin-bottom:10px;">✕ CANCELADA el ${fmtD(v.fechaCancelacion||'')} por ${v.canceladaPor||'—'}</div>`:''}
+    ${(v.devoluciones&&v.devoluciones.length)?`<div style="background:#fff3e0;border:1.5px solid #c05010;border-radius:8px;padding:9px 13px;font-size:13px;margin-bottom:10px;">
+      <div style="font-weight:700;color:#c05010;margin-bottom:6px;">↩ Devoluciones registradas</div>
+      ${v.devoluciones.map(d=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee;">
+        <span>${fmtD(d.fecha)} · ${PAGO_LBL[d.medio]||d.medio}${d.motivo?' · '+d.motivo:''}</span>
+        <strong>$${fmt(d.monto)}</strong>
+      </div>`).join('')}
+      <div style="text-align:right;margin-top:4px;font-size:12px;color:#888;">Total devuelto: $${fmt(v.devoluciones.reduce((s,d)=>s+(d.monto||0),0))}</div>
+    </div>`:''}
     <div class="btn-row">
       ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarVenta(${id})">🗑 Eliminar</button>`:''}
       ${esAdmin()&&!v.cancelada?`<button class="btn btn-sm" style="background:#e44;color:#fff;" onclick="cancelarVenta(${id})">✕ Cancelar</button>`:''}
+      ${esAdmin()&&!v.cancelada?`<button class="btn btn-sm" style="background:#c05010;color:#fff;" onclick="cM('ovl-det');abrirDevolucion(${id})">↩ Devolución</button>`:''}
       ${esAdmin()&&v.cancelada?`<button class="btn btn-green btn-sm" onclick="reactivarVenta(${id})">↩ Reactivar</button>`:''}
       ${esLocal()&&!v.cancelada?`<button class="btn btn-blue btn-sm" onclick="cM('ovl-det');editarVenta(${id})">Ed Editar</button>`:''}
       ${esLocal()&&!v.cancelada?`<button class="btn btn-ghost btn-sm" onclick="cM('ovl-det');duplicarVenta(${id})"> Duplicar</button>`:''}
