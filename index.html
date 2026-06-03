@@ -597,6 +597,7 @@ select option{text-transform:uppercase;}
       <button class="pill" data-estado="pendiente" onclick="setFiltroEstadoEntrega('pendiente',this)">⏳ Pendiente</button>
       <button class="pill" data-estado="camino" onclick="setFiltroEstadoEntrega('camino',this)">🚚 En camino</button>
       <button class="pill" data-estado="entregado" onclick="setFiltroEstadoEntrega('entregado',this)">✅ Entregado</button>
+      <button class="pill" data-estado="cancelada" onclick="setFiltroEstadoEntrega('cancelada',this)">✕ Canceladas</button>
     </div>
     <div class="stats" id="stats-ventas"></div>
     <div class="card">
@@ -3714,6 +3715,32 @@ async function marcarCuota(vid,idx,pagar) {
   await guardarVentas(); renderCreditos(); verDetalle(vid);
   toast(pagar?'OK Cuota cobrada':'Desmarcada');
 }
+async function cancelarVenta(id) {
+  if(!esAdmin()){toast('Sin permiso');return;}
+  const v=ventas.find(x=>x.id===id); if(!v)return;
+  const nCobros=(v.cpData?.cobros||[]).filter(c=>c.tipo!=='acuenta').length+(v.ahorroData?.pagos||[]).length;
+  const aviso = nCobros>0 ? `\n⚠ Tiene ${nCobros} cobro(s) registrado(s). Los pagos quedan en caja pero la venta no aparecerá en reportes.` : '';
+  if(!confirm(`¿Cancelar venta #${v.nroVenta||v.id}?\n${[v.apellido,v.nombre].filter(Boolean).join(' ')||'Sin cliente'} — $${fmt(v.precio)}${aviso}`))return;
+  v.cancelada=true;
+  v.fechaCancelacion=hoy();
+  v.canceladaPor=usuarioActual.nombre;
+  await guardarVentas();
+  cM('ovl-det');
+  renderVentas(); renderCreditos();
+  toast('Venta #'+(v.nroVenta||id)+' cancelada');
+}
+
+async function reactivarVenta(id) {
+  if(!esAdmin()){toast('Sin permiso');return;}
+  const v=ventas.find(x=>x.id===id); if(!v)return;
+  if(!confirm(`¿Reactivar venta #${v.nroVenta||v.id}?`))return;
+  delete v.cancelada; delete v.fechaCancelacion; delete v.canceladaPor;
+  await guardarVentas();
+  cM('ovl-det');
+  renderVentas(); renderCreditos();
+  toast('OK Venta reactivada');
+}
+
 async function eliminarVenta(id) {
   if(!esAdmin()){toast('Sin permiso');return;}
   const vd=ventas.find(v=>v.id===id);
@@ -3759,6 +3786,12 @@ function renderVentas() {
     lista=filtroVend==='TODAS'?ventas:ventas.filter(v=>v.vendedora===filtroVend);
   }
   lista = [...lista];
+  // Filtro canceladas: solo mostrar canceladas si el pill es "cancelada", sino excluirlas
+  if (filtroEstadoEntrega === 'cancelada') {
+    lista = lista.filter(v => v.cancelada);
+  } else {
+    lista = lista.filter(v => !v.cancelada);
+  }
   // Filtro por forma de pago
   const filtroPago = document.getElementById('ventas-filtro-pago')?.value||'';
   if (filtroPago) {
@@ -3787,7 +3820,7 @@ function renderVentas() {
     const el = document.getElementById('sort-ico-'+col);
     if (el) el.textContent = col===sortCol ? (sortAsc?'↑':'↓') : '';
   });
-  if (filtroEstadoEntrega && filtroEstadoEntrega!=='TODOS') lista=lista.filter(v=>(v.estadoEntrega||'pendiente')===filtroEstadoEntrega);
+  if (filtroEstadoEntrega && filtroEstadoEntrega!=='TODOS' && filtroEstadoEntrega!=='cancelada') lista=lista.filter(v=>(v.estadoEntrega||'pendiente')===filtroEstadoEntrega);
   const buscar=(document.getElementById('ventas-buscar')?.value||'').toLowerCase().trim();
   if (buscar) lista = lista.filter(v => prodBuscar(v,buscar) || cliNom(v).toLowerCase().includes(buscar));
   const totalFiltrado = lista.length;
@@ -3813,8 +3846,8 @@ function renderVentas() {
   tbody.innerHTML=lista.map((v,i)=>{
     const cuotas=buildCuotas(v),pend=cuotas.filter(c=>!c.pagada).length;
     const puedeEditar=esLocal();
-    return`<tr>
-      <td style="color:var(--muted);font-size:11px;">${totalFiltrado-i}</td>
+    return`<tr style="${v.cancelada?'opacity:.55;background:#fff0f0;text-decoration:line-through;':''}" >
+      <td style="color:var(--muted);font-size:11px;">${totalFiltrado-i}${v.cancelada?'<br><span style="font-size:9px;color:#c00;text-decoration:none;font-weight:700;">CANCEL</span>':''}</td>
       <td style="white-space:nowrap;font-size:12px;">${fmtD(v.fecha)}</td>
       <td style="font-size:12px;">${v.vendedora}</td>
       <td style="max-width:150px;font-size:13px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.items&&v.items.length>1?v.items.map(x=>x.prod||'—').join(' + '):v.producto}</td>
@@ -3876,10 +3909,13 @@ function verDetalle(id) {
     ${v.cpData?`<div class="ibox" style="margin-bottom:10px;">Anticipo: <strong>$${fmt(v.cpData.anticipo)}</strong> | Cuota: <strong>$${fmt(v.cpData.cuota)}</strong> | ${v.cpData.frecuencia}</div>`:''}
     ${v.obs?`<div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:13px;color:var(--muted);font-style:italic;margin-bottom:10px;">${v.obs}</div>`:''}
     ${cuotasHTML}
+    ${v.cancelada?`<div style="background:#fee;border:1.5px solid #e44;border-radius:8px;padding:9px 13px;font-size:13px;color:#c00;font-weight:600;margin-bottom:10px;">✕ CANCELADA el ${fmtD(v.fechaCancelacion||'')} por ${v.canceladaPor||'—'}</div>`:''}
     <div class="btn-row">
       ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarVenta(${id})">🗑 Eliminar</button>`:''}
-      ${esLocal()?`<button class="btn btn-blue btn-sm" onclick="cM('ovl-det');editarVenta(${id})">Ed Editar</button>`:''}
-      ${esLocal()?`<button class="btn btn-ghost btn-sm" onclick="cM('ovl-det');duplicarVenta(${id})"> Duplicar</button>`:''}
+      ${esAdmin()&&!v.cancelada?`<button class="btn btn-sm" style="background:#e44;color:#fff;" onclick="cancelarVenta(${id})">✕ Cancelar</button>`:''}
+      ${esAdmin()&&v.cancelada?`<button class="btn btn-green btn-sm" onclick="reactivarVenta(${id})">↩ Reactivar</button>`:''}
+      ${esLocal()&&!v.cancelada?`<button class="btn btn-blue btn-sm" onclick="cM('ovl-det');editarVenta(${id})">Ed Editar</button>`:''}
+      ${esLocal()&&!v.cancelada?`<button class="btn btn-ghost btn-sm" onclick="cM('ovl-det');duplicarVenta(${id})"> Duplicar</button>`:''}
       <button class="btn btn-wa btn-sm" onclick="compartirReciboPDF(${id})">WA Recibo</button>
     </div>`;
   document.getElementById('ovl-det').classList.add('on');
@@ -4172,8 +4208,8 @@ function filtroCredito(f, btn) {
 
 function renderCreditos() {
   if (!usuarioActual) return;
-  const creditosVentas = ventas.filter(v=>isCPorL30(v.pago)&&v.cpData&&!esAhorro(v));
-  const ahorrosVentas = ventas.filter(v=>esAhorro(v));
+  const creditosVentas = ventas.filter(v=>isCPorL30(v.pago)&&v.cpData&&!esAhorro(v)&&!v.cancelada);
+  const ahorrosVentas = ventas.filter(v=>esAhorro(v)&&!v.cancelada);
 
   // Stats
   let antPend=0, venc=0, vencMonto=0, prox=0, pend=0, alDia=0, totalHoy=0, completados=0, saldoPendienteTotal=0;
@@ -6881,6 +6917,7 @@ function getVentasFiltradas() {
   const clienteFiltro = document.getElementById('rep-cliente')?.value || 'TODAS';
 
   return ventas.filter(v => {
+    if (v.cancelada) return false;
     if (desde && v.fecha < desde) return false;
     if (hasta && v.fecha > hasta) return false;
     if (vend !== 'TODAS' && v.vendedora !== vend) return false;
