@@ -3518,6 +3518,11 @@ function editarVenta(id) {
   document.getElementById('frm-titulo').textContent='Ed️ Editando Venta';
   document.getElementById('btn-guardar').textContent='OK Guardar Cambios';
   setTimeout(()=>{
+    // Limpiar estado MIXTO para que no se hereden pagos de una operación anterior
+    pagosVenta=[];
+    const _chkM=document.getElementById('chk-mixto'); if(_chkM) _chkM.checked=false;
+    const _blkM=document.getElementById('blk-mixto'); if(_blkM) _blkM.style.display='none';
+    renderPagosVenta();
     document.getElementById('f-fecha').value=v.fecha||hoy();
     const sel=document.getElementById('f-vend');
     if(!sel.disabled) sel.value=v.vendedora||usuarioActual.nombre;
@@ -4082,7 +4087,8 @@ async function confirmarCobro() {
   const fecha = document.getElementById('cobrar-fecha').value||hoy();
   const obs = document.getElementById('cobrar-obs').value.trim();
   const comprobante = document.getElementById('cobrar-comprobante')?.value?.trim()||'';
-  if (!monto) { toast('! Ingresá un monto'); return; }
+  if (!monto || monto <= 0) { toast('! Ingresá un monto válido'); return; }
+  if (monto2 < 0) { toast('! El 2° monto no puede ser negativo'); return; }
   if (monto2 > 0 && !medio2) { toast('! Seleccioná el 2° medio de pago'); return; }
   if (!cp.cobros) cp.cobros = [];
   const yaCobrada = tipo==='cuota' && montoPagadoCuota(cp, idx) >= cp.cuota;
@@ -6320,6 +6326,7 @@ function cajaDeMovimiento(mov) {
 }
 
 function impactosCaja(venta) {
+  if (venta.cancelada) return [];
   if (venta.pago === 'AHORRO') return [];
   const p = venta.pago || '';
   // CP/L30 sales: cobros go to movCaja individually via confirmarCobro/guardarPagoCuenta
@@ -7053,7 +7060,8 @@ function renderReportes() {
   }
   empty.style.display = 'none';
 
-  const total = lista.reduce((s,v)=>s+v.precio,0);
+  const netoVenta = v => v.precio - (v.devoluciones||[]).reduce((s,d)=>s+(d.monto||0),0);
+  const total = lista.reduce((s,v)=>s+netoVenta(v),0);
   const totalCosto = lista.reduce((s,v)=>s+(v.costo||0),0);
   const totalFeesMP = lista.reduce((s,v)=>{
     const p=v.pago; if(!p) return s;
@@ -7106,8 +7114,8 @@ function renderReportes() {
       const d0ant=new Date(d0); d0ant.setDate(d0ant.getDate()-dias);
       const d1ant=new Date(d1); d1ant.setDate(d1ant.getDate()-dias);
       const desdeAnt=d0ant.toISOString().slice(0,10), hastaAnt=d1ant.toISOString().slice(0,10);
-      const listaAnt=ventas.filter(v=>v.fecha>=desdeAnt&&v.fecha<=hastaAnt);
-      const totalAnt=listaAnt.reduce((s,v)=>s+v.precio,0);
+      const listaAnt=ventas.filter(v=>v.fecha>=desdeAnt&&v.fecha<=hastaAnt&&!v.cancelada);
+      const totalAnt=listaAnt.reduce((s,v)=>s+v.precio-(v.devoluciones||[]).reduce((a,d)=>a+(d.monto||0),0),0);
       const delta=totalAnt>0?Math.round((total-totalAnt)/totalAnt*100):null;
       const flecha=delta===null?'':delta>=0?'↑':'↓';
       const color=delta===null?'var(--muted)':delta>=0?'var(--green)':'var(--red)';
