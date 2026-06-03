@@ -2837,6 +2837,7 @@ function iniciarApp() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   document.getElementById('f-fecha').value = hoy();
   document.getElementById('pg-venta').classList.add('on');
+  setTimeout(restaurarBorrador, 300);
 
   // Botones de ventas según rol
   const accs = document.getElementById('ventas-acciones');
@@ -3448,11 +3449,14 @@ function guardarBorrador() {
 }
 
 function restaurarBorrador() {
+  if (editVentaId) return;
   try {
     const raw = localStorage.getItem(SK_BORRADOR);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if (!data['f-prod'] && !data['f-precio']) { localStorage.removeItem(SK_BORRADOR); return; }
+    const tieneContenido = data['f-prod'] || data['f-precio'] || data['f-apellido'] || data['f-nombre'] ||
+      (data.ventaItems && data.ventaItems.some(i => i.prod || i.precioUnit > 0));
+    if (!tieneContenido) { localStorage.removeItem(SK_BORRADOR); return; }
     if (!confirm('Tenés una venta sin guardar del formulario anterior. ¿Querés restaurarla?')) {
       localStorage.removeItem(SK_BORRADOR); return;
     }
