@@ -2173,6 +2173,7 @@ let ventasSortCol = 'fecha';
 let ventasSortAsc = false;
 let creditosSortSaldo = false; // false = por riesgo (default), true = por saldo pendiente desc
 let nroVentaCounter = 0;
+let _uid = Date.now(); function uid() { return ++_uid; }
 const SK_PEDIDOS='rh_ped_v1', SK_ACTIVIDAD='rh_act_v1', SK_METAS='rh_metas_v1', SK_PLANTILLAS='rh_plant_v1', SK_MILOCAL='rh_milocal_v1', SK_ARQUEOS='rh_arq_v1', SK_NROVENTA='rh_nroventa_v1', SK_PROVEEDORES='rh_prov_v1';
 const SK_CATEGORIAS = 'rh_cat_v2';
 const SK_CARACTERISTICAS = 'rh_car_v1';
@@ -3345,11 +3346,11 @@ async function guardar() {
       if (isTC(pago)) {
         const gastosTC = [];
         if (pago !== 'TC1' && MP_FEES[pago]) {
-          gastosTC.push({ id:Date.now()+1, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+          gastosTC.push({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
             concepto:`Costo interés ${pago} — ${cliEdit}`, monto: Math.round(precioVenta * MP_FEES[pago]),
             auto:true, ventaNro: nroVentaEdit });
         }
-        gastosTC.push({ id:Date.now()+2, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+        gastosTC.push({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
           concepto:`Cargo Mercado Pago — ${cliEdit}`, monto: Math.round(precioVenta * MP_FEES.TC1),
           auto:true, ventaNro: nroVentaEdit });
         movCaja.unshift(...gastosTC.reverse());
@@ -3358,7 +3359,7 @@ async function guardar() {
       } else if (['DEBITO','PREPAGA','QR_MP','LINK_MP'].includes(pago)) {
         const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0));
         if (gastoFee > 0) {
-          movCaja.unshift({ id:Date.now()+3, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+          movCaja.unshift({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
             concepto:`Cargo ${PAGO_LBL[pago]||pago} — ${cliEdit}`, monto: gastoFee,
             auto:true, ventaNro: nroVentaEdit });
           await guardarCajaData();
@@ -3380,7 +3381,8 @@ async function guardar() {
     const itemsKey = base.items && base.items.length
       ? base.items.map(x=>x.prod).sort().join('|')
       : (base.producto||'').trim().toLowerCase();
-    const dup = ventas.find(v => {
+    const esConsFinal = (base.apellido||'').toUpperCase() === 'CONSUMIDOR FINAL' || !base.apellido;
+    const dup = !esConsFinal && ventas.find(v => {
       if (v.fecha !== base.fecha) return false;
       if ((v.apellido||'').toLowerCase() !== (base.apellido||'').toLowerCase()) return false;
       if ((ahora - (v.id||0)) >= 60000) return false;
@@ -3405,11 +3407,11 @@ async function guardar() {
       const cli = `${base.apellido||''} ${base.nombre||''}`.trim() || base.producto || '—';
       const gastosTC = [];
       if (pago !== 'TC1' && MP_FEES[pago]) {
-        gastosTC.push({ id:Date.now()+1, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+        gastosTC.push({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
           concepto:`Costo interés ${pago} — ${cli}`, monto: Math.round(precioVenta * MP_FEES[pago]),
           auto:true, ventaNro: nroVenta });
       }
-      gastosTC.push({ id:Date.now()+2, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+      gastosTC.push({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
         concepto:`Cargo Mercado Pago — ${cli}`, monto: Math.round(precioVenta * MP_FEES.TC1),
         auto:true, ventaNro: nroVenta });
       movCaja.unshift(...gastosTC.reverse());
@@ -3420,7 +3422,7 @@ async function guardar() {
     if (esMPSimple) {
       const cli = `${base.apellido||''} ${base.nombre||''}`.trim() || base.producto || '—';
       const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0));
-      movCaja.unshift({ id:Date.now()+3, tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
+      movCaja.unshift({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
         concepto:`Cargo ${PAGO_LBL[pago]||pago} — ${cli}`, monto: gastoFee,
         auto:true, ventaNro: nroVenta });
       await guardarCajaData();
@@ -3644,7 +3646,11 @@ function recalcVR() {
   document.getElementById('vr-total').textContent = precio > 0 ? `Total: $${fmt(precio)}` : '';
 }
 
+let _guardandoVentaRapida = false;
 async function guardarVentaRapida() {
+  if (_guardandoVentaRapida) return;
+  _guardandoVentaRapida = true;
+  try {
   const prod   = document.getElementById('vr-prod').value.trim();
   const precio = parseFloat(document.getElementById('vr-precio').value) || 0;
   const pago   = document.getElementById('vr-pago').value || 'EFECTIVO';
@@ -3674,11 +3680,11 @@ async function guardarVentaRapida() {
   if (isTC(pago)) {
     const gastosTC = [];
     if (pago !== 'TC1' && MP_FEES[pago]) {
-      gastosTC.push({ id:Date.now()+1, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+      gastosTC.push({ id:uid(), tipo:'gasto', fecha, caja:'MERCADO_PAGO',
         concepto:`Costo interés ${pago} — CONSUMIDOR FINAL`, monto: Math.round(precioVenta * MP_FEES[pago]),
         auto:true, ventaNro: nroVenta });
     }
-    gastosTC.push({ id:Date.now()+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+    gastosTC.push({ id:uid(), tipo:'gasto', fecha, caja:'MERCADO_PAGO',
       concepto:`Cargo Mercado Pago — CONSUMIDOR FINAL`, monto: Math.round(precioVenta * MP_FEES.TC1),
       auto:true, ventaNro: nroVenta });
     movCaja.unshift(...gastosTC.reverse());
@@ -3687,7 +3693,7 @@ async function guardarVentaRapida() {
   } else if (['DEBITO','PREPAGA','QR_MP','LINK_MP'].includes(pago)) {
     const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0));
     if (gastoFee > 0) {
-      movCaja.unshift({ id:Date.now()+3, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+      movCaja.unshift({ id:uid(), tipo:'gasto', fecha, caja:'MERCADO_PAGO',
         concepto:`Cargo ${PAGO_LBL[pago]||pago} — CONSUMIDOR FINAL`, monto: gastoFee,
         auto:true, ventaNro: nroVenta });
       await guardarCajaData();
@@ -3699,6 +3705,7 @@ async function guardarVentaRapida() {
   toast('OK Venta rápida guardada #'+nroVenta);
   cM('ovl-venta-rapida');
   renderPills(); renderVentas();
+  } finally { _guardandoVentaRapida = false; }
 }
 
 // ===
@@ -5592,7 +5599,7 @@ function agregarSubcategoria(){
   if(isNaN(pIdx)||pIdx<0||pIdx>=categorias.length){toast('! Elegí una categoría');return;}
   if(!val){toast('! Ingresá el nombre');return;}
   const cat=categorias[pIdx];
-  if(typeof cat==='string'){categorias[pIdx]={id:Date.now(),nombre:cat,subcategorias:[{id:Date.now()+1,nombre:val}]};}
+  if(typeof cat==='string'){categorias[pIdx]={id:Date.now(),nombre:cat,subcategorias:[{id:uid(),nombre:val}]};}
   else{
     if(!cat.subcategorias)cat.subcategorias=[];
     if(cat.subcategorias.some(s=>(s.nombre||s)===val)){toast('Ya existe');return;}
@@ -6131,7 +6138,7 @@ async function confirmarConvPres(id) {
   const pago=document.getElementById('pres-conv-pago')?.value||'EFECTIVO';
   document.getElementById('pres-venta-popup')?.remove();
   nroVentaCounter++;
-  const nroVenta=String(nroVentaCounter).padStart(4,'0');
+  const nroVenta=nroVentaCounter;
   let precio=0, producto='', items=[];
   if(p.tipo===1){
     precio=p.precio||0;
@@ -8699,7 +8706,7 @@ async function guardarPagoAhorro() {
   const pagoId = Date.now();
   v.ahorroData.pagos.push({ id: pagoId, fecha: fechaPago, monto, medio, obs });
   try {
-    movCaja.unshift({ id: Date.now()+1, tipo:'ingreso', fecha: fechaPago, caja: cajaDeMovimiento({pago: medio}), concepto:`Plan Ahorro - ${v.producto} - ${cliNom(v)}`, monto, medio, obs, cobrador: usuarioActual?.nombre||'' });
+    movCaja.unshift({ id:uid(), tipo:'ingreso', fecha: fechaPago, caja: cajaDeMovimiento({pago: medio}), concepto:`Plan Ahorro - ${v.producto} - ${cliNom(v)}`, monto, medio, obs, cobrador: usuarioActual?.nombre||'' });
     await guardarCajaData();
   } catch(e){}
   await guardarVentas();
@@ -8747,8 +8754,8 @@ function generarReciboAhorro(v, pago) {
   <div class="row"><span>Monto del plan</span><strong>$${fmt(montoFinal)}</strong></div>
   <div class="row"><span>Total pagado</span><strong>$${fmt(totalPagado)}</strong></div>
   <div class="row"><span>Saldo restante</span><strong style="color:${restante>0?'#c05010':'#1a7a4a'};">$${fmt(restante)}</strong></div>
-  <div class="progress"><div class="progress-bar" style="width:${Math.min(100,Math.round(totalPagado/montoFinal*100))}%;"></div></div>
-  <div style="text-align:center;font-size:12px;color:#888;">${Math.min(100,Math.round(totalPagado/montoFinal*100))}% completado</div>
+  <div class="progress"><div class="progress-bar" style="width:${montoFinal>0?Math.min(100,Math.round(totalPagado/montoFinal*100)):0}%;"></div></div>
+  <div style="text-align:center;font-size:12px;color:#888;">${montoFinal>0?Math.min(100,Math.round(totalPagado/montoFinal*100)):0}% completado</div>
   ${completado?`<div class="completado">¡Plan completado! Gracias por tu confianza.</div>`:''}
   ${pago.obs?`<div style="font-size:12px;color:#888;margin-top:10px;font-style:italic;">Obs: ${pago.obs}</div>`:''}
   <div class="footer">Rossi Home · ${fmtD(hoy())}</div>
