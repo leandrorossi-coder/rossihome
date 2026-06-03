@@ -8346,7 +8346,7 @@ function buildEstadoCell(v) {
   const est = v.estado || 'pendiente';
   const bg = est==='entregado' ? '#1a7a4a' : est==='camino' ? '#c05010' : '#efe9df';
   const color = est!=='pendiente' ? '#fff' : '#1a1a2e';
-  const pe = (usuarioActual && usuarioActual.nombre === 'LEANDRO') ? '' : 'pointer-events:none;';
+  const pe = esLocal() ? '' : 'pointer-events:none;';
   const opts = ['pendiente','camino','entregado'];
   const labels = {pendiente:'Pendiente', camino:'En camino', entregado:'Entregado'};
   const optHtml = opts.map(o => '<option value="'+o+'"'+(est===o?' selected':'')+'>'+labels[o]+'</option>').join('');
