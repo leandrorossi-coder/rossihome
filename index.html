@@ -3395,7 +3395,8 @@ async function guardar() {
     actualizarMaestroClientes(nuevaVenta);
     guardarClientes();
     logActividad('Nueva venta #'+nroVenta+' — $'+fmt(precioVenta));
-    toast('OK Venta guardada #'+nroVenta);
+    const _cliToast = [base.apellido,base.nombre].filter(Boolean).join(' ').trim();
+    toast('OK Venta #'+nroVenta+' — $'+fmt(precioVenta)+(_cliToast?' — '+_cliToast:''), 4000);
     // Verificar tope sueldo si el cobro va a caja Rosa o Gabriela
     impactosCaja(nuevaVenta).forEach(({caja}) => verificarTopeSueldo(caja));
     // Gastos automáticos MP para ventas TC (interés + cargo de servicio)
