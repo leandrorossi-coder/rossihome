@@ -8594,6 +8594,68 @@ async function guardarPagoAhorro() {
   const restante = Math.max(0, (v.ahorroData.montoFinal||0) - totalPagadoAhorro(v));
   const msg = restante > 0 ? `OK Pago de $${fmt(monto)} registrado. Resta: $${fmt(restante)}` : 'OK Pago final registrado. ¡Plan completado!';
   toast(msg);
+  generarReciboAhorro(v, { id: pagoId, fecha: fechaPago, monto, medio, obs });
+}
+
+function generarReciboAhorro(v, pago) {
+  const totalPagado = totalPagadoAhorro(v);
+  const montoFinal = v.ahorroData?.montoFinal || v.precio || 0;
+  const restante = Math.max(0, montoFinal - totalPagado);
+  const pagos = (v.ahorroData?.pagos||[]).slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const nPago = pagos.findIndex(p=>p.id===pago.id)+1 || pagos.length;
+  const completado = restante <= 0;
+  const local = 'Rossi Home';
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Recibo Plan Ahorro</title>
+  <style>
+    body{font-family:'Segoe UI',Arial,sans-serif;max-width:420px;margin:0 auto;padding:24px;color:#1a1a2e;}
+    h2{text-align:center;font-size:20px;margin:0 0 4px;}
+    .sub{text-align:center;color:#888;font-size:12px;margin-bottom:18px;}
+    .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee;font-size:14px;}
+    .row strong{font-weight:700;}
+    .monto{font-size:26px;font-weight:800;text-align:center;color:#1a7a4a;margin:16px 0 4px;}
+    .badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;background:#1a7a4a;color:#fff;}
+    .badge.pendiente{background:#c05010;}
+    .progress{background:#eee;border-radius:8px;height:10px;margin:10px 0;}
+    .progress-bar{background:#1a7a4a;height:10px;border-radius:8px;}
+    .footer{text-align:center;font-size:11px;color:#aaa;margin-top:18px;}
+    .completado{background:#e8f5e9;border:2px solid #1a7a4a;border-radius:10px;padding:10px;text-align:center;font-weight:700;color:#1a7a4a;margin-top:12px;}
+  </style></head><body>
+  <h2>${local}</h2>
+  <div class="sub">Comprobante de Pago — Plan Ahorro</div>
+  <div class="monto">$${fmt(pago.monto)}</div>
+  <div style="text-align:center;margin-bottom:14px;"><span class="badge">${PAGO_LBL[pago.medio]||pago.medio}</span></div>
+  <div class="row"><span>Pago N°</span><strong>${nPago}</strong></div>
+  <div class="row"><span>Fecha</span><strong>${fmtD(pago.fecha)}</strong></div>
+  <div class="row"><span>Producto</span><strong>${v.producto||''}</strong></div>
+  <div class="row"><span>Cliente</span><strong>${cliNom(v)||'—'}</strong></div>
+  <div class="row"><span>Monto del plan</span><strong>$${fmt(montoFinal)}</strong></div>
+  <div class="row"><span>Total pagado</span><strong>$${fmt(totalPagado)}</strong></div>
+  <div class="row"><span>Saldo restante</span><strong style="color:${restante>0?'#c05010':'#1a7a4a'};">$${fmt(restante)}</strong></div>
+  <div class="progress"><div class="progress-bar" style="width:${Math.min(100,Math.round(totalPagado/montoFinal*100))}%;"></div></div>
+  <div style="text-align:center;font-size:12px;color:#888;">${Math.min(100,Math.round(totalPagado/montoFinal*100))}% completado</div>
+  ${completado?`<div class="completado">¡Plan completado! Gracias por tu confianza.</div>`:''}
+  ${pago.obs?`<div style="font-size:12px;color:#888;margin-top:10px;font-style:italic;">Obs: ${pago.obs}</div>`:''}
+  <div class="footer">Rossi Home · ${fmtD(hoy())}</div>
+  </body></html>`;
+  const modal = document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML=`<div style="background:#fff;border-radius:14px;padding:18px;max-width:460px;width:95%;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <strong style="font-size:15px;">Recibo Plan Ahorro</strong>
+      <button onclick="this.closest('div[style]').remove()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888;">×</button>
+    </div>
+    <iframe id="iframe-recibo-ahorro" style="width:100%;height:380px;border:1px solid #eee;border-radius:8px;"></iframe>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button onclick="document.getElementById('iframe-recibo-ahorro').contentWindow.print()" style="flex:1;padding:10px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Imprimir</button>
+      <button onclick="const u='${v.tel?'+54'+v.tel:''}';const txt=encodeURIComponent('Hola ${cliNom(v)}! Tu pago N°${nPago} de $${fmt(pago.monto)} del plan ahorro fue registrado. Total pagado: $${fmt(totalPagado)} de $${fmt(montoFinal)}. ${completado?'Plan completado! Gracias!':'Resta: $'+fmt(restante)+'.'} Rossi Home');window.open('https://wa.me/'+u+'?text='+txt,'_blank')" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">WA</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  setTimeout(()=>{
+    const iframe=document.getElementById('iframe-recibo-ahorro');
+    if(iframe){iframe.contentDocument.open();iframe.contentDocument.write(html);iframe.contentDocument.close();}
+  },100);
 }
 
 function abrirActualizarMontoPactado(vid) {
