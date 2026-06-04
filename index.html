@@ -9725,14 +9725,6 @@ async function cargarFotosMasivasProv(provId){
       };
       img.src = url;
     });
-    const subirADrive = async (b64, filename) => {
-      try {
-        const res = await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({action:'uploadImage', base64:b64, filename:filename})});
-        const json = await res.json();
-        return json.ok ? json.url : null;
-      } catch(e) { return null; }
-    };
     // Busca código exacto como palabra completa (no como substring de otro código)
     const codigoExacto = (nombre, codigo) => {
       const n = nombre.toUpperCase();
@@ -9820,11 +9812,8 @@ async function cargarFotosMasivasProv(provId){
       }
 
       if(prod){
-        toast(`Subiendo ${file.name}...`);
-        const driveUrl = await subirADrive(b64, file.name);
-        const fotoVal = driveUrl || b64;
         prod.fotos = prod.fotos || [];
-        if(!prod.fotos.includes(fotoVal)) prod.fotos.push(fotoVal);
+        if(!prod.fotos.includes(b64)) prod.fotos.push(b64);
         prod.fotoPrincipal = prod.fotoPrincipal || 0;
         actualizados++;
       } else {
@@ -9992,14 +9981,6 @@ async function cargarCarpetaFotosWinco(provId){
       };
       img.src = url;
     });
-    const subirADrive = async (b64, filename) => {
-      try {
-        const res = await fetch(SCRIPT_URL, {method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({action:'uploadImage', base64:b64, filename:filename})});
-        const json = await res.json();
-        return json.ok ? json.url : null;
-      } catch(e) { return null; }
-    };
     toast(`Procesando ${allFiles.length} imágenes...`);
     // Pre-construir mapa codigoOriginal → producto para búsqueda rápida
     const codigoMap = new Map();
@@ -10063,12 +10044,9 @@ async function cargarCarpetaFotosWinco(provId){
         }
       }
       if(prod){
-        toast(`Subiendo ${file.name}...`);
         const b64 = await comprimirFoto(file);
-        const driveUrl = await subirADrive(b64, file.name);
-        const fotoVal = driveUrl || b64;
         prod.fotos = prod.fotos || [];
-        if(!prod.fotos.includes(fotoVal)) prod.fotos.push(fotoVal);
+        if(!prod.fotos.includes(b64)) prod.fotos.push(b64);
         prod.fotoPrincipal = prod.fotoPrincipal || 0;
         actualizados++;
       } else {
