@@ -16,11 +16,20 @@ export default {
 
     try {
       if (request.method === 'GET') {
-        const [main, productos] = await Promise.all([
+        const [main, productos, wfA, wfB] = await Promise.all([
           env.RH_KV.get('rh_main', 'json'),
           env.RH_KV.get('rh_productos', 'json'),
+          env.RH_KV.get('rh_winco_fotos_a', 'json'),
+          env.RH_KV.get('rh_winco_fotos_b', 'json'),
         ]);
-        const datos = { ...(main || {}), productos: productos || [] };
+        const wincoFotos = { ...(wfA || {}), ...(wfB || {}) };
+        const productosConFotos = (productos || []).map(p => {
+          if (p.proveedor === 'Winco' && wincoFotos[p.codigoOriginal]) {
+            return { ...p, fotos: [wincoFotos[p.codigoOriginal]], fotoPrincipal: 0 };
+          }
+          return p;
+        });
+        const datos = { ...(main || {}), productos: productosConFotos };
         return json({ ok: true, datos });
       }
 
@@ -38,7 +47,28 @@ export default {
 
           const writes = [env.RH_KV.put('rh_main', JSON.stringify(main))];
           if (productosDirty || productos?.length > 0) {
-            writes.push(env.RH_KV.put('rh_productos', JSON.stringify(productos || [])));
+            // Separar fotos Winco de los productos para no superar límite de 25MB por clave
+            const wincoFotosNew = {};
+            const productosSinWincoFotos = (productos || []).map(p => {
+              if (p.proveedor === 'Winco' && p.fotos && p.fotos.length > 0) {
+                wincoFotosNew[p.codigoOriginal] = p.fotos[0];
+                return { ...p, fotos: [] };
+              }
+              return p;
+            });
+            writes.push(env.RH_KV.put('rh_productos', JSON.stringify(productosSinWincoFotos)));
+
+            if (Object.keys(wincoFotosNew).length > 0) {
+              const [exA, exB] = await Promise.all([
+                env.RH_KV.get('rh_winco_fotos_a', 'json'),
+                env.RH_KV.get('rh_winco_fotos_b', 'json'),
+              ]);
+              const merged = { ...(exA || {}), ...(exB || {}), ...wincoFotosNew };
+              const entries = Object.entries(merged);
+              const half = Math.ceil(entries.length / 2);
+              writes.push(env.RH_KV.put('rh_winco_fotos_a', JSON.stringify(Object.fromEntries(entries.slice(0, half)))));
+              writes.push(env.RH_KV.put('rh_winco_fotos_b', JSON.stringify(Object.fromEntries(entries.slice(half)))));
+            }
           }
 
           await Promise.all(writes);
