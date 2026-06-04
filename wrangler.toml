@@ -1,0 +1,8 @@
+name = "rossihome-proxy"
+main = "worker-kv.js"
+compatibility_date = "2024-01-01"
+account_id = "1ff352f7b5d90a0338aeb64c8b3b141d"
+
+[[kv_namespaces]]
+binding = "RH_KV"
+id = "b328ae472f6347e5935b4207f2eb96e5"
