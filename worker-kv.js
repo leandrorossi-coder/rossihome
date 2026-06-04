@@ -15,6 +15,13 @@ export default {
     });
 
     try {
+      const url = new URL(request.url);
+      if (url.searchParams.get('debug') === 'winco') {
+        const wfA = await env.RH_KV.get('rh_winco_fotos_a', 'json');
+        const wfB = await env.RH_KV.get('rh_winco_fotos_b', 'json');
+        return json({ ok: true, wfA_keys: Object.keys(wfA||{}).length, wfB_keys: Object.keys(wfB||{}).length });
+      }
+
       if (request.method === 'GET') {
         const [main, productos, wfA, wfB] = await Promise.all([
           env.RH_KV.get('rh_main', 'json'),
