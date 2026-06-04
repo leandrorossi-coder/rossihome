@@ -36,15 +36,9 @@ export default {
         if (parsed.action === 'guardar') {
           const { action, productos, productosDirty, ...main } = parsed;
 
-          // Filtrar base64 de productos
-          const prodsSinB64 = (productos || []).map(p => ({
-            ...p,
-            fotos: (p.fotos || []).filter(f => !f.startsWith('data:'))
-          }));
-
           const writes = [env.RH_KV.put('rh_main', JSON.stringify(main))];
           if (productosDirty || productos?.length > 0) {
-            writes.push(env.RH_KV.put('rh_productos', JSON.stringify(prodsSinB64)));
+            writes.push(env.RH_KV.put('rh_productos', JSON.stringify(productos || [])));
           }
 
           await Promise.all(writes);
