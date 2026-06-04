@@ -2611,6 +2611,7 @@ async function cargarDatos() {
   // Guardamos la lista local ANTES de que leerDeScript la pise con los datos de la nube
   const _prodsLocal = productos.length > 0 ? [...productos] : null;
   await leerDeScript();
+  cargarFotosWinco(); // fire-and-forget: inyecta fotos Winco en segundo plano
   // Si el local tenía muchos más productos que la nube, restaurar local y publicar a la nube
   // (caso típico: se subió un nuevo index.html y la nube quedó desactualizada)
   const _cloudCount = parseInt(localStorage.getItem('rh_cloudProdCount')||'0');
@@ -8201,6 +8202,31 @@ function leerDeScriptJSONP() {
     }, 10000);
     document.head.appendChild(script);
   });
+}
+
+async function cargarFotosWinco() {
+  try {
+    const ctrl = new AbortController();
+    const toutId = setTimeout(() => ctrl.abort(), 90000);
+    let resp;
+    try {
+      resp = await fetch(SCRIPT_URL + '?wincoFotos=1', { signal: ctrl.signal });
+    } finally {
+      clearTimeout(toutId);
+    }
+    if (!resp || !resp.ok) return;
+    const data = await resp.json();
+    if (!data.ok) return;
+    const wf = { ...(data.a || {}), ...(data.b || {}) };
+    let count = 0;
+    productos = productos.map(p => {
+      if (p.proveedor === 'Winco' && !(p.fotos && p.fotos.length) && wf[p.codigoOriginal]) {
+        count++;
+        return { ...p, fotos: [wf[p.codigoOriginal]], fotoPrincipal: 0 };
+      }
+      return p;
+    });
+  } catch(e) {}
 }
 
 // Ingreso manual de caja

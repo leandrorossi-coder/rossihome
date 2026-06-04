@@ -16,27 +16,23 @@ export default {
 
     try {
       const url = new URL(request.url);
-      if (url.searchParams.get('debug') === 'winco') {
-        const wfA = await env.RH_KV.get('rh_winco_fotos_a', 'json');
-        const wfB = await env.RH_KV.get('rh_winco_fotos_b', 'json');
-        return json({ ok: true, wfA_keys: Object.keys(wfA||{}).length, wfB_keys: Object.keys(wfB||{}).length });
+
+      // Endpoint separado para fotos Winco — lee texto crudo sin JSON.parse para no exceder CPU limit
+      if (url.searchParams.get('wincoFotos') === '1') {
+        const [wfAText, wfBText] = await Promise.all([
+          env.RH_KV.get('rh_winco_fotos_a'),
+          env.RH_KV.get('rh_winco_fotos_b'),
+        ]);
+        const body = `{"ok":true,"a":${wfAText || '{}'},"b":${wfBText || '{}'}}`;
+        return new Response(body, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       if (request.method === 'GET') {
-        const [main, productos, wfA, wfB] = await Promise.all([
+        const [main, productos] = await Promise.all([
           env.RH_KV.get('rh_main', 'json'),
           env.RH_KV.get('rh_productos', 'json'),
-          env.RH_KV.get('rh_winco_fotos_a', 'json'),
-          env.RH_KV.get('rh_winco_fotos_b', 'json'),
         ]);
-        const wincoFotos = { ...(wfA || {}), ...(wfB || {}) };
-        const productosConFotos = (productos || []).map(p => {
-          if (p.proveedor === 'Winco' && wincoFotos[p.codigoOriginal]) {
-            return { ...p, fotos: [wincoFotos[p.codigoOriginal]], fotoPrincipal: 0 };
-          }
-          return p;
-        });
-        const datos = { ...(main || {}), productos: productosConFotos };
+        const datos = { ...(main || {}), productos: productos || [] };
         return json({ ok: true, datos });
       }
 
