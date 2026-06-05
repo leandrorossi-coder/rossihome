@@ -6596,9 +6596,9 @@ function renderCaja() {
     }
   });
 
-  // Pre-process grouped movements (e.g. PIXELCUT with 3 sub-items)
+  // Pre-process grouped movements (PIXELCUT=3 gastos; TRANSFERENCIA VECINOS=ingreso+gasto pair)
   const gruposMap = {};
-  movCaja.forEach(m => { if (m.grupo && m.tipo === 'gasto') { if (!gruposMap[m.grupo]) gruposMap[m.grupo] = []; gruposMap[m.grupo].push(m); } });
+  movCaja.forEach(m => { if (m.grupo) { if (!gruposMap[m.grupo]) gruposMap[m.grupo] = []; gruposMap[m.grupo].push(m); } });
   const gruposRendered = new Set();
 
   // Movimientos manuales
@@ -6608,11 +6608,24 @@ function renderCaja() {
       if (gruposRendered.has(m.grupo)) return;
       gruposRendered.add(m.grupo);
       const items = gruposMap[m.grupo] || [m];
-      const totalGrupo = items.reduce((s, gm) => s + (gm.monto||0), 0);
-      const prefijo = (items[0]?.concepto||'').split(' - ')[0] || 'PIXELCUT';
-      todos.push({id:'grp_'+m.grupo, realIds:items.map(gm=>gm.id), grupo:m.grupo,
-        fecha:m.fecha, tipo:'gasto', caja:m.caja,
-        desc:prefijo, monto:totalGrupo, signo:-1, esGrupo:true, items});
+      const isTV = items.some(x => x.tipo === 'ingreso') && items.some(x => x.tipo === 'gasto');
+      if (isTV) {
+        const ingresoItem = items.find(x => x.tipo === 'ingreso');
+        const gastoItems  = items.filter(x => x.tipo === 'gasto');
+        const totalGasto  = gastoItems.reduce((s, x) => s + (x.monto||0), 0);
+        const neto = Math.round(((ingresoItem?.monto||0) - totalGasto) * 100) / 100;
+        todos.push({id:'grp_'+m.grupo, realIds:items.map(x=>x.id), grupo:m.grupo,
+          fecha:m.fecha, tipo:'ingreso', caja:m.caja,
+          desc: ingresoItem?.concepto || 'TRANSFERENCIA VECINOS',
+          sub: ingresoItem?.obs || '',
+          monto: neto, signo: 1, esGrupoTV: true, items});
+      } else {
+        const totalGrupo = items.reduce((s, gm) => s + (gm.monto||0), 0);
+        const prefijo = (items[0]?.concepto||'').split(' - ')[0] || 'PIXELCUT';
+        todos.push({id:'grp_'+m.grupo, realIds:items.map(gm=>gm.id), grupo:m.grupo,
+          fecha:m.fecha, tipo:'gasto', caja:m.caja,
+          desc:prefijo, monto:totalGrupo, signo:-1, esGrupo:true, items});
+      }
       return;
     }
     if (m.tipo === 'gasto') {
@@ -6684,6 +6697,41 @@ function renderCaja() {
   const emojiTipo = {ingreso:'+', gasto:'-', traspaso:''};
 
   lista.innerHTML = todos.map(m => {
+    if (m.esGrupoTV) {
+      const ingresoItem = m.items.find(x => x.tipo === 'ingreso');
+      const gastoItems  = m.items.filter(x => x.tipo === 'gasto');
+      const bruto = ingresoItem?.monto || 0;
+      const retencion = gastoItems.reduce((s,x)=>s+(x.monto||0),0);
+      const itemLines = [
+        `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--border);">
+          <span>Ingreso bruto</span>
+          <span style="font-weight:600;color:var(--green);">+$${fmt(bruto)}</span>
+        </div>`,
+        ...gastoItems.map(gi => {
+          const etiqueta = (gi.concepto||'').replace(/^[^—]+—\s*/,'') || gi.concepto;
+          return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--border);">
+            <span>${etiqueta}</span>
+            <span style="font-weight:600;color:var(--red);">−$${fmt(gi.monto)}</span>
+          </div>`;
+        })
+      ].join('');
+      return `<div class="prod-fila" style="flex-wrap:wrap;border-left:3px solid var(--green);padding-left:10px;">
+        <div style="flex:1;min-width:140px;">
+          <div style="font-weight:700;font-size:13px;text-transform:uppercase;">+ ${m.desc}${m.sub?' — '+m.sub:''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${fmtD(m.fecha)} · ${CAJAS_LABEL[m.caja]||m.caja}</div>
+          <div style="background:var(--cream2);border-radius:6px;padding:6px 8px;">${itemLines}
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:4px;">
+              <span>Neto ingresado</span>
+              <span style="color:var(--green);">+$${fmt(m.monto)}</span>
+            </div>
+            ${m.saldoEnMomento!==undefined?`<div style="font-size:10px;color:${m.saldoEnMomento>=0?'var(--green)':'var(--red)'};text-align:right;margin-top:2px;font-weight:600;">Saldo: $${fmt(m.saldoEnMomento)}</div>`:''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:4px;padding-top:2px;">
+          ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarGrupoMovCaja('${m.grupo}')" style="font-size:11px;padding:3px 8px;">X</button>`:''}
+        </div>
+      </div>`;
+    }
     if (m.esGrupo) {
       const itemLines = m.items.map(gi => {
         const etiqueta = (gi.concepto||'').replace(/^[^-]+-\s*/,'');
@@ -8341,10 +8389,77 @@ function abrirIngreso() {
   document.getElementById('ing-fecha').value = hoy();
   document.getElementById('ing-monto').value = '';
   document.getElementById('ing-obs').value = '';
+  const blkTV = document.getElementById('blk-tv'); if(blkTV) blkTV.style.display='none';
+  const fgM = document.getElementById('fg-ing-monto'); if(fgM) fgM.style.display='';
+  const fgMon = document.getElementById('fg-ing-moneda'); if(fgMon) fgMon.style.display='';
+  ['tv-bruto','tv-retencion','tv-neto','tv-vecino'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('ovl-ingreso').classList.add('on');
 }
 
+function checkTransferenciaVecinosMode() {
+  const val = (document.getElementById('ing-obs')?.value||'').trim().toUpperCase();
+  const blkTV = document.getElementById('blk-tv');
+  const fgMonto = document.getElementById('fg-ing-monto');
+  const fgMoneda = document.getElementById('fg-ing-moneda');
+  const blkUsd = document.getElementById('blk-ing-usd');
+  if (!blkTV) return;
+  if (val === 'TRANSFERENCIA VECINOS') {
+    blkTV.style.display = '';
+    if(fgMonto) fgMonto.style.display = 'none';
+    if(fgMoneda) fgMoneda.style.display = 'none';
+    if(blkUsd) blkUsd.style.display = 'none';
+    const gcaja = document.getElementById('ing-caja');
+    if(gcaja) gcaja.value = 'MERCADO_PAGO';
+  } else {
+    blkTV.style.display = 'none';
+    if(fgMonto) fgMonto.style.display = '';
+    if(fgMoneda) fgMoneda.style.display = '';
+  }
+}
+
+function calcTV() {
+  const bruto = parseFloat(document.getElementById('tv-bruto')?.value)||0;
+  if (!bruto) { ['tv-retencion','tv-neto'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); return; }
+  const ret = Math.round(bruto * 0.05 * 100) / 100;
+  const eRet = document.getElementById('tv-retencion'); if(eRet) eRet.value = ret.toFixed(2);
+  calcTVNeto();
+}
+
+function calcTVNeto() {
+  const bruto = parseFloat(document.getElementById('tv-bruto')?.value)||0;
+  const ret   = parseFloat(document.getElementById('tv-retencion')?.value)||0;
+  const neto  = Math.round((bruto - ret) * 100) / 100;
+  const eNeto = document.getElementById('tv-neto');
+  if(eNeto) eNeto.value = neto > 0 ? neto.toFixed(2) : '';
+}
+
 async function guardarIngreso() {
+  const obs = (document.getElementById('ing-obs')?.value||'').trim();
+  const blkTV = document.getElementById('blk-tv');
+
+  // Modo TRANSFERENCIA VECINOS: 2 movimientos agrupados
+  if (blkTV && blkTV.style.display !== 'none' && obs.toUpperCase() === 'TRANSFERENCIA VECINOS') {
+    const bruto = parseFloat(document.getElementById('tv-bruto')?.value)||0;
+    const ret   = parseFloat(document.getElementById('tv-retencion')?.value)||0;
+    const vecino = (document.getElementById('tv-vecino')?.value||'').trim();
+    if (!bruto) { toast('! Ingresá el monto bruto'); return; }
+    const fecha = document.getElementById('ing-fecha').value || hoy();
+    const grupoId = 'tv_' + Date.now();
+    const t = Date.now();
+    movCaja.unshift({id: t+1, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+      concepto: 'Retención IIBB SIRCUPA — Transferencia Vecinos',
+      monto: Math.round(ret*100)/100,
+      obs: vecino, grupo: grupoId});
+    movCaja.unshift({id: t, tipo:'ingreso', fecha, caja:'MERCADO_PAGO',
+      concepto: 'TRANSFERENCIA VECINOS',
+      monto: Math.round(bruto*100)/100,
+      obs: vecino, grupo: grupoId});
+    await guardarCajaData();
+    cM('ovl-ingreso'); renderCaja();
+    toast('OK Transferencia vecinos registrada');
+    return;
+  }
+
   const monto = parseFloat(document.getElementById('ing-monto').value)||0;
   if (!monto) { toast('Ingresa un monto'); return; }
   const iMoneda = document.getElementById('ing-moneda')?.value||'ARS';
@@ -8360,7 +8475,7 @@ async function guardarIngreso() {
     moneda: iMoneda,
     montoUSD: iMoneda==='USD' ? iMontoUSD : undefined,
     tipoCambio: iMoneda==='USD' ? iTC : undefined,
-    obs: document.getElementById('ing-obs').value.trim()
+    obs
   });
   await guardarCajaData();
   verificarTopeSueldo(document.getElementById('ing-caja').value);
@@ -8408,7 +8523,7 @@ async function eliminarMovCaja(id) {
 }
 
 async function eliminarGrupoMovCaja(grupo) {
-  if (!confirm('Eliminar esta operación completa (3 movimientos)?')) return;
+  if (!confirm('Eliminar esta operación completa?')) return;
   movCaja = movCaja.filter(x => x.grupo !== grupo);
   await guardarCajaData();
   renderCaja();
@@ -8898,7 +9013,7 @@ function agregarConceptoALista() {
 
 // Autocompletado observaciones de ingreso
 let ingresosObs = JSON.parse(localStorage.getItem('rh_ingresos_obs')||JSON.stringify([
-  'CUENTA VIEJA MERCADO PAGO', 'Saldo inicial', 'Depósito en cuenta', 'Transferencia recibida', 'Cobro en efectivo', 'Devolución'
+  'CUENTA VIEJA MERCADO PAGO', 'TRANSFERENCIA VECINOS', 'Saldo inicial', 'Depósito en cuenta', 'Transferencia recibida', 'Cobro en efectivo', 'Devolución'
 ]));
 
 function buscarIngresObs(val) {
@@ -12321,15 +12436,28 @@ function renderPnL() {
           <option value="VARIOS">Varios / Sin clasificar</option>
         </select>
       </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
+      <div id="fg-ing-monto" class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
       <div class="fg"><label>Origen / Observaci&#243;n</label>
         <div style="position:relative;">
-          <input type="text" id="ing-obs" placeholder="Elegí o escribí..." oninput="buscarIngresObs(this.value)" autocomplete="off" style="width:100%;">
+          <input type="text" id="ing-obs" placeholder="Elegí o escribí..." oninput="buscarIngresObs(this.value);checkTransferenciaVecinosMode()" autocomplete="off" style="width:100%;">
           <div id="ing-obs-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);"></div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="agregarIngresoObsALista()" style="margin-top:4px;font-size:11px;">+ Guardar en lista</button>
       </div>
-      <div class="fg">
+      <!-- TRANSFERENCIA VECINOS special block -->
+      <div id="blk-tv" style="display:none;background:var(--cream2);border-radius:10px;padding:12px;border:1px solid var(--border);margin-top:4px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy);">Transferencia Vecinos — Retenci&#243;n IIBB SIRCUPA</div>
+        <div class="r2">
+          <div class="fg"><label>Monto bruto ($) — lo que paga el vecino</label><input type="number" id="tv-bruto" placeholder="Ej: 13000" step="0.01" oninput="calcTV()"></div>
+          <div class="fg"><label>Retenci&#243;n IIBB 5% ($)</label><input type="number" id="tv-retencion" placeholder="—" step="0.01" oninput="calcTVNeto()"></div>
+        </div>
+        <div class="r2">
+          <div class="fg"><label>Neto ingresado ($)</label><input type="number" id="tv-neto" placeholder="—" readonly style="background:var(--cream3);font-weight:700;color:var(--green);"></div>
+          <div class="fg"><label>Vecino / Observaci&#243;n</label><input type="text" id="tv-vecino" placeholder="Nombre del vecino"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Se guardan 2 movimientos: ingreso bruto + gasto retenci&#243;n en Mercado Pago.</div>
+      </div>
+      <div id="fg-ing-moneda" class="fg">
         <label>Moneda</label>
         <select id="ing-moneda" onchange="onIngresoMoneda()">
           <option value="ARS">Pesos ($)</option>
