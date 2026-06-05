@@ -9037,6 +9037,7 @@ function buscarIngresObs(val) {
 function selIngresObs(val) {
   const el = document.getElementById('ing-obs'); if(el) el.value = val;
   const sug = document.getElementById('ing-obs-sug'); if(sug) sug.style.display='none';
+  checkTransferenciaVecinosMode();
 }
 
 function agregarIngresoObsALista() {
