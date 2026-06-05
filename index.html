@@ -1468,14 +1468,15 @@ select option{text-transform:uppercase;}
           <div class="fg"><label>TC Mercado Pago ($)</label><input type="number" id="px-tc" placeholder="Ej: 1522.68" step="0.01" oninput="calcPixelcut()"></div>
         </div>
         <div class="r2">
-          <div class="fg"><label>Base ARS (USD × TC)</label><input type="number" id="px-base" placeholder="—" readonly style="background:var(--cream3);"></div>
-          <div class="fg"><label>IVA 21% servicios ($)</label><input type="number" id="px-iva" placeholder="Del comprobante" step="0.01" oninput="calcPixelcutTotal()"></div>
+          <div class="fg"><label>TC BNA / Oficial ($) — para impuestos</label><input type="number" id="px-tc-bna" placeholder="Ej: 1390.99" step="0.01" oninput="calcPixelcut()"></div>
+          <div class="fg"><label>Base ARS (USD × TC MP)</label><input type="number" id="px-base" placeholder="—" readonly style="background:var(--cream3);"></div>
         </div>
         <div class="r2">
-          <div class="fg"><label>IIBB serv.dig.ext. ($)</label><input type="number" id="px-iibb" placeholder="Del comprobante" step="0.01" oninput="calcPixelcutTotal()"></div>
-          <div class="fg"><label>TOTAL debitado ($)</label><input type="number" id="px-total" placeholder="—" readonly style="background:var(--cream3);font-weight:700;color:var(--red);"></div>
+          <div class="fg"><label>IVA 21% sobre TC BNA ($)</label><input type="number" id="px-iva" placeholder="—" step="0.01" oninput="calcPixelcutTotal()"></div>
+          <div class="fg"><label>IIBB 2% sobre TC BNA ($)</label><input type="number" id="px-iibb" placeholder="—" step="0.01" oninput="calcPixelcutTotal()"></div>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Se guardarán 3 movimientos en Mercado Pago como una sola operación.</div>
+        <div class="fg"><label>TOTAL debitado ($)</label><input type="number" id="px-total" placeholder="—" readonly style="background:var(--cream3);font-weight:700;color:var(--red);"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">IVA e IIBB se calculan sobre TC BNA (oficial) · podés editarlos si el comprobante difiere · se guardan 3 movimientos en Mercado Pago.</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;">
         <button class="btn btn-gold" style="flex:1;" onclick="guardarGasto()">OK Guardar</button>
@@ -6768,7 +6769,7 @@ function abrirGasto() {
   const fgm = document.getElementById('fg-g-monto'); if(fgm) fgm.style.display='';
   const fgo = document.getElementById('fg-g-obs'); if(fgo) fgo.style.display='';
   const fgmon = document.getElementById('fg-g-moneda'); if(fgmon) fgmon.style.display='';
-  ['px-tc','px-base','px-iva','px-iibb','px-total'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  ['px-tc','px-tc-bna','px-base','px-iva','px-iibb','px-total'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
   document.getElementById('ovl-gasto').classList.add('on');
 }
 function onGastoMoneda() {
@@ -8822,18 +8823,22 @@ function checkPixelcutMode() {
 }
 
 function calcPixelcut() {
-  const usd = parseFloat(document.getElementById('px-usd')?.value)||9.99;
-  const tc = parseFloat(document.getElementById('px-tc')?.value)||0;
+  const usd   = parseFloat(document.getElementById('px-usd')?.value)||0;
+  const tc    = parseFloat(document.getElementById('px-tc')?.value)||0;
+  const tcBna = parseFloat(document.getElementById('px-tc-bna')?.value)||0;
   if (!tc) {
     ['px-base','px-iva','px-iibb','px-total'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     return;
   }
   const base = Math.round(usd * tc * 100) / 100;
-  const iva  = Math.round(base * 0.21 * 100) / 100;
-  const iibb = Math.round(base * 0.02 * 100) / 100;
   const bEl = document.getElementById('px-base'); if(bEl) bEl.value = base.toFixed(2);
-  const iEl = document.getElementById('px-iva');  if(iEl) iEl.value = iva.toFixed(2);
-  const xEl = document.getElementById('px-iibb'); if(xEl) xEl.value = iibb.toFixed(2);
+  if (tcBna) {
+    const baseBna = usd * tcBna;
+    const iva  = Math.round(baseBna * 0.21 * 100) / 100;
+    const iibb = Math.round(baseBna * 0.02 * 100) / 100;
+    const iEl = document.getElementById('px-iva');  if(iEl) iEl.value = iva.toFixed(2);
+    const xEl = document.getElementById('px-iibb'); if(xEl) xEl.value = iibb.toFixed(2);
+  }
   calcPixelcutTotal();
 }
 
