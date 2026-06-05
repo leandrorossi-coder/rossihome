@@ -1460,11 +1460,11 @@ select option{text-transform:uppercase;}
         <div class="fg"><label>Monto en USD (u$s)</label><input type="number" id="g-monto-usd" placeholder="0.00" min="0" step="0.01"></div>
         <div class="fg"><label>Tipo de cambio ($)</label><input type="number" id="g-tc" placeholder="Ej: 1200" min="0"></div>
       </div>
-      <!-- PIXELCUT special block -->
+      <!-- Servicios digitales (PIXELCUT / CANVA / CHATGPT / etc.) -->
       <div id="blk-pixelcut" style="display:none;background:var(--cream2);border-radius:10px;padding:12px;border:1px solid var(--border);margin-top:4px;">
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy);">Suscripción PIXELCUT — Servicio Digital</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy);"><span id="px-nombre">Suscripción — Servicio Digital</span></div>
         <div class="r2">
-          <div class="fg"><label>USD (fijo)</label><input type="number" id="px-usd" value="9.99" step="0.01" style="background:var(--cream3);font-weight:600;"></div>
+          <div class="fg"><label>USD (fijo)</label><input type="number" id="px-usd" step="0.01" style="background:var(--cream3);font-weight:600;" readonly></div>
           <div class="fg"><label>TC Mercado Pago ($)</label><input type="number" id="px-tc" placeholder="Ej: 1522.68" step="0.01" oninput="calcPixelcut()"></div>
         </div>
         <div class="r2">
@@ -2466,6 +2466,18 @@ async function leerDeScript() {
       if (!gastosConceptos.includes('PIXELCUT')) gastosConceptos.push('PIXELCUT');
       localStorage.setItem('rh_gastos_conceptos', JSON.stringify(gastosConceptos));
       programarGuardado();
+    }
+    // Migración: renombrar "CHAT GPT" → "CHATGPT" y agregar servicios digitales faltantes
+    { let migrado = false;
+      if (gastosConceptos.includes('CHAT GPT')) {
+        gastosConceptos = gastosConceptos.filter(c => c !== 'CHAT GPT');
+        if (!gastosConceptos.includes('CHATGPT')) gastosConceptos.push('CHATGPT');
+        migrado = true;
+      }
+      ['CHATGPT','ICLOUD+','YOUTUBE'].forEach(s => {
+        if (!gastosConceptos.includes(s)) { gastosConceptos.push(s); migrado = true; }
+      });
+      if (migrado) { localStorage.setItem('rh_gastos_conceptos', JSON.stringify(gastosConceptos)); programarGuardado(); }
     }
     if (d.lastSavedAt) {
       localStorage.setItem('rh_lastCloudSave', String(d.lastSavedAt));
@@ -6665,7 +6677,7 @@ function renderCaja() {
   lista.innerHTML = todos.map(m => {
     if (m.esGrupo) {
       const itemLines = m.items.map(gi => {
-        const etiqueta = (gi.concepto||'').replace(/^PIXELCUT\s*-\s*/i,'');
+        const etiqueta = (gi.concepto||'').replace(/^[^-]+-\s*/,'');
         const usdTag = gi.montoUSD ? ` <span style="color:var(--gold);font-size:11px;">(US$${gi.montoUSD} × TC $${fmt(gi.tipoCambio)})</span>` : '';
         return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--border);">
           <span>${etiqueta}${usdTag}</span>
@@ -6784,10 +6796,11 @@ async function guardarGasto() {
   let conceptoFinal = document.getElementById('g-concepto').value.trim();
   if (!conceptoFinal) { toast('! Escribí un concepto'); return; }
 
-  // PIXELCUT special mode: save 3 grouped movements
+  // Servicio digital (PIXELCUT / CANVA / CHATGPT / etc.): save 3 grouped movements
   const blkPx = document.getElementById('blk-pixelcut');
-  if (blkPx && blkPx.style.display !== 'none' && conceptoFinal.toUpperCase() === 'PIXELCUT') {
-    const usd = parseFloat(document.getElementById('px-usd')?.value)||9.99;
+  const servNombre = conceptoFinal.toUpperCase();
+  if (blkPx && blkPx.style.display !== 'none' && SERVICIOS_DIGITALES[servNombre] !== undefined) {
+    const usd = parseFloat(document.getElementById('px-usd')?.value)||SERVICIOS_DIGITALES[servNombre];
     const tc = parseFloat(document.getElementById('px-tc')?.value)||0;
     const base = parseFloat(document.getElementById('px-base')?.value)||0;
     const iva = parseFloat(document.getElementById('px-iva')?.value)||0;
@@ -6801,21 +6814,21 @@ async function guardarGasto() {
     const opDesc = `US$${usd} × TC $${tc} = $${fmt(base)} | IVA $${fmt(iva)} | IIBB $${fmt(iibb)} | Total $${fmt(total)}`;
     const t = Date.now();
     movCaja.unshift({id: t+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-      concepto:'PIXELCUT - IIBB serv.dig.ext.',
+      concepto: servNombre + ' - IIBB serv.dig.ext.',
       monto: Math.round(iibb*100)/100,
       obs: opDesc, grupo: grupoId});
     movCaja.unshift({id: t+1, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-      concepto:'PIXELCUT - IVA servicios',
+      concepto: servNombre + ' - IVA servicios',
       monto: Math.round(iva*100)/100,
       obs: opDesc, grupo: grupoId});
     movCaja.unshift({id: t, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-      concepto:'PIXELCUT - suscripción',
+      concepto: servNombre + ' - suscripción',
       monto: Math.round(base*100)/100,
       moneda:'USD', montoUSD: usd, tipoCambio: tc,
       obs: opDesc, grupo: grupoId});
     await guardarCajaData();
     cM('ovl-gasto'); renderCaja();
-    toast('OK PIXELCUT registrado — 3 movimientos en Mercado Pago');
+    toast(`OK ${servNombre} registrado — 3 movimientos en Mercado Pago`);
     return;
   }
 
@@ -8374,7 +8387,7 @@ async function eliminarMovCaja(id) {
 }
 
 async function eliminarGrupoMovCaja(grupo) {
-  if (!confirm('Eliminar la operación PIXELCUT completa (3 movimientos)?')) return;
+  if (!confirm('Eliminar esta operación completa (3 movimientos)?')) return;
   movCaja = movCaja.filter(x => x.grupo !== grupo);
   await guardarCajaData();
   renderCaja();
@@ -8750,8 +8763,18 @@ function compartirReciboCreditoPDF(vid, cobroId) {
   openPrintWindow(generarHTMLRecibo(v));
 }
 
+// Servicios digitales del exterior con monto fijo en USD (cobrados por Mercado Pago con IVA + IIBB)
+const SERVICIOS_DIGITALES = {
+  'PIXELCUT': 9.99,
+  'CANVA': 6.49,
+  'CHATGPT': 5.99,
+  'CLAUDE': 124.99,
+  'ICLOUD+': 2.99,
+  'YOUTUBE': 4.99
+};
+
 // Autocompletado gastos
-let gastosConceptos = JSON.parse(localStorage.getItem('rh_gastos_conceptos')||JSON.stringify(["CEPRAL LUZ LAS LECHUZAS", "CEPRAL LUZ EXALTACION", "CEPRAL LUZ LOCAL PARADA ROBLES", "CEPRAL INTERNET EXALTACION", "CEPRAL INTERNET LOCAL PARADA ROBLES", "CEPRAL INTERNET LAS LECHUZAS", "CEPRAL TELEFONO 471876 EXALTACION", "CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478687 LAS LECHUZAS", "CEPRAL LUZ PORTON LAS LECHUZAS", "COLEGIO IMDP", "CANDI TCC LUZ", "CANDI FONOAUDIOLOGIA SOL STAMATI", "TERAPIA OCUPACIONAL MAGDALENA", "EPPIN ACOMPAÑANTE TERAPEUTICO", "ESTACION DE SERVICIO SHELL", "ESTACION DE SERVICIO YPF", "ESTACION DE SERVICIO AXION", "ESTACION DE SERVICIO PUMA", "ESTACION DE SERVICIO GNC SIN BANDERA", "AGUSTIN ROSSI", "JOSEFINA ROSSI", "VICTORIA KINDERKNECHDT", "KIOSCO", "MCDONALDS", "CINE", "SUPERMERCADO", "VERDULERIA", "CARNICERIA", "IGLESIA", "UBER VIAJES", "UBER ONE", "DIDI", "DISNEY PLUS", "HBO", "YOUTUBE PREMIUM", "DIRECTV", "CASA RONALD", "CANVA", "PIXELCUT", "CHAT GPT", "CLAUDE", "ALBERTO TEJO", "MERCADO LIBRE", "MERCADO LIBRE MELI", "STARBUCKS", "REMISERIA", "SUBE", "FARMACIA", "PEAJES", "LEANDRO ROSSI"]));
+let gastosConceptos = JSON.parse(localStorage.getItem('rh_gastos_conceptos')||JSON.stringify(["CEPRAL LUZ LAS LECHUZAS", "CEPRAL LUZ EXALTACION", "CEPRAL LUZ LOCAL PARADA ROBLES", "CEPRAL INTERNET EXALTACION", "CEPRAL INTERNET LOCAL PARADA ROBLES", "CEPRAL INTERNET LAS LECHUZAS", "CEPRAL TELEFONO 471876 EXALTACION", "CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478687 LAS LECHUZAS", "CEPRAL LUZ PORTON LAS LECHUZAS", "COLEGIO IMDP", "CANDI TCC LUZ", "CANDI FONOAUDIOLOGIA SOL STAMATI", "TERAPIA OCUPACIONAL MAGDALENA", "EPPIN ACOMPAÑANTE TERAPEUTICO", "ESTACION DE SERVICIO SHELL", "ESTACION DE SERVICIO YPF", "ESTACION DE SERVICIO AXION", "ESTACION DE SERVICIO PUMA", "ESTACION DE SERVICIO GNC SIN BANDERA", "AGUSTIN ROSSI", "JOSEFINA ROSSI", "VICTORIA KINDERKNECHDT", "KIOSCO", "MCDONALDS", "CINE", "SUPERMERCADO", "VERDULERIA", "CARNICERIA", "IGLESIA", "UBER VIAJES", "UBER ONE", "DIDI", "DISNEY PLUS", "HBO", "YOUTUBE PREMIUM", "DIRECTV", "CASA RONALD", "CANVA", "PIXELCUT", "CHATGPT", "CLAUDE", "ICLOUD+", "YOUTUBE", "ALBERTO TEJO", "MERCADO LIBRE", "MERCADO LIBRE MELI", "STARBUCKS", "REMISERIA", "SUBE", "FARMACIA", "PEAJES", "LEANDRO ROSSI"]));
 
 function buscarConcepto(val) {
   const sug = document.getElementById('gasto-conceptos-sug');
@@ -8777,7 +8800,8 @@ function checkPixelcutMode() {
   const fgMoneda = document.getElementById('fg-g-moneda');
   const blkUsd = document.getElementById('blk-g-usd');
   if (!blkPx) return;
-  if (val === 'PIXELCUT') {
+  const usdFijo = SERVICIOS_DIGITALES[val];
+  if (usdFijo !== undefined) {
     blkPx.style.display = '';
     if(fgMonto) fgMonto.style.display = 'none';
     if(fgObs) fgObs.style.display = 'none';
@@ -8785,6 +8809,10 @@ function checkPixelcutMode() {
     if(blkUsd) blkUsd.style.display = 'none';
     const gcaja = document.getElementById('g-caja');
     if(gcaja) gcaja.value = 'MERCADO_PAGO';
+    const pxUsd = document.getElementById('px-usd');
+    if(pxUsd && pxUsd.value != usdFijo) { pxUsd.value = usdFijo; calcPixelcut(); }
+    const pxNombre = document.getElementById('px-nombre');
+    if(pxNombre) pxNombre.textContent = val + ' — Servicio Digital';
   } else {
     blkPx.style.display = 'none';
     if(fgMonto) fgMonto.style.display = '';
