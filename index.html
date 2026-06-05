@@ -1434,13 +1434,13 @@ select option{text-transform:uppercase;}
       </div>
       <div class="fg"><label>Concepto</label>
         <div style="position:relative;">
-          <input type="text" id="g-concepto" placeholder="Escribí o buscá un concepto..." oninput="buscarConcepto(this.value)" autocomplete="off" style="width:100%;">
+          <input type="text" id="g-concepto" placeholder="Escribí o buscá un concepto..." oninput="buscarConcepto(this.value);checkPixelcutMode()" autocomplete="off" style="width:100%;">
           <div id="gasto-conceptos-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);"></div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="agregarConceptoALista()" style="margin-top:4px;font-size:11px;">+ Guardar en lista</button>
       </div>
-      <div class="fg"><label>Monto ($)</label><input type="number" id="g-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Observación (opcional)</label><input type="text" id="g-obs" placeholder="Detalle adicional..."></div>
+      <div id="fg-g-monto" class="fg"><label>Monto ($)</label><input type="number" id="g-monto" placeholder="0" min="0"></div>
+      <div id="fg-g-obs" class="fg"><label>Observación (opcional)</label><input type="text" id="g-obs" placeholder="Detalle adicional..."></div>
       <div class="fg">
         <label>Ticket / Foto (opcional)</label>
         <label class="btn btn-ghost btn-sm" style="cursor:pointer;display:inline-block;">
@@ -1449,7 +1449,7 @@ select option{text-transform:uppercase;}
         </label>
         <div id="g-foto-prev" style="margin-top:6px;"></div>
       </div>
-      <div class="fg">
+      <div id="fg-g-moneda" class="fg">
         <label>Moneda</label>
         <select id="g-moneda" onchange="onGastoMoneda()">
           <option value="ARS">Pesos ($)</option>
@@ -1459,6 +1459,23 @@ select option{text-transform:uppercase;}
       <div class="r2" id="blk-g-usd" style="display:none;">
         <div class="fg"><label>Monto en USD (u$s)</label><input type="number" id="g-monto-usd" placeholder="0.00" min="0" step="0.01"></div>
         <div class="fg"><label>Tipo de cambio ($)</label><input type="number" id="g-tc" placeholder="Ej: 1200" min="0"></div>
+      </div>
+      <!-- PIXELCUT special block -->
+      <div id="blk-pixelcut" style="display:none;background:var(--cream2);border-radius:10px;padding:12px;border:1px solid var(--border);margin-top:4px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--navy);">Suscripción PIXELCUT — Servicio Digital</div>
+        <div class="r2">
+          <div class="fg"><label>USD (fijo)</label><input type="number" id="px-usd" value="9.99" step="0.01" style="background:var(--cream3);font-weight:600;"></div>
+          <div class="fg"><label>TC Mercado Pago ($)</label><input type="number" id="px-tc" placeholder="Ej: 1522.68" step="0.01" oninput="calcPixelcut()"></div>
+        </div>
+        <div class="r2">
+          <div class="fg"><label>Base ARS (USD × TC)</label><input type="number" id="px-base" placeholder="—" readonly style="background:var(--cream3);"></div>
+          <div class="fg"><label>IVA 21% servicios ($)</label><input type="number" id="px-iva" placeholder="Del comprobante" step="0.01" oninput="calcPixelcutTotal()"></div>
+        </div>
+        <div class="r2">
+          <div class="fg"><label>IIBB serv.dig.ext. ($)</label><input type="number" id="px-iibb" placeholder="Del comprobante" step="0.01" oninput="calcPixelcutTotal()"></div>
+          <div class="fg"><label>TOTAL debitado ($)</label><input type="number" id="px-total" placeholder="—" readonly style="background:var(--cream3);font-weight:700;color:var(--red);"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">Se guardarán 3 movimientos en Mercado Pago como una sola operación.</div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;">
         <button class="btn btn-gold" style="flex:1;" onclick="guardarGasto()">OK Guardar</button>
@@ -6567,9 +6584,25 @@ function renderCaja() {
     }
   });
 
+  // Pre-process grouped movements (e.g. PIXELCUT with 3 sub-items)
+  const gruposMap = {};
+  movCaja.forEach(m => { if (m.grupo && m.tipo === 'gasto') { if (!gruposMap[m.grupo]) gruposMap[m.grupo] = []; gruposMap[m.grupo].push(m); } });
+  const gruposRendered = new Set();
+
   // Movimientos manuales
   movCaja.forEach(m => {
     if (m.auto && m.ventaNro) return; // mostrado inline con la venta
+    if (m.grupo) {
+      if (gruposRendered.has(m.grupo)) return;
+      gruposRendered.add(m.grupo);
+      const items = gruposMap[m.grupo] || [m];
+      const totalGrupo = items.reduce((s, gm) => s + (gm.monto||0), 0);
+      const prefijo = (items[0]?.concepto||'').split(' - ')[0] || 'PIXELCUT';
+      todos.push({id:'grp_'+m.grupo, realIds:items.map(gm=>gm.id), grupo:m.grupo,
+        fecha:m.fecha, tipo:'gasto', caja:m.caja,
+        desc:prefijo, monto:totalGrupo, signo:-1, esGrupo:true, items});
+      return;
+    }
     if (m.tipo === 'gasto') {
       todos.push({id:'m_'+m.id, realId:m.id, fecha:m.fecha, tipo:'gasto', caja:m.caja,
         desc: m.concepto, sub: m.obs||'', monto:m.monto, signo:-1, foto:m.foto, montoUSD:m.montoUSD, tipoCambio:m.tipoCambio});
@@ -6629,8 +6662,33 @@ function renderCaja() {
   const colorTipo = {ingreso:'var(--green)', gasto:'var(--red)', traspaso:'var(--orange)'};
   const emojiTipo = {ingreso:'+', gasto:'-', traspaso:''};
 
-  lista.innerHTML = todos.map(m => `
-    <div class="prod-fila" style="flex-wrap:wrap;">
+  lista.innerHTML = todos.map(m => {
+    if (m.esGrupo) {
+      const itemLines = m.items.map(gi => {
+        const etiqueta = (gi.concepto||'').replace(/^PIXELCUT\s*-\s*/i,'');
+        const usdTag = gi.montoUSD ? ` <span style="color:var(--gold);font-size:11px;">(US$${gi.montoUSD} × TC $${fmt(gi.tipoCambio)})</span>` : '';
+        return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--border);">
+          <span>${etiqueta}${usdTag}</span>
+          <span style="font-weight:600;color:var(--red);">−$${fmt(gi.monto)}</span>
+        </div>`;
+      }).join('');
+      return `<div class="prod-fila" style="flex-wrap:wrap;border-left:3px solid var(--red);padding-left:10px;">
+        <div style="flex:1;min-width:140px;">
+          <div style="font-weight:700;font-size:13px;text-transform:uppercase;">- ${m.desc} — Servicio digital</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${fmtD(m.fecha)} · ${CAJAS_LABEL[m.caja]||m.caja}</div>
+          <div style="background:var(--cream2);border-radius:6px;padding:6px 8px;">${itemLines}
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:4px;">
+              <span>TOTAL debitado</span>
+              <span style="color:var(--red);">−$${fmt(m.monto)}</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:4px;padding-top:2px;">
+          ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarGrupoMovCaja('${m.grupo}')" style="font-size:11px;padding:3px 8px;">X</button>`:''}
+        </div>
+      </div>`;
+    }
+    return `<div class="prod-fila" style="flex-wrap:wrap;">
       <div style="flex:1;min-width:140px;">
         <div style="font-weight:600;font-size:13px;text-transform:uppercase;">${emojiTipo[m.tipo]||''} ${m.desc}${m.foto?` <span style="cursor:pointer;font-size:14px;" onclick="window.open('${m.foto}','_blank')" title="Ver foto">📷</span>`:''}</div>
         <div style="font-size:11px;color:var(--muted);">${fmtD(m.fecha)} · ${CAJAS_LABEL[m.caja]||m.caja}${m.sub?' · '+m.sub:''}</div>
@@ -6642,7 +6700,8 @@ function renderCaja() {
         </div>
         ${(esAdmin()&&m.realId!==undefined)?`<div style="display:flex;gap:4px;"><button class="btn btn-ghost btn-sm" onclick="editarMovCaja(${m.realId})" style="font-size:11px;padding:3px 8px;">Ed</button><button class="btn btn-danger btn-sm" onclick="eliminarMovCaja(${m.realId})" style="font-size:11px;padding:3px 8px;">X</button></div>`:''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ---
@@ -6692,6 +6751,12 @@ function abrirGasto() {
   const gusd = document.getElementById('g-monto-usd'); if(gusd) gusd.value='';
   const gtc = document.getElementById('g-tc'); if(gtc) gtc.value='';
   const blkusd = document.getElementById('blk-g-usd'); if(blkusd) blkusd.style.display='none';
+  // Reset pixelcut mode
+  const blkpx = document.getElementById('blk-pixelcut'); if(blkpx) blkpx.style.display='none';
+  const fgm = document.getElementById('fg-g-monto'); if(fgm) fgm.style.display='';
+  const fgo = document.getElementById('fg-g-obs'); if(fgo) fgo.style.display='';
+  const fgmon = document.getElementById('fg-g-moneda'); if(fgmon) fgmon.style.display='';
+  ['px-tc','px-base','px-iva','px-iibb','px-total'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
   document.getElementById('ovl-gasto').classList.add('on');
 }
 function onGastoMoneda() {
@@ -6718,6 +6783,42 @@ function onConceptoGasto() {}
 async function guardarGasto() {
   let conceptoFinal = document.getElementById('g-concepto').value.trim();
   if (!conceptoFinal) { toast('! Escribí un concepto'); return; }
+
+  // PIXELCUT special mode: save 3 grouped movements
+  const blkPx = document.getElementById('blk-pixelcut');
+  if (blkPx && blkPx.style.display !== 'none' && conceptoFinal.toUpperCase() === 'PIXELCUT') {
+    const usd = parseFloat(document.getElementById('px-usd')?.value)||9.99;
+    const tc = parseFloat(document.getElementById('px-tc')?.value)||0;
+    const base = parseFloat(document.getElementById('px-base')?.value)||0;
+    const iva = parseFloat(document.getElementById('px-iva')?.value)||0;
+    const iibb = parseFloat(document.getElementById('px-iibb')?.value)||0;
+    const total = parseFloat(document.getElementById('px-total')?.value)||0;
+    if (!tc) { toast('! Ingresá el tipo de cambio Mercado Pago'); return; }
+    if (!base) { toast('! Calculá la base primero'); return; }
+    if (!total) { toast('! El total no puede ser cero'); return; }
+    const fecha = document.getElementById('g-fecha').value || hoy();
+    const grupoId = 'px_' + Date.now();
+    const opDesc = `US$${usd} × TC $${tc} = $${fmt(base)} | IVA $${fmt(iva)} | IIBB $${fmt(iibb)} | Total $${fmt(total)}`;
+    const t = Date.now();
+    movCaja.unshift({id: t+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+      concepto:'PIXELCUT - IIBB serv.dig.ext.',
+      monto: Math.round(iibb*100)/100,
+      obs: opDesc, grupo: grupoId});
+    movCaja.unshift({id: t+1, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+      concepto:'PIXELCUT - IVA servicios',
+      monto: Math.round(iva*100)/100,
+      obs: opDesc, grupo: grupoId});
+    movCaja.unshift({id: t, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+      concepto:'PIXELCUT - suscripción',
+      monto: Math.round(base*100)/100,
+      moneda:'USD', montoUSD: usd, tipoCambio: tc,
+      obs: opDesc, grupo: grupoId});
+    await guardarCajaData();
+    cM('ovl-gasto'); renderCaja();
+    toast('OK PIXELCUT registrado — 3 movimientos en Mercado Pago');
+    return;
+  }
+
   const monto = parseFloat(document.getElementById('g-monto').value)||0;
   if (!monto) { toast('! Ingresá un monto'); return; }
   const gMoneda = document.getElementById('g-moneda')?.value||'ARS';
@@ -8272,6 +8373,14 @@ async function eliminarMovCaja(id) {
   toast('OK Movimiento eliminado');
 }
 
+async function eliminarGrupoMovCaja(grupo) {
+  if (!confirm('Eliminar la operación PIXELCUT completa (3 movimientos)?')) return;
+  movCaja = movCaja.filter(x => x.grupo !== grupo);
+  await guardarCajaData();
+  renderCaja();
+  toast('OK Operación eliminada');
+}
+
 // ══════════════════════════════════════════════════════
 // MÓDULO CLIENTES
 // ══════════════════════════════════════════════════════
@@ -8657,6 +8766,48 @@ function buscarConcepto(val) {
 function selConcepto(val) {
   document.getElementById('g-concepto').value = val;
   document.getElementById('gasto-conceptos-sug').style.display='none';
+  checkPixelcutMode();
+}
+
+function checkPixelcutMode() {
+  const val = (document.getElementById('g-concepto')?.value||'').trim().toUpperCase();
+  const blkPx = document.getElementById('blk-pixelcut');
+  const fgMonto = document.getElementById('fg-g-monto');
+  const fgObs = document.getElementById('fg-g-obs');
+  const fgMoneda = document.getElementById('fg-g-moneda');
+  const blkUsd = document.getElementById('blk-g-usd');
+  if (!blkPx) return;
+  if (val === 'PIXELCUT') {
+    blkPx.style.display = '';
+    if(fgMonto) fgMonto.style.display = 'none';
+    if(fgObs) fgObs.style.display = 'none';
+    if(fgMoneda) fgMoneda.style.display = 'none';
+    if(blkUsd) blkUsd.style.display = 'none';
+    const gcaja = document.getElementById('g-caja');
+    if(gcaja) gcaja.value = 'MERCADO_PAGO';
+  } else {
+    blkPx.style.display = 'none';
+    if(fgMonto) fgMonto.style.display = '';
+    if(fgObs) fgObs.style.display = '';
+    if(fgMoneda) fgMoneda.style.display = '';
+  }
+}
+
+function calcPixelcut() {
+  const usd = parseFloat(document.getElementById('px-usd')?.value)||9.99;
+  const tc = parseFloat(document.getElementById('px-tc')?.value)||0;
+  if (!tc) { const b=document.getElementById('px-base'); if(b)b.value=''; return; }
+  const base = Math.round(usd * tc * 100) / 100;
+  const bEl = document.getElementById('px-base'); if(bEl) bEl.value = base.toFixed(2);
+  calcPixelcutTotal();
+}
+
+function calcPixelcutTotal() {
+  const base = parseFloat(document.getElementById('px-base')?.value)||0;
+  const iva = parseFloat(document.getElementById('px-iva')?.value)||0;
+  const iibb = parseFloat(document.getElementById('px-iibb')?.value)||0;
+  const total = Math.round((base + iva + iibb) * 100) / 100;
+  const tEl = document.getElementById('px-total'); if(tEl) tEl.value = total > 0 ? total.toFixed(2) : '';
 }
 
 function agregarConceptoALista() {
