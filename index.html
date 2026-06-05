@@ -6792,6 +6792,14 @@ function onGastoMoneda() {
     if(tc && !tc.value) { const r = cotizaciones.blue?.venta||cotizaciones.oficial?.venta; if(r) tc.value=r; }
   }
 }
+function onIngresoCaja() {
+  const caja = document.getElementById('ing-caja')?.value;
+  const obs = document.getElementById('ing-obs');
+  if (!obs) return;
+  if (caja === 'MERCADO_PAGO' && !obs.value) obs.value = 'CUENTA VIEJA MERCADO PAGO';
+  else if (obs.value === 'CUENTA VIEJA MERCADO PAGO') obs.value = '';
+}
+
 function onIngresoMoneda() {
   const v = document.getElementById('ing-moneda')?.value;
   const blk = document.getElementById('blk-ing-usd');
@@ -12274,7 +12282,7 @@ function renderPnL() {
     <div class="mb">
       <div class="fg"><label>Fecha</label><input type="date" id="ing-fecha"></div>
       <div class="fg"><label>Caja</label>
-        <select id="ing-caja">
+        <select id="ing-caja" onchange="onIngresoCaja()">
           <option value="EFECTIVO">Efectivo</option>
           <option value="MERCADO_PAGO">Mercado Pago</option>
           <option value="FLEX">Prex Argentina</option>
