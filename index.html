@@ -12293,7 +12293,17 @@ function renderPnL() {
         </select>
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
-      <div class="fg"><label>Origen / Observaci&#243;n</label><input type="text" id="ing-obs" placeholder="Ej: Saldo inicial, dep&#243;sito, etc."></div>
+      <div class="fg"><label>Origen / Observaci&#243;n</label>
+        <input type="text" id="ing-obs" list="ing-obs-list" placeholder="Elegí o escribí...">
+        <datalist id="ing-obs-list">
+          <option value="CUENTA VIEJA MERCADO PAGO">
+          <option value="Saldo inicial">
+          <option value="Depósito en cuenta">
+          <option value="Transferencia recibida">
+          <option value="Cobro en efectivo">
+          <option value="Devolución">
+        </datalist>
+      </div>
       <div class="fg">
         <label>Moneda</label>
         <select id="ing-moneda" onchange="onIngresoMoneda()">
