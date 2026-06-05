@@ -1469,10 +1469,10 @@ select option{text-transform:uppercase;}
         </div>
         <div class="r2">
           <div class="fg"><label>Base ARS (USD × TC)</label><input type="number" id="px-base" placeholder="—" step="0.01" oninput="calcPixelcutTotal()"></div>
-          <div class="fg"><label>IVA servicios ($)</label><input type="number" id="px-iva" placeholder="Del comprobante" step="0.01" oninput="calcPixelcutTotal()"></div>
+          <div class="fg"><label>IVA servicios digitales ($)</label><input type="number" id="px-iva" placeholder="Del comprobante" step="0.01" oninput="calcPixelcutTotal()"></div>
         </div>
         <div class="r2">
-          <div class="fg"><label>IIBB serv.dig.ext. ($)</label><input type="number" id="px-iibb" placeholder="Del comprobante" step="0.01" oninput="calcPixelcutTotal()"></div>
+          <div class="fg"><label>Percepción IIBB serv.dig.ext. ($)</label><input type="number" id="px-iibb" placeholder="Del comprobante" step="0.01" oninput="calcPixelcutTotal()"></div>
           <div class="fg"><label>TOTAL debitado ($)</label><input type="number" id="px-total" placeholder="—" readonly style="background:var(--cream3);font-weight:700;color:var(--red);"></div>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">Base = USD × TC · IVA e IIBB del comprobante · se guardan 3 movimientos en Mercado Pago.</div>
@@ -6814,11 +6814,11 @@ async function guardarGasto() {
     const opDesc = `US$${usd} × TC $${tc} = $${fmt(base)} | IVA $${fmt(iva)} | IIBB $${fmt(iibb)} | Total $${fmt(total)}`;
     const t = Date.now();
     movCaja.unshift({id: t+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-      concepto: servNombre + ' - IIBB serv.dig.ext.',
+      concepto: servNombre + ' - Percepcion Impuesto IIBB a los servicios digitales del exterior Bs.As.',
       monto: Math.round(iibb*100)/100,
       obs: opDesc, grupo: grupoId});
     movCaja.unshift({id: t+1, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-      concepto: servNombre + ' - IVA servicios',
+      concepto: servNombre + ' - IVA servicios digitales',
       monto: Math.round(iva*100)/100,
       obs: opDesc, grupo: grupoId});
     movCaja.unshift({id: t, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
