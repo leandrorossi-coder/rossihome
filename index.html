@@ -6696,7 +6696,7 @@ function renderCaja() {
           </div>
         </div>
         <div style="display:flex;align-items:flex-start;gap:4px;padding-top:2px;">
-          ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarGrupoMovCaja('${m.grupo}')" style="font-size:11px;padding:3px 8px;">X</button>`:''}
+          ${esAdmin()?`<button class="btn btn-ghost btn-sm" onclick="editarGrupoMovCaja('${m.grupo}')" style="font-size:11px;padding:3px 8px;">Ed</button><button class="btn btn-danger btn-sm" onclick="eliminarGrupoMovCaja('${m.grupo}')" style="font-size:11px;padding:3px 8px;">X</button>`:''}
         </div>
       </div>`;
     }
@@ -6763,6 +6763,7 @@ function abrirGasto() {
   const gusd = document.getElementById('g-monto-usd'); if(gusd) gusd.value='';
   const gtc = document.getElementById('g-tc'); if(gtc) gtc.value='';
   const blkusd = document.getElementById('blk-g-usd'); if(blkusd) blkusd.style.display='none';
+  _editandoGrupo = null;
   // Reset pixelcut mode
   const blkpx = document.getElementById('blk-pixelcut'); if(blkpx) blkpx.style.display='none';
   const fgm = document.getElementById('fg-g-monto'); if(fgm) fgm.style.display='';
@@ -6810,6 +6811,7 @@ async function guardarGasto() {
     if (!base) { toast('! Calculá la base primero'); return; }
     if (!total) { toast('! El total no puede ser cero'); return; }
     const fecha = document.getElementById('g-fecha').value || hoy();
+    if (_editandoGrupo) { movCaja = movCaja.filter(x => x.grupo !== _editandoGrupo); _editandoGrupo = null; }
     const grupoId = 'px_' + Date.now();
     const opDesc = `US$${usd} × TC $${tc} = $${fmt(base)} | IVA $${fmt(iva)} | IIBB $${fmt(iibb)} | Total $${fmt(total)}`;
     const t = Date.now();
@@ -8392,6 +8394,28 @@ async function eliminarGrupoMovCaja(grupo) {
   await guardarCajaData();
   renderCaja();
   toast('OK Operación eliminada');
+}
+
+let _editandoGrupo = null;
+
+function editarGrupoMovCaja(grupo) {
+  const items = movCaja.filter(x => x.grupo === grupo);
+  if (!items.length) return;
+  const suscItem = items.find(x => x.concepto?.includes('suscripción')) || items[0];
+  const ivaItem  = items.find(x => x.concepto?.includes('IVA'));
+  const iibbItem = items.find(x => x.concepto?.includes('IIBB'));
+  const servNombre = (suscItem.concepto||'').split(' - ')[0];
+  _editandoGrupo = grupo;
+  abrirGasto();
+  document.getElementById('g-concepto').value = servNombre;
+  document.getElementById('g-fecha').value = suscItem.fecha || hoy();
+  checkPixelcutMode();
+  if (suscItem.montoUSD) document.getElementById('px-usd').value = suscItem.montoUSD;
+  if (suscItem.tipoCambio) document.getElementById('px-tc').value = suscItem.tipoCambio;
+  if (suscItem.monto) document.getElementById('px-base').value = suscItem.monto.toFixed(2);
+  if (ivaItem?.monto) document.getElementById('px-iva').value = ivaItem.monto.toFixed(2);
+  if (iibbItem?.monto) document.getElementById('px-iibb').value = iibbItem.monto.toFixed(2);
+  calcPixelcutTotal();
 }
 
 // ══════════════════════════════════════════════════════
