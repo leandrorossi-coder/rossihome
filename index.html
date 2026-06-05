@@ -2559,15 +2559,16 @@ async function cargarDatos() {
   const mprov=await sGet(SK_PROVEEDORES); if(mprov) proveedores=mprov;
   // Pre-cargar proveedores por defecto si no existen
   const provDefecto = [
-    {nombre:'Muebles French', tipo:'nacional', metodo:'lista', sinIva:true, mayusculas:true, descuento:0},
-    {nombre:'Los Bosques', tipo:'nacional', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
-    {nombre:'Pinarcis', tipo:'nacional', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
-    {nombre:'Patalín', tipo:'nacional', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
-    {nombre:'El Criollo', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:15},
-    {nombre:'M-Once', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
-    {nombre:'ABK Mayorista', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
-    {nombre:'Fusion Digital', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
-    {nombre:'Casa Mtre', tipo:'importado', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Muebles French', metodo:'lista', sinIva:true, mayusculas:true, descuento:0},
+    {nombre:'Los Bosques', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Pinarcis', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Patalín', metodo:'lista', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'El Criollo', metodo:'sync', sinIva:true, mayusculas:false, descuento:15},
+    {nombre:'M-Once', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'ABK Mayorista', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Fusion Digital', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Casa Mtre', metodo:'sync', sinIva:true, mayusculas:false, descuento:0},
+    {nombre:'Bien Copiado', metodo:'lista', sinIva:false, mayusculas:true, descuento:0, margen:64},
   ];
   let huboCambiosProv = false;
   for(const def of provDefecto){
@@ -8981,7 +8982,6 @@ function editarProveedor(id){
   document.getElementById('prov-margen').value=p.margen||'40';
   document.getElementById('prov-recargo-tc').value=p.recargoTC||'15';
   document.getElementById('prov-notas').value=p.notas||'';
-  const pt=document.getElementById('prov-tipo'); if(pt)pt.value=p.tipo||'nacional';
   const pm=document.getElementById('prov-metodo'); if(pm)pm.value=p.metodo||'lista';
   const ps=document.getElementById('prov-sin-iva'); if(ps)ps.value=p.sinIva?'1':'0';
   const pmay=document.getElementById('prov-mayusculas'); if(pmay)pmay.value=p.mayusculas?'1':'0';
@@ -9009,7 +9009,6 @@ async function guardarProveedor(){
     margen: parseFloat(document.getElementById('prov-margen').value)||40,
     recargoTC: parseFloat(document.getElementById('prov-recargo-tc').value)||15,
     notas: document.getElementById('prov-notas').value.trim(),
-    tipo: document.getElementById('prov-tipo')?.value||'nacional',
     metodo: document.getElementById('prov-metodo')?.value||'lista',
     sinIva: document.getElementById('prov-sin-iva')?.value==='1',
     mayusculas: document.getElementById('prov-mayusculas')?.value==='1',
@@ -9043,7 +9042,6 @@ function renderProveedores(){
   const empty = document.getElementById('empty-proveedores');
   if(!lista.length){if(cont)cont.innerHTML='';if(empty)empty.style.display='block';return;}
   if(empty)empty.style.display='none';
-  const tipoBadge={nacional:'🇦🇷 Nacional',importado:'🌍 Importado',mixto:'🔀 Mixto'};
   cont.innerHTML = lista.map(p=>{
     const prodCount = productos.filter(x=>(x.proveedor||'').toLowerCase()===(p.nombre||'').toLowerCase()).length;
     const visibles = productos.filter(x=>(x.proveedor||'').toLowerCase()===(p.nombre||'').toLowerCase()&&x.visible!==false).length;
@@ -9053,7 +9051,7 @@ function renderProveedores(){
     return `<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:8px;border-left:4px solid var(--gold);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
         <div style="flex:1;min-width:140px;">
-          <div style="font-weight:700;font-size:14px;">${p.nombre} <span style="font-size:11px;font-weight:400;color:var(--muted);">${tipoBadge[p.tipo||'nacional']||''}</span></div>
+          <div style="font-weight:700;font-size:14px;">${p.nombre}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">${metodoLabel} · ${cIva}${cDesc?' · '+cDesc:''}</div>
           <div style="font-size:11px;color:var(--muted);">${prodCount} productos · <span style="color:var(--green);">${visibles} visibles</span></div>
           ${p.contacto?`<div style="font-size:11px;color:var(--muted);">${p.contacto}${p.tel?' · '+p.tel:''}</div>`:''}
@@ -12203,20 +12201,11 @@ function renderPnL() {
         <div class="fg"><label>Email</label><input type="text" id="prov-email" placeholder="" style="text-transform:none;"></div>
       </div>
       <div class="fg"><label>Pagina Web</label><input type="text" id="prov-web" placeholder="https://..." style="text-transform:none;"></div>
-      <div class="r2">
-        <div class="fg"><label>Tipo de mercadería</label>
-          <select id="prov-tipo">
-            <option value="nacional">🇦🇷 Nacional</option>
-            <option value="importado">🌍 Importado</option>
-            <option value="mixto">🔀 Mixto</option>
-          </select>
-        </div>
-        <div class="fg"><label>Método de carga</label>
-          <select id="prov-metodo" onchange="onProvMetodoChange()">
-            <option value="lista">📄 Lista manual (archivo)</option>
-            <option value="sync">🔄 Sync web automático</option>
-          </select>
-        </div>
+      <div class="fg"><label>Método de carga</label>
+        <select id="prov-metodo" onchange="onProvMetodoChange()">
+          <option value="lista">📄 Lista manual (archivo)</option>
+          <option value="sync">🔄 Sync web automático</option>
+        </select>
       </div>
       <div class="r2">
         <div class="fg"><label>Lista sin IVA</label>
