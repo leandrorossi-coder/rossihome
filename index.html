@@ -6734,7 +6734,7 @@ function renderCaja() {
           </div>
         </div>
         <div style="display:flex;align-items:flex-start;gap:4px;padding-top:2px;">
-          ${esAdmin()?`<button class="btn btn-danger btn-sm" onclick="eliminarGrupoMovCaja('${m.grupo}')" style="font-size:11px;padding:3px 8px;">X</button>`:''}
+          ${esAdmin()?`<button class="btn btn-ghost btn-sm" onclick="editarGrupoTVMovCaja('${m.grupo}')" style="font-size:11px;padding:3px 8px;">Ed</button><button class="btn btn-danger btn-sm" onclick="eliminarGrupoMovCaja('${m.grupo}')" style="font-size:11px;padding:3px 8px;">X</button>`:''}
         </div>
       </div>`;
     }
@@ -8400,6 +8400,7 @@ function abrirIngreso() {
   const fgMon = document.getElementById('fg-ing-moneda'); if(fgMon) fgMon.style.display='';
   ['tv-bruto','tv-retencion','tv-neto','tv-vecino'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   const tvSug = document.getElementById('tv-vecino-sug'); if(tvSug) tvSug.style.display='none';
+  _editandoGrupoTV = null;
   document.getElementById('ovl-ingreso').classList.add('on');
 }
 
@@ -8451,6 +8452,7 @@ async function guardarIngreso() {
     const vecino = (document.getElementById('tv-vecino')?.value||'').trim();
     if (!bruto) { toast('! Ingresá el monto bruto'); return; }
     const fecha = document.getElementById('ing-fecha').value || hoy();
+    if (_editandoGrupoTV) { movCaja = movCaja.filter(x => x.grupo !== _editandoGrupoTV); _editandoGrupoTV = null; }
     const grupoId = 'tv_' + Date.now();
     const t = Date.now();
     movCaja.unshift({id: t+1, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
@@ -8538,6 +8540,7 @@ async function eliminarGrupoMovCaja(grupo) {
 }
 
 let _editandoGrupo = null;
+let _editandoGrupoTV = null;
 
 function editarGrupoMovCaja(grupo) {
   const items = movCaja.filter(x => x.grupo === grupo);
@@ -8559,6 +8562,25 @@ function editarGrupoMovCaja(grupo) {
     set('px-iva', ivaItem?.monto?.toFixed(2));
     set('px-iibb', iibbItem?.monto?.toFixed(2));
     calcPixelcutTotal();
+  }, 50);
+}
+
+function editarGrupoTVMovCaja(grupo) {
+  const items = movCaja.filter(x => x.grupo === grupo);
+  if (!items.length) return;
+  const ingresoItem = items.find(x => x.tipo === 'ingreso');
+  const gastoItem   = items.find(x => x.tipo === 'gasto');
+  abrirIngreso();
+  setTimeout(() => {
+    _editandoGrupoTV = grupo;
+    const set = (id, val) => { const e = document.getElementById(id); if(e && val !== undefined && val !== null) e.value = val; };
+    set('ing-fecha', ingresoItem?.fecha || hoy());
+    set('ing-obs', 'TRANSFERENCIA VECINOS');
+    checkTransferenciaVecinosMode();
+    set('tv-bruto', ingresoItem?.monto?.toFixed(2));
+    set('tv-retencion', gastoItem?.monto?.toFixed(2));
+    calcTVNeto();
+    set('tv-vecino', ingresoItem?.obs || '');
   }, 50);
 }
 
