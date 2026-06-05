@@ -4420,7 +4420,8 @@ function renderCreditos() {
   const cont = document.getElementById('cred-list');
   const empty = document.getElementById('empty-cred');
 
-  const ahorrosParaMostrar = filtroCred !== 'todas' ? [] : filtVend ? ahorrosVentas.filter(v=>v.vendedora===filtVend) : ahorrosVentas;
+  const ahorrosActivos = ahorrosVentas.filter(v=>!ahorroListo(v));
+  const ahorrosParaMostrar = filtroCred !== 'todas' ? [] : filtVend ? ahorrosActivos.filter(v=>v.vendedora===filtVend) : ahorrosActivos;
   if(!lista.length && !ahorrosParaMostrar.length && filtroCred==='todas' && !buscar) {
     cont.innerHTML=''; empty.style.display='block';
   } else {
@@ -4544,21 +4545,30 @@ function renderCreditos() {
     </div>`;
   }).join('');
 
-  // Sección "Completados" colapsable
+  // Sección "Completados" colapsable (créditos + planes de ahorro)
   const completadosLista = creditosVentas.filter(v=>{
     const cp=v.cpData;
     return (cp.cobros||[]).filter(c=>c.tipo==='cuota').length>=cp.nCuotas&&(cp.anticipo<=0||cp.anticipoPagado);
   });
+  const ahorrosCompletados = ahorrosVentas.filter(v=>ahorroListo(v));
   const secComp = document.getElementById('cred-completados');
   if(secComp) {
-    if(completadosLista.length && filtroCred!=='cobradas') {
-      secComp.innerHTML=`<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--green);padding:8px 0;">✅ Créditos completados (${completadosLista.length})</summary>
+    const hayCompletados = (completadosLista.length || ahorrosCompletados.length) && filtroCred!=='cobradas';
+    if(hayCompletados) {
+      const totalComp = completadosLista.length + ahorrosCompletados.length;
+      secComp.innerHTML=`<details style="margin-top:12px;"><summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--green);padding:8px 0;">✅ Completados (${totalComp})</summary>
         <div style="margin-top:8px;">${completadosLista.map(v=>{
           const cp=v.cpData;
           const total=(cp.cobros||[]).reduce((s,c)=>s+(c.monto||0),0);
           return `<div style="background:var(--gbg);border-radius:8px;padding:10px;margin-bottom:6px;border-left:4px solid var(--green);display:flex;justify-content:space-between;align-items:center;">
-            <div><div style="font-weight:600;font-size:13px;">${cliNom(v)}</div><div style="font-size:11px;color:var(--muted);">${v.producto} · ${fmtD(v.fecha)}</div></div>
+            <div><div style="font-weight:600;font-size:13px;">${cliNom(v)}</div><div style="font-size:11px;color:var(--muted);">${v.producto} · ${fmtD(v.fecha)} · Crédito</div></div>
             <div style="text-align:right;font-size:12px;"><div style="color:var(--green);font-weight:700;">✅ Cancelado</div><div style="color:var(--muted);">$${fmt(total)} cobrado</div></div>
+          </div>`;
+        }).join('')}${ahorrosCompletados.map(v=>{
+          const total=totalPagadoAhorro(v);
+          return `<div style="background:var(--gbg);border-radius:8px;padding:10px;margin-bottom:6px;border-left:4px solid var(--green);display:flex;justify-content:space-between;align-items:center;">
+            <div><div style="font-weight:600;font-size:13px;">${cliNom(v)}</div><div style="font-size:11px;color:var(--muted);">${v.producto} · ${fmtD(v.fecha)} · Plan Ahorro</div></div>
+            <div style="text-align:right;font-size:12px;"><div style="color:var(--green);font-weight:700;">✅ Listo para retirar</div><div style="color:var(--muted);">$${fmt(total)} cobrado</div></div>
           </div>`;
         }).join('')}</div></details>`;
     } else { secComp.innerHTML=''; }
@@ -4569,7 +4579,7 @@ function renderCreditos() {
   if(contAhorro) {
     const ahorrosFiltrados = filtroCred !== 'todas'
       ? []
-      : filtVend ? ahorrosVentas.filter(v=>v.vendedora===filtVend) : ahorrosVentas;
+      : filtVend ? ahorrosActivos.filter(v=>v.vendedora===filtVend) : ahorrosActivos;
     if(!ahorrosFiltrados.length) { contAhorro.innerHTML=''; }
     else {
       contAhorro.innerHTML = `<div class="sec" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
