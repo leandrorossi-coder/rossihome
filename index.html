@@ -8393,6 +8393,7 @@ function abrirIngreso() {
   const fgM = document.getElementById('fg-ing-monto'); if(fgM) fgM.style.display='';
   const fgMon = document.getElementById('fg-ing-moneda'); if(fgMon) fgMon.style.display='';
   ['tv-bruto','tv-retencion','tv-neto','tv-vecino'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const tvSug = document.getElementById('tv-vecino-sug'); if(tvSug) tvSug.style.display='none';
   document.getElementById('ovl-ingreso').classList.add('on');
 }
 
@@ -9040,6 +9041,33 @@ function agregarIngresoObsALista() {
   toast('OK Observación guardada en lista');
 }
 
+// Lista de vecinos para autocompletado
+let vecinosObs = JSON.parse(localStorage.getItem('rh_vecinos_obs')||'[]');
+
+function buscarVecinoObs(val) {
+  const sug = document.getElementById('tv-vecino-sug');
+  if (!sug) return;
+  if (!val || val.length < 1) { sug.style.display='none'; return; }
+  const q = val.toLowerCase();
+  const matches = vecinosObs.filter(c => c.toLowerCase().includes(q));
+  if (!matches.length) { sug.style.display='none'; return; }
+  sug.style.display='block';
+  sug.innerHTML = matches.map(c => `<div onclick="selVecinoObs('${c.replace(/'/g,"&#39;")}')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--cream2)'" onmouseout="this.style.background=''">${c}</div>`).join('');
+}
+
+function selVecinoObs(val) {
+  const el = document.getElementById('tv-vecino'); if(el) el.value = val;
+  const sug = document.getElementById('tv-vecino-sug'); if(sug) sug.style.display='none';
+}
+
+function agregarVecinoALista() {
+  const val = (document.getElementById('tv-vecino')?.value||'').trim();
+  if (!val) { toast('Escribí un nombre primero'); return; }
+  if (vecinosObs.includes(val)) { toast('Ya está en la lista'); return; }
+  vecinosObs.push(val);
+  localStorage.setItem('rh_vecinos_obs', JSON.stringify(vecinosObs));
+  toast('OK Vecino guardado en lista');
+}
 
 // ══════════════════════════════════════════════════════
 // PLAN DE AHORRO
@@ -12453,7 +12481,13 @@ function renderPnL() {
         </div>
         <div class="r2">
           <div class="fg"><label>Neto ingresado ($)</label><input type="number" id="tv-neto" placeholder="—" readonly style="background:var(--cream3);font-weight:700;color:var(--green);"></div>
-          <div class="fg"><label>Vecino / Observaci&#243;n</label><input type="text" id="tv-vecino" placeholder="Nombre del vecino"></div>
+          <div class="fg"><label>Vecino / Observaci&#243;n</label>
+            <div style="position:relative;">
+              <input type="text" id="tv-vecino" placeholder="Elegí o escribí el nombre..." oninput="buscarVecinoObs(this.value)" autocomplete="off" style="width:100%;">
+              <div id="tv-vecino-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:200;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);"></div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="agregarVecinoALista()" style="margin-top:4px;font-size:11px;">+ Guardar vecino</button>
+          </div>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">Se guardan 2 movimientos: ingreso bruto + gasto retenci&#243;n en Mercado Pago.</div>
       </div>
