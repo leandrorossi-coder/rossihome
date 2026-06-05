@@ -8405,17 +8405,20 @@ function editarGrupoMovCaja(grupo) {
   const ivaItem  = items.find(x => x.concepto?.includes('IVA'));
   const iibbItem = items.find(x => x.concepto?.includes('IIBB'));
   const servNombre = (suscItem.concepto||'').split(' - ')[0];
-  _editandoGrupo = grupo;
   abrirGasto();
-  document.getElementById('g-concepto').value = servNombre;
-  document.getElementById('g-fecha').value = suscItem.fecha || hoy();
-  checkPixelcutMode();
-  if (suscItem.montoUSD) document.getElementById('px-usd').value = suscItem.montoUSD;
-  if (suscItem.tipoCambio) document.getElementById('px-tc').value = suscItem.tipoCambio;
-  if (suscItem.monto) document.getElementById('px-base').value = suscItem.monto.toFixed(2);
-  if (ivaItem?.monto) document.getElementById('px-iva').value = ivaItem.monto.toFixed(2);
-  if (iibbItem?.monto) document.getElementById('px-iibb').value = iibbItem.monto.toFixed(2);
-  calcPixelcutTotal();
+  setTimeout(() => {
+    _editandoGrupo = grupo;
+    const set = (id, val) => { const e = document.getElementById(id); if(e && val !== undefined && val !== null) e.value = val; };
+    set('g-fecha', suscItem.fecha || hoy());
+    set('g-concepto', servNombre);
+    checkPixelcutMode();
+    set('px-usd', suscItem.montoUSD);
+    set('px-tc', suscItem.tipoCambio);
+    set('px-base', suscItem.monto?.toFixed(2));
+    set('px-iva', ivaItem?.monto?.toFixed(2));
+    set('px-iibb', iibbItem?.monto?.toFixed(2));
+    calcPixelcutTotal();
+  }, 50);
 }
 
 // ══════════════════════════════════════════════════════
