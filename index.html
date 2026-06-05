@@ -8824,9 +8824,16 @@ function checkPixelcutMode() {
 function calcPixelcut() {
   const usd = parseFloat(document.getElementById('px-usd')?.value)||9.99;
   const tc = parseFloat(document.getElementById('px-tc')?.value)||0;
-  if (!tc) { const b=document.getElementById('px-base'); if(b)b.value=''; return; }
+  if (!tc) {
+    ['px-base','px-iva','px-iibb','px-total'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    return;
+  }
   const base = Math.round(usd * tc * 100) / 100;
+  const iva  = Math.round(base * 0.21 * 100) / 100;
+  const iibb = Math.round(base * 0.02 * 100) / 100;
   const bEl = document.getElementById('px-base'); if(bEl) bEl.value = base.toFixed(2);
+  const iEl = document.getElementById('px-iva');  if(iEl) iEl.value = iva.toFixed(2);
+  const xEl = document.getElementById('px-iibb'); if(xEl) xEl.value = iibb.toFixed(2);
   calcPixelcutTotal();
 }
 
