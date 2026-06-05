@@ -8896,6 +8896,35 @@ function agregarConceptoALista() {
   toast('OK Concepto guardado');
 }
 
+// Autocompletado observaciones de ingreso
+let ingresosObs = JSON.parse(localStorage.getItem('rh_ingresos_obs')||JSON.stringify([
+  'CUENTA VIEJA MERCADO PAGO', 'Saldo inicial', 'Depósito en cuenta', 'Transferencia recibida', 'Cobro en efectivo', 'Devolución'
+]));
+
+function buscarIngresObs(val) {
+  const sug = document.getElementById('ing-obs-sug');
+  if (!sug) return;
+  if (!val || val.length < 1) { sug.style.display='none'; return; }
+  const q = val.toLowerCase();
+  const matches = ingresosObs.filter(c => c.toLowerCase().includes(q));
+  if (!matches.length) { sug.style.display='none'; return; }
+  sug.style.display='block';
+  sug.innerHTML = matches.map(c => `<div onclick="selIngresObs('${c.replace(/'/g,"&#39;")}')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--cream2)'" onmouseout="this.style.background=''">${c}</div>`).join('');
+}
+
+function selIngresObs(val) {
+  const el = document.getElementById('ing-obs'); if(el) el.value = val;
+  const sug = document.getElementById('ing-obs-sug'); if(sug) sug.style.display='none';
+}
+
+function agregarIngresoObsALista() {
+  const val = (document.getElementById('ing-obs')?.value||'').trim();
+  if (!val || ingresosObs.includes(val)) { toast('Ya existe en la lista'); return; }
+  ingresosObs.push(val);
+  localStorage.setItem('rh_ingresos_obs', JSON.stringify(ingresosObs));
+  toast('OK Observación guardada en lista');
+}
+
 
 // ══════════════════════════════════════════════════════
 // PLAN DE AHORRO
@@ -12294,15 +12323,11 @@ function renderPnL() {
       </div>
       <div class="fg"><label>Monto ($)</label><input type="number" id="ing-monto" placeholder="0" min="0"></div>
       <div class="fg"><label>Origen / Observaci&#243;n</label>
-        <input type="text" id="ing-obs" list="ing-obs-list" placeholder="Elegí o escribí...">
-        <datalist id="ing-obs-list">
-          <option value="CUENTA VIEJA MERCADO PAGO">
-          <option value="Saldo inicial">
-          <option value="Depósito en cuenta">
-          <option value="Transferencia recibida">
-          <option value="Cobro en efectivo">
-          <option value="Devolución">
-        </datalist>
+        <div style="position:relative;">
+          <input type="text" id="ing-obs" placeholder="Elegí o escribí..." oninput="buscarIngresObs(this.value)" autocomplete="off" style="width:100%;">
+          <div id="ing-obs-sug" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="agregarIngresoObsALista()" style="margin-top:4px;font-size:11px;">+ Guardar en lista</button>
       </div>
       <div class="fg">
         <label>Moneda</label>
