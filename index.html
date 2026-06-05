@@ -2443,6 +2443,13 @@ async function leerDeScript() {
     if (d.caracteristicas && d.caracteristicas.length > 0) caracteristicas = d.caracteristicas;
     if (d.usuarios && Object.keys(d.usuarios).length > 0) usuarios = {...USERS_DEFAULT, ...d.usuarios};
     if (d.gastosConceptos && d.gastosConceptos.length > 0) { gastosConceptos = d.gastosConceptos; localStorage.setItem('rh_gastos_conceptos', JSON.stringify(gastosConceptos)); }
+    // Migración: renombrar "PIXEL CUT" → "PIXELCUT"
+    if (gastosConceptos.includes('PIXEL CUT')) {
+      gastosConceptos = gastosConceptos.filter(c => c !== 'PIXEL CUT');
+      if (!gastosConceptos.includes('PIXELCUT')) gastosConceptos.push('PIXELCUT');
+      localStorage.setItem('rh_gastos_conceptos', JSON.stringify(gastosConceptos));
+      programarGuardado();
+    }
     if (d.lastSavedAt) {
       localStorage.setItem('rh_lastCloudSave', String(d.lastSavedAt));
       localStorage.setItem('rh_loadTime', String(Date.now()));
@@ -8635,7 +8642,7 @@ function compartirReciboCreditoPDF(vid, cobroId) {
 }
 
 // Autocompletado gastos
-let gastosConceptos = JSON.parse(localStorage.getItem('rh_gastos_conceptos')||JSON.stringify(["CEPRAL LUZ LAS LECHUZAS", "CEPRAL LUZ EXALTACION", "CEPRAL LUZ LOCAL PARADA ROBLES", "CEPRAL INTERNET EXALTACION", "CEPRAL INTERNET LOCAL PARADA ROBLES", "CEPRAL INTERNET LAS LECHUZAS", "CEPRAL TELEFONO 471876 EXALTACION", "CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478687 LAS LECHUZAS", "CEPRAL LUZ PORTON LAS LECHUZAS", "COLEGIO IMDP", "CANDI TCC LUZ", "CANDI FONOAUDIOLOGIA SOL STAMATI", "TERAPIA OCUPACIONAL MAGDALENA", "EPPIN ACOMPAÑANTE TERAPEUTICO", "ESTACION DE SERVICIO SHELL", "ESTACION DE SERVICIO YPF", "ESTACION DE SERVICIO AXION", "ESTACION DE SERVICIO PUMA", "ESTACION DE SERVICIO GNC SIN BANDERA", "AGUSTIN ROSSI", "JOSEFINA ROSSI", "VICTORIA KINDERKNECHDT", "KIOSCO", "MCDONALDS", "CINE", "SUPERMERCADO", "VERDULERIA", "CARNICERIA", "IGLESIA", "UBER VIAJES", "UBER ONE", "DIDI", "DISNEY PLUS", "HBO", "YOUTUBE PREMIUM", "DIRECTV", "CASA RONALD", "CANVA", "PIXEL CUT", "CHAT GPT", "CLAUDE", "ALBERTO TEJO", "MERCADO LIBRE", "MERCADO LIBRE MELI", "STARBUCKS", "REMISERIA", "SUBE", "FARMACIA", "PEAJES", "LEANDRO ROSSI"]));
+let gastosConceptos = JSON.parse(localStorage.getItem('rh_gastos_conceptos')||JSON.stringify(["CEPRAL LUZ LAS LECHUZAS", "CEPRAL LUZ EXALTACION", "CEPRAL LUZ LOCAL PARADA ROBLES", "CEPRAL INTERNET EXALTACION", "CEPRAL INTERNET LOCAL PARADA ROBLES", "CEPRAL INTERNET LAS LECHUZAS", "CEPRAL TELEFONO 471876 EXALTACION", "CEPRAL TELEFONO 478504 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478530 LOCAL PARADA ROBLES", "CEPRAL TELEFONO 478687 LAS LECHUZAS", "CEPRAL LUZ PORTON LAS LECHUZAS", "COLEGIO IMDP", "CANDI TCC LUZ", "CANDI FONOAUDIOLOGIA SOL STAMATI", "TERAPIA OCUPACIONAL MAGDALENA", "EPPIN ACOMPAÑANTE TERAPEUTICO", "ESTACION DE SERVICIO SHELL", "ESTACION DE SERVICIO YPF", "ESTACION DE SERVICIO AXION", "ESTACION DE SERVICIO PUMA", "ESTACION DE SERVICIO GNC SIN BANDERA", "AGUSTIN ROSSI", "JOSEFINA ROSSI", "VICTORIA KINDERKNECHDT", "KIOSCO", "MCDONALDS", "CINE", "SUPERMERCADO", "VERDULERIA", "CARNICERIA", "IGLESIA", "UBER VIAJES", "UBER ONE", "DIDI", "DISNEY PLUS", "HBO", "YOUTUBE PREMIUM", "DIRECTV", "CASA RONALD", "CANVA", "PIXELCUT", "CHAT GPT", "CLAUDE", "ALBERTO TEJO", "MERCADO LIBRE", "MERCADO LIBRE MELI", "STARBUCKS", "REMISERIA", "SUBE", "FARMACIA", "PEAJES", "LEANDRO ROSSI"]));
 
 function buscarConcepto(val) {
   const sug = document.getElementById('gasto-conceptos-sug');
