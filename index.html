@@ -3374,17 +3374,17 @@ async function guardar() {
         const gastosTC = [];
         if (pago !== 'TC1' && MP_FEES[pago]) {
           gastosTC.push({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
-            concepto:`Costo interés ${pago} — ${cliEdit}`, monto: Math.round(precioVenta * MP_FEES[pago]),
+            concepto:`Costo interés ${pago} — ${cliEdit}`, monto: Math.round(precioVenta * MP_FEES[pago] * 100) / 100,
             auto:true, ventaNro: nroVentaEdit });
         }
         gastosTC.push({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
-          concepto:`Cargo Mercado Pago — ${cliEdit}`, monto: Math.round(precioVenta * MP_FEES.TC1),
+          concepto:`Cargo Mercado Pago — ${cliEdit}`, monto: Math.round(precioVenta * MP_FEES.TC1 * 100) / 100,
           auto:true, ventaNro: nroVentaEdit });
         movCaja.unshift(...gastosTC.reverse());
         await guardarCajaData();
         nuevaData.gastosMP = true;
       } else if (['DEBITO','PREPAGA','QR_MP','LINK_MP'].includes(pago)) {
-        const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0));
+        const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0) * 100) / 100;
         if (gastoFee > 0) {
           movCaja.unshift({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
             concepto:`Cargo ${PAGO_LBL[pago]||pago} — ${cliEdit}`, monto: gastoFee,
@@ -3435,11 +3435,11 @@ async function guardar() {
       const gastosTC = [];
       if (pago !== 'TC1' && MP_FEES[pago]) {
         gastosTC.push({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
-          concepto:`Costo interés ${pago} — ${cli}`, monto: Math.round(precioVenta * MP_FEES[pago]),
+          concepto:`Costo interés ${pago} — ${cli}`, monto: Math.round(precioVenta * MP_FEES[pago] * 100) / 100,
           auto:true, ventaNro: nroVenta });
       }
       gastosTC.push({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
-        concepto:`Cargo Mercado Pago — ${cli}`, monto: Math.round(precioVenta * MP_FEES.TC1),
+        concepto:`Cargo Mercado Pago — ${cli}`, monto: Math.round(precioVenta * MP_FEES.TC1 * 100) / 100,
         auto:true, ventaNro: nroVenta });
       movCaja.unshift(...gastosTC.reverse());
       await guardarCajaData();
@@ -3448,7 +3448,7 @@ async function guardar() {
     const esMPSimple = ['DEBITO','PREPAGA','QR_MP','LINK_MP'].includes(pago);
     if (esMPSimple) {
       const cli = `${base.apellido||''} ${base.nombre||''}`.trim() || base.producto || '—';
-      const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0));
+      const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0) * 100) / 100;
       movCaja.unshift({ id:uid(), tipo:'gasto', fecha:base.fecha, caja:'MERCADO_PAGO',
         concepto:`Cargo ${PAGO_LBL[pago]||pago} — ${cli}`, monto: gastoFee,
         auto:true, ventaNro: nroVenta });
@@ -3714,17 +3714,17 @@ async function guardarVentaRapida() {
     const gastosTC = [];
     if (pago !== 'TC1' && MP_FEES[pago]) {
       gastosTC.push({ id:uid(), tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-        concepto:`Costo interés ${pago} — CONSUMIDOR FINAL`, monto: Math.round(precioVenta * MP_FEES[pago]),
+        concepto:`Costo interés ${pago} — CONSUMIDOR FINAL`, monto: Math.round(precioVenta * MP_FEES[pago] * 100) / 100,
         auto:true, ventaNro: nroVenta });
     }
     gastosTC.push({ id:uid(), tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-      concepto:`Cargo Mercado Pago — CONSUMIDOR FINAL`, monto: Math.round(precioVenta * MP_FEES.TC1),
+      concepto:`Cargo Mercado Pago — CONSUMIDOR FINAL`, monto: Math.round(precioVenta * MP_FEES.TC1 * 100) / 100,
       auto:true, ventaNro: nroVenta });
     movCaja.unshift(...gastosTC.reverse());
     await guardarCajaData();
     nuevaVenta.gastosMP = true;
   } else if (['DEBITO','PREPAGA','QR_MP','LINK_MP'].includes(pago)) {
-    const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0));
+    const gastoFee = Math.round(precioVenta * (MP_FEES[pago]||0) * 100) / 100;
     if (gastoFee > 0) {
       movCaja.unshift({ id:uid(), tipo:'gasto', fecha, caja:'MERCADO_PAGO',
         concepto:`Cargo ${PAGO_LBL[pago]||pago} — CONSUMIDOR FINAL`, monto: gastoFee,
@@ -4183,7 +4183,7 @@ async function confirmarCobro() {
       const extras = [];
       if (isTC(medioC) && medioC !== 'TC1' && MP_FEES[medioC]) {
         extras.push({ id:ts+tsOff+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-          concepto:`Costo interés ${medioC} — ${cliNom(v)}`, monto: Math.round(montoC * MP_FEES[medioC]), auto:true });
+          concepto:`Costo interés ${medioC} — ${cliNom(v)}`, monto: Math.round(montoC * MP_FEES[medioC] * 100) / 100, auto:true });
       }
       const feeServicio = isTC(medioC) ? MP_FEES.TC1 : (MP_FEES[medioC]||0);
       extras.push({ id:ts+tsOff+3, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
@@ -6420,9 +6420,9 @@ function impactosCaja(venta) {
     if (isTC(pago)) {
       const lista = monto; // para ventas antiguas monto ya es el lista
       const tcTotal = Math.round(lista * (TC_RC[pago]||1));
-      return Math.round(tcTotal * (1 - (MP_FEES[pago]||0) - MP_FEES.TC1));
+      return Math.round(tcTotal * (1 - (MP_FEES[pago]||0) - MP_FEES.TC1) * 100) / 100;
     }
-    return Math.round(monto * (1 - (MP_FEES[pago]||0)));
+    return Math.round(monto * (1 - (MP_FEES[pago]||0)) * 100) / 100;
   };
 
   if (venta.pagosDetalle && venta.pagosDetalle.length > 1) {
@@ -12354,7 +12354,7 @@ function calcCompCuotas() {
     {lbl:'Efectivo / Transf. (−10%)', neto: efectivo, detalle:`Precio: $${fmt(efectivo)}`},
     ...Object.entries(TC_N).map(([k,n])=>{
       const total = Math.round(precio * (TC_RC[k]||1));
-      const fee   = Math.round(total * (MP_FEES[k]||0));
+      const fee   = Math.round(total * (MP_FEES[k]||0) * 100) / 100;
       const neto  = total - fee;
       return {lbl:`Tarjeta ${n} cuotas`, neto, detalle:`Total: $${fmt(total)} · Fee: −$${fmt(fee)} → ${n}x $${fmt(Math.round(total/n))}`};
     }),
