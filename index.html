@@ -4173,9 +4173,10 @@ async function confirmarCobro() {
     const cobro = {...cobroData, id:ts+tsOff, monto:montoC, medio:medioC, comprobante: tsOff===0?comprobante:''};
     cp.cobros.push(cobro);
     nuevosCobrosMem.push(cobro);
+    const grupoId = 'cobro_' + (ts+tsOff);
     const movNuevo = { id:ts+tsOff+1, tipo:'ingreso', fecha, caja:cajaCobro,
       concepto:`Crédito ${tipo==='anticipo'?'Anticipo':`Cuota ${(idx||0)+1}`} - ${v.producto} - ${cliNom(v)}`,
-      monto:montoC, medio:medioC, obs, cobrador: usuarioActual?.nombre||'' };
+      monto:montoC, medio:medioC, obs, cobrador: usuarioActual?.nombre||'', grupo: grupoId };
     movCaja.unshift(movNuevo);
     nuevosMovMem.push(movNuevo);
     if (cajaCobro === 'MERCADO_PAGO') {
@@ -4183,11 +4184,11 @@ async function confirmarCobro() {
       const extras = [];
       if (isTC(medioC) && medioC !== 'TC1' && MP_FEES[medioC]) {
         extras.push({ id:ts+tsOff+2, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-          concepto:`Costo interés ${medioC} — ${cliNom(v)}`, monto: Math.round(montoC * MP_FEES[medioC] * 100) / 100, auto:true });
+          concepto:`Costo interés ${medioC} — ${cliNom(v)}`, monto: Math.round(montoC * MP_FEES[medioC] * 100) / 100, auto:true, grupo: grupoId });
       }
       const feeServicio = isTC(medioC) ? MP_FEES.TC1 : (MP_FEES[medioC]||0);
       extras.push({ id:ts+tsOff+3, tipo:'gasto', fecha, caja:'MERCADO_PAGO',
-        concepto:`Cargo MP — ${cliNom(v)}`, monto: Math.round(montoC * feeServicio), auto:true });
+        concepto:`Cargo MP — ${cliNom(v)}`, monto: Math.round(montoC * feeServicio * 100) / 100, auto:true, grupo: grupoId });
       movCaja.unshift(...extras.reverse());
       nuevosMovMem.push(...extras);
     }
