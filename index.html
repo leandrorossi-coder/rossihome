@@ -6564,6 +6564,7 @@ function renderCaja() {
   // Ventas como ingresos (AHORRO se registra por pagos separados)
   ventas.forEach(v => {
     if (v.pago === 'AHORRO') return;
+    if (isCPorL30(v.pago)) return; // cobros van a movCaja individualmente via confirmarCobro
     const caja = cajaDeMovimiento(v);
     if (v.gastosMP && v.nroVenta) {
       // Venta con fee MP: mostrar un solo movimiento combinado
