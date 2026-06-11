@@ -2337,7 +2337,7 @@ let syncTimer = null;
 let productosDirty = false; // true solo si guardarProds() fue llamado en esta sesión
 
 // Storage local como cache
-async function sSet(k,v){ try{ if(window.storage) await window.storage.set(k,JSON.stringify(v)); }catch(e){} try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ if(e.name==='QuotaExceededError'||e.code===22) toast('⚠ Almacenamiento local lleno. Algunos datos pueden no guardarse. Exportá un backup.', 8000); } }
+async function sSet(k,v){ try{ if(window.storage) await window.storage.set(k,JSON.stringify(v)); }catch(e){ if(k==='rh_p') toast('⚠ Error al guardar en servidor. Las fotos solo están en este dispositivo. Exportá un backup.', 8000); } try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ if(e.name==='QuotaExceededError'||e.code===22) toast('⚠ Almacenamiento local lleno. Algunos datos pueden no guardarse. Exportá un backup.', 8000); } }
 async function sGet(k){ try{ if(window.storage){ const r=await window.storage.get(k); if(r) return JSON.parse(r.value); } }catch(e){} try{ const v=localStorage.getItem(k); if(v) return JSON.parse(v); }catch(e){} return null; }
 
 function mostrarSync(msg, error) {
