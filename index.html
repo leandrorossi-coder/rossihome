@@ -5443,6 +5443,11 @@ function sortMarcaTipoLitros(a, b) {
   return getLitros(a.nombre) - getLitros(b.nombre);
 }
 
+// Normaliza texto para búsquedas: minúsculas y sin acentos (NFD). Así "electrico" encuentra "Eléctrico".
+function _norm(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+// Coincide si TODOS los términos de la búsqueda aparecen en el texto (en cualquier orden). Ej: "termo gas 50".
+function _matchBusqueda(texto, q){ const h=_norm(texto); return _norm(q).split(/\s+/).filter(Boolean).every(t=>h.includes(t)); }
+
 function renderCatalogo(){
   const q=(document.getElementById('cat-q').value||'').toLowerCase();
   const catF=(document.getElementById('cat-cat').value||'');
@@ -5500,7 +5505,7 @@ function renderCatalogo(){
   }
 
   let lista=productos.filter(p=>p.visible!==false);
-  if(q)lista=lista.filter(p=>(p.nombre+' '+(p.proveedor||'')+(p.categoria||'')+(p.marca||'')+(p.etiquetas||[]).join(' ')+(p.codigoOriginal||'')).toLowerCase().includes(q));
+  if(q)lista=lista.filter(p=>_matchBusqueda((p.nombre||'')+' '+(p.proveedor||'')+' '+(p.categoria||'')+' '+(p.marca||'')+' '+(p.etiquetas||[]).join(' ')+' '+(p.codigoOriginal||''), q));
   if(catF)lista=lista.filter(p=>p.categoria===catF);
   if(subcatF)lista=lista.filter(p=>(p.subcategoria||'')===subcatF);
   if(provF)lista=lista.filter(p=>(p.proveedor||'')===provF);
@@ -9638,8 +9643,8 @@ async function actualizarPreciosProv(event, provId){
   for(let i=startRow; i<filas.length; i++){
     const row = filas[i];
     const cod = (row[codCol]+'').trim().toUpperCase();
-    const raw = (row[precioCol]+'').replace(/[^\d]/g,'');
-    const precio = parseInt(raw);
+    // Usar el parser argentino (respeta miles/centavos). Antes borraba la coma y inflaba ×100.
+    const precio = Math.round(parsearPrecioLista(row[precioCol]));
     if(cod && precio>0) mapa[cod]=precio;
   }
 
@@ -10039,11 +10044,16 @@ async function aplicarListaProv(lista_nueva, prov){
   for(const item of lista_nueva){
     const marcaConfig = item.marcaConfig||null;
     const precios = calcularPreciosProv(item.precioRaw, prov, marcaConfig);
-    // Buscar por código original primero, luego por nombre
-    const existente = prodsProv.find(p=>
-      (item.codigoOriginal && p.codigoOriginal && p.codigoOriginal===item.codigoOriginal) ||
-      (p.nombre||'').toLowerCase()===item.nombre.toLowerCase()
-    );
+    // Emparejar primero por código exacto (lo más confiable). Si no hay código en común,
+    // recién por nombre y SOLO si es inequívoco (un único producto con ese nombre), para no
+    // pisar el producto equivocado cuando el proveedor tiene varios con el mismo nombre.
+    let existente = item.codigoOriginal
+      ? prodsProv.find(p => p.codigoOriginal && p.codigoOriginal === item.codigoOriginal)
+      : null;
+    if (!existente) {
+      const mismoNombre = prodsProv.filter(p => (p.nombre||'').toLowerCase() === item.nombre.toLowerCase());
+      if (mismoNombre.length === 1) existente = mismoNombre[0];
+    }
     if(existente){
       existente.costo = precios.costo;
       existente.precio = precios.precio;
@@ -11047,8 +11057,8 @@ function preciosListaFiltrada() {
   const cat = document.getElementById('precio-cat')?.value||'';
   const subcat = document.getElementById('precio-subcat')?.value||'';
   const sort = document.getElementById('precio-sort')?.value||'';
-  let lista = productos.filter(p => p.visible !== false);
-  if (q) lista = lista.filter(p => p.nombre.toLowerCase().includes(q) || (p.proveedor||'').toLowerCase().includes(q));
+  let lista = productos.filter(p => p.visible !== false && p.enLista !== false);
+  if (q) lista = lista.filter(p => _matchBusqueda((p.nombre||'')+' '+(p.proveedor||'')+' '+(p.marca||'')+' '+(p.codigoOriginal||''), q));
   if (prov) lista = lista.filter(p => (p.proveedor||'') === prov);
   if (marca) lista = lista.filter(p => (p.marca||'') === marca);
   if (cat) lista = lista.filter(p => (p.categoria||'') === cat);
