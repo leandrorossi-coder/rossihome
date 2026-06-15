@@ -2831,7 +2831,7 @@ const prodNombre = v => (v.items&&v.items.length>1) ? v.items.map(x=>x.prod||'�
 const prodBuscar = (v, q) => prodNombre(v).toLowerCase().includes(q) || (v.producto||'').toLowerCase().includes(q);
 const hoy  = () => new Date().toISOString().split('T')[0];
 const addD = (s,n) => { try { if(!s||s==='undefined') return ''; const d=new Date(s+'T12:00'); if(isNaN(d)) return ''; d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; } catch(e){ return ''; } };
-const addMonths = (s, n) => { try { const d=new Date(s+'T12:00'); d.setMonth(d.getMonth()+n); return d.toISOString().slice(0,10); } catch(e){ return ''; } };
+const addMonths = (s, n) => { try { const d=new Date(s+'T12:00'); const dia=d.getDate(); d.setDate(1); d.setMonth(d.getMonth()+n); const ultimo=new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); d.setDate(Math.min(dia, ultimo)); return d.toISOString().slice(0,10); } catch(e){ return ''; } };
 const difD = (a,b) => Math.round((new Date(a+'T12:00')-new Date(b+'T12:00'))/86400000);
 const isCP = p => p&&(p.startsWith('CP')||p==='CUOTAS');
 const isL30 = p => p&&p.startsWith('L30');
@@ -4143,11 +4143,13 @@ function montoPagadoCuota(cp, idx) {
 function estadoCuotaCP(cp, idx) {
   const pagado = montoPagadoCuota(cp, idx);
   if (pagado >= cp.cuota) return 'pagada';
-  if (pagado > 0) return 'parcial';
   const fechas = buildFechasCuotas(cp);
-  if (!fechas[idx]) return 'pendiente';
   const h = hoy();
-  if (fechas[idx] < h) return 'vencida';
+  const vencida = fechas[idx] && fechas[idx] < h;
+  // Una cuota pagada a medias pero ya vencida cuenta como mora (vencida); si no venció, 'parcial'.
+  if (pagado > 0) return vencida ? 'vencida' : 'parcial';
+  if (!fechas[idx]) return 'pendiente';
+  if (vencida) return 'vencida';
   if (difD(fechas[idx], h) <= 7) return 'proxima';
   return 'pendiente';
 }
@@ -4205,6 +4207,12 @@ async function confirmarCobro() {
   if (!monto || monto <= 0) { toast('! Ingresá un monto válido'); return; }
   if (monto2 < 0) { toast('! El 2° monto no puede ser negativo'); return; }
   if (monto2 > 0 && !medio2) { toast('! Seleccioná el 2° medio de pago'); return; }
+  // Validar que el cobro no supere el saldo pendiente total del crédito
+  const _saldoRestante = (cp.anticipo>0 && !cp.anticipoPagado ? cp.anticipo : 0)
+    + Array.from({length: cp.nCuotas||0}, (_,i)=>Math.max(0, (cp.cuota||0) - montoPagadoCuota(cp,i))).reduce((a,b)=>a+b,0);
+  if (_saldoRestante > 0 && (monto + monto2) > _saldoRestante + 1) {
+    if (!confirm(`El cobro ($${fmt(monto+monto2)}) supera el saldo pendiente del crédito ($${fmt(_saldoRestante)}).\n¿Registrar igual?`)) return;
+  }
   if (!cp.cobros) cp.cobros = [];
   const yaCobrada = tipo==='cuota' && montoPagadoCuota(cp, idx) >= cp.cuota;
   if (yaCobrada) { if(!confirm('Esta cuota ya fue cobrada completamente. ¿Registrás un pago adicional igual?')) return; }
@@ -4273,7 +4281,13 @@ async function confirmarCobro() {
   }
   actualizarBadgeCreditos();
   cM('ovl-cobrar');
-  if(!document.getElementById('chk-no-recibo')?.checked) generarReciboCredito(v, nuevosCobrosMem[0]);
+  if(!document.getElementById('chk-no-recibo')?.checked) {
+    // Con 2 medios de pago, el recibo muestra el monto TOTAL y ambos medios.
+    const _reciboCobro = nuevosCobrosMem.length > 1
+      ? {...nuevosCobrosMem[0], monto: nuevosCobrosMem.reduce((s,c)=>s+(c.monto||0),0), medio: nuevosCobrosMem.map(c=>PAGO_LBL[c.medio]||c.medio).join(' + ')}
+      : nuevosCobrosMem[0];
+    generarReciboCredito(v, _reciboCobro);
+  }
   renderCreditos();
   toast('OK Cobro registrado');
 }
@@ -4451,7 +4465,7 @@ function renderCreditos() {
     }
   });
   const todayStr = hoy();
-  ventas.filter(v=>v.cpData).forEach(v=>{
+  ventas.filter(v=>v.cpData && !v.cancelada).forEach(v=>{
     (v.cpData.cobros||[]).forEach(c=>{ if(c.fecha===todayStr&&c.tipo!=='acuenta') totalHoy+=c.monto||0; });
   });
   ahorrosVentas.forEach(v=>{
@@ -4840,12 +4854,15 @@ async function confirmarRefinanciar() {
   const fecha1=document.getElementById('refin-fecha1').value||hoy();
   if(!monto||!n){toast('! Completá todos los campos');return;}
   const nuevaCuota=Math.round(monto/n);
-  const cuotasCobradas=(cp.cobros||[]).filter(c=>c.tipo==='cuota').length;
+  // Contar cuotas EFECTIVAMENTE saldadas (no registros de cobro) para no generar cuotas fantasma
+  let cuotasSaldadas=0;
+  for(let i=0;i<(cp.nCuotas||0);i++){ if(estadoCuotaCP(cp,i)==='pagada') cuotasSaldadas++; }
   cp.totalCredito=(cp.cobros||[]).filter(c=>c.tipo==='cuota').reduce((s,c)=>s+(c.monto||0),0)+monto;
   cp.cuota=nuevaCuota;
-  cp.nCuotas=cuotasCobradas+n;
+  cp.nCuotas=cuotasSaldadas+n;
   cp.fechaPrimeraCuota=fecha1;
   cp.refinanciado=true;
+  if(typeof _cacheFechas!=='undefined') _cacheFechas.delete(cp);
   await guardarVentas();
   cM('ovl-refinanciar'); renderCreditos();
   toast(`OK Refinanciado: ${n} cuotas de $${fmt(nuevaCuota)}`);
