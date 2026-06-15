@@ -2574,7 +2574,6 @@ async function sincronizarDesdeNube(manual=false) {
 async function guardarVentas()  { await sSet('rh_v', ventas);   programarGuardado(); }
 async function guardarProds()   { actualizarCombos(); productosDirty = true; await sSet('rh_p', productos); programarGuardado(); }
 async function guardarUsers()   { await sSet('rh_u', usuarios);  programarGuardado(); }
-async function guardarPresupuestos() { await sSet('rh_pres', presupuestos); programarGuardado(); }
 async function guardarCategorias(){ await sSet(SK_CATEGORIAS, categorias); programarGuardado(); }
 
 async function cargarDatos() {
@@ -2643,7 +2642,7 @@ async function cargarDatos() {
     }
   }
   if(_migPass) await guardarUsers();
-  const ps=await sGet('rh_pres'); if(ps) presupuestos=ps;
+  let ps=await sGet(SK_PRES); if(!ps||!ps.length) ps=await sGet('rh_pres'); if(ps) presupuestos=ps;
   const mc=await sGet(SK_CAJA); if(mc) movCaja=mc;
   const cs=await sGet(SK_SUELDOS); if(cs) configSueldos={...configSueldos,...cs};
   const cli=await sGet(SK_CLIENTES); if(cli) clientes=cli;
@@ -5897,7 +5896,7 @@ async function importarBackup(e){
     await Promise.all([
       sSet('rh_v', ventas),
       sSet('rh_p', productos),
-      sSet('rh_pres', presupuestos),
+      sSet(SK_PRES, presupuestos),
       sSet(SK_CAJA, movCaja),
       sSet(SK_CUENTAS, datosCuentas),
       sSet(SK_LIQ, liquidaciones),
@@ -6206,11 +6205,14 @@ function renderPresupuestos() {
   const hasta = document.getElementById('pres-hasta')?.value||'';
 
   // Stats globales (sobre todos los presupuestos)
-  const totalPend = presupuestos.filter(p=>p.estado==='pendiente').length;
+  // Un presupuesto pendiente cuya validez ya pasó cuenta como "vencido", no como "pendiente vigente"
+  const esVencido = p => p.estado==='pendiente' && p.validez && p.validez < hoyStr;
+  const pendVigentes = presupuestos.filter(p=>p.estado==='pendiente' && !esVencido(p));
+  const totalPend = pendVigentes.length;
   const totalConc = presupuestos.filter(p=>p.estado==='concretado').length;
   const totalNoConc = presupuestos.filter(p=>p.estado==='no_concretado').length;
-  const totalVenc = presupuestos.filter(p=>p.estado==='pendiente'&&p.validez&&p.validez<hoyStr).length;
-  const valorPend = presupuestos.filter(p=>p.estado==='pendiente').reduce((s,p)=>{
+  const totalVenc = presupuestos.filter(esVencido).length;
+  const valorPend = pendVigentes.reduce((s,p)=>{
     return s+(p.tipo===1?(p.precio||0):(p.items?.reduce((a,i)=>a+i.cant*i.precioUnit,0)||0));
   },0);
   const statsEl = document.getElementById('pres-stats');
@@ -6227,6 +6229,7 @@ function renderPresupuestos() {
   }));
 
   if(filtroPres==='vencido') lista=lista.filter(p=>p._vencido);
+  else if(filtroPres==='pendiente') lista=lista.filter(p=>p.estado==='pendiente' && !p._vencido);
   else if(filtroPres!=='todos') lista=lista.filter(p=>p.estado===filtroPres);
 
   if(q) lista=lista.filter(p=>(p.cliente||'').toLowerCase().includes(q)||(p.producto||'').toLowerCase().includes(q));
@@ -7223,7 +7226,7 @@ function esUsuarioWeb() {
 }
 
 function enviarWA(tipo) {
-  const tel = _waPendingTel ? `54${_waPendingTel.replace(/\D/g,'')}` : '';
+  const tel = _waPendingTel ? `549${_waPendingTel.replace(/\D/g,'')}` : '';
   const usarWeb = esPC() && esUsuarioWeb();
 
   if (usarWeb) {
@@ -12205,7 +12208,7 @@ async function limpiarPresupuestos(){
   if(!aEliminar.length){ toast(`Sin presupuestos ${lblMap[estado]||estado}`); return; }
   if(!confirm(`¿Eliminar ${aEliminar.length} presupuesto(s) ${lblMap[estado]||estado}?\n\nEsta acción es IRREVERSIBLE.`)) return;
   presupuestos = presupuestos.filter(p=>p.estado!==estado);
-  await sSet('rh_pres', presupuestos);
+  await sSet(SK_PRES, presupuestos);
   programarGuardado();
   logActividad(`Eliminó ${aEliminar.length} presupuestos ${lblMap[estado]||estado}`);
   toast(`OK ${aEliminar.length} presupuestos eliminados`);
