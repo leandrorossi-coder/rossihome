@@ -6531,7 +6531,9 @@ function impactosCaja(venta) {
 }
 
 function saldosCaja() {
-  const saldos = {EFECTIVO:0, MERCADO_PAGO:0, FLEX:0, GABRIELA:0, ROSA:0, DOLORES:0, VARIOS:0};
+  const saldos = {EFECTIVO:0, MERCADO_PAGO:0, FLEX:0, GABRIELA:0, ROSA:0, DOLORES:0, NESTOR_ROSSI:0, VARIOS:0};
+  // Saldo inicial cargado por caja
+  Object.keys(saldoInicialCaja||{}).forEach(c => { if (saldos[c] !== undefined) saldos[c] += (parseFloat(saldoInicialCaja[c])||0); });
   // Ingresos por ventas cobradas
   ventas.forEach(v => {
     impactosCaja(v).forEach(({caja, monto}) => {
@@ -6547,7 +6549,7 @@ function saldosCaja() {
   });
   // Movimientos manuales (gastos y traspasos)
   movCaja.forEach(m => {
-    if (m.tipo === 'gasto') {
+    if (m.tipo === 'gasto' || m.tipo === 'egreso') {
       if (saldos[m.caja] !== undefined) saldos[m.caja] -= m.monto || 0;
     } else if (m.tipo === 'traspaso') {
       if (saldos[m.desde] !== undefined) saldos[m.desde] -= m.monto || 0;
@@ -6578,11 +6580,11 @@ function saldosUSD() {
 }
 
 function cajasVisibles() {
-  if (!usuarioActual) return ['EFECTIVO','MERCADO_PAGO','FLEX','GABRIELA','ROSA','DOLORES','VARIOS'];
+  if (!usuarioActual) return ['EFECTIVO','MERCADO_PAGO','FLEX','GABRIELA','ROSA','DOLORES','NESTOR_ROSSI','VARIOS'];
   const nombre = usuarioActual.nombre;
   if (nombre === 'ROSA') return ['ROSA','GABRIELA'];
   if (nombre === 'GABRIELA') return ['ROSA','GABRIELA'];
-  return ['EFECTIVO','MERCADO_PAGO','FLEX','GABRIELA','ROSA','DOLORES','VARIOS'];
+  return ['EFECTIVO','MERCADO_PAGO','FLEX','GABRIELA','ROSA','DOLORES','NESTOR_ROSSI','VARIOS'];
 }
 function puedeGastar() {
   if (!usuarioActual) return false;
@@ -6711,8 +6713,20 @@ function renderCaja() {
       if (gruposRendered.has(m.grupo)) return;
       gruposRendered.add(m.grupo);
       const items = gruposMap[m.grupo] || [m];
-      const isTV = items.some(x => x.tipo === 'ingreso') && items.some(x => x.tipo === 'gasto');
-      if (isTV) {
+      const g = String(m.grupo);
+      if (g.startsWith('cobro_')) {
+        // Cobro de crédito: se muestra como un ingreso simple (con la comisión MP, si la hubo,
+        // restada en el neto). Se gestiona desde Créditos, por eso no lleva botones de caja.
+        const ingresoItem = items.find(x => x.tipo === 'ingreso') || items[0];
+        const gastoItems  = items.filter(x => x.tipo === 'gasto');
+        const totalGasto  = gastoItems.reduce((s, x) => s + (x.monto||0), 0);
+        const neto = Math.round(((ingresoItem?.monto||0) - totalGasto) * 100) / 100;
+        todos.push({id:'grp_'+m.grupo, grupo:m.grupo,
+          fecha:ingresoItem?.fecha||m.fecha, tipo:'ingreso', caja:ingresoItem?.caja||m.caja,
+          desc: ingresoItem?.concepto || 'Cobro crédito',
+          sub: (ingresoItem?.obs||'') + (totalGasto ? ` · comisión MP −$${fmt(totalGasto)}` : ''),
+          monto: neto, signo: 1});
+      } else if (g.startsWith('tv_') || (items.some(x => x.tipo === 'ingreso') && items.some(x => x.tipo === 'gasto'))) {
         const ingresoItem = items.find(x => x.tipo === 'ingreso');
         const gastoItems  = items.filter(x => x.tipo === 'gasto');
         const totalGasto  = gastoItems.reduce((s, x) => s + (x.monto||0), 0);
@@ -6781,8 +6795,11 @@ function renderCaja() {
   // Ordenar por fecha desc
   todos.sort((a,b) => b.fecha.localeCompare(a.fecha));
 
-  // Saldo corriente por movimiento (solo cuando se filtra una caja específica)
-  if (filtroCaja !== 'TODAS') {
+  // Saldo corriente por movimiento: solo cuando se filtra UNA caja y no hay otros filtros
+  // activos (tipo/fecha/búsqueda). Con otros filtros el acumulado partiría del total de la
+  // caja pero recorrería una lista incompleta, dando saldos engañosos — mejor no mostrarlo.
+  const sinOtrosFiltros = filtroTipo === 'TODOS' && !filtroDesde && !filtroHasta && !filtroQ;
+  if (filtroCaja !== 'TODAS' && sinOtrosFiltros) {
     let saldoAcum = saldos[filtroCaja] || 0;
     todos.forEach(m => {
       m.saldoEnMomento = saldoAcum;
@@ -7005,7 +7022,7 @@ async function guardarGasto() {
   }
 
   const monto = parseFloat(document.getElementById('g-monto').value)||0;
-  if (!monto) { toast('! Ingresá un monto'); return; }
+  if (!monto || monto <= 0) { toast('! Ingresá un monto válido (mayor a 0)'); return; }
   const gMoneda = document.getElementById('g-moneda')?.value||'ARS';
   const gMontoUSD = parseFloat(document.getElementById('g-monto-usd')?.value)||0;
   const gTC = parseFloat(document.getElementById('g-tc')?.value)||0;
@@ -7040,7 +7057,7 @@ async function guardarTraspaso() {
   const hacia = document.getElementById('tr-hacia').value;
   if (desde === hacia) { toast('! Las cajas deben ser distintas'); return; }
   const monto = parseFloat(document.getElementById('tr-monto').value)||0;
-  if (!monto) { toast('! Ingresá un monto'); return; }
+  if (!monto || monto <= 0) { toast('! Ingresá un monto válido (mayor a 0)'); return; }
   movCaja.unshift({
     id: Date.now(), tipo: 'traspaso',
     fecha: document.getElementById('tr-fecha').value || hoy(),
@@ -8567,7 +8584,7 @@ async function guardarIngreso() {
   }
 
   const monto = parseFloat(document.getElementById('ing-monto').value)||0;
-  if (!monto) { toast('Ingresa un monto'); return; }
+  if (!monto || monto <= 0) { toast('Ingresá un monto válido (mayor a 0)'); return; }
   const iMoneda = document.getElementById('ing-moneda')?.value||'ARS';
   const iMontoUSD = parseFloat(document.getElementById('ing-monto-usd')?.value)||0;
   const iTC = parseFloat(document.getElementById('ing-tc')?.value)||0;
@@ -8594,6 +8611,7 @@ function editarMovCaja(id) {
   const numId = parseInt(id) || id;
   const m = movCaja.find(x => x.id == numId);
   if (!m) return;
+  if (m.tipo === 'traspaso') { toast('Los traspasos no se editan acá: eliminá y volvé a crearlo.', 5000); return; }
   document.getElementById('edit-mov-id').value = m.id;
   document.getElementById('edit-mov-fecha').value = m.fecha || hoy();
   document.getElementById('edit-mov-caja').value = m.caja || m.desde || 'EFECTIVO';
@@ -8607,11 +8625,13 @@ async function guardarEditMovCaja() {
   const id = document.getElementById('edit-mov-id').value;
   const idx = movCaja.findIndex(x => x.id == id);
   if (idx < 0) return;
+  const nuevoMonto = parseFloat(document.getElementById('edit-mov-monto').value)||0;
+  if (nuevoMonto <= 0) { toast('! El monto debe ser mayor a 0'); return; }
   movCaja[idx] = {
     ...movCaja[idx],
     fecha: document.getElementById('edit-mov-fecha').value,
     caja: document.getElementById('edit-mov-caja').value,
-    monto: parseFloat(document.getElementById('edit-mov-monto').value)||0,
+    monto: nuevoMonto,
     concepto: document.getElementById('edit-mov-concepto').value.trim(),
     obs: document.getElementById('edit-mov-obs').value.trim()
   };
