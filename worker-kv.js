@@ -18,11 +18,21 @@ export default {
       const url = new URL(request.url);
 
       if (request.method === 'GET') {
-        const [main, productos] = await Promise.all([
+        // Leemos los datos generales, los productos (sin fotos pesadas) y
+        // los pedazos de fotos (rh_fotos_0 .. rh_fotos_N), todo en paralelo.
+        const fotoKeys = Array.from({ length: FOTO_CHUNKS }, (_, i) => `rh_fotos_${i}`);
+        const [main, productos, ...fotoChunks] = await Promise.all([
           env.RH_KV.get('rh_main', 'json'),
           env.RH_KV.get('rh_productos', 'json'),
+          ...fotoKeys.map(k => env.RH_KV.get(k, 'json')),
         ]);
-        const datos = { ...(main || {}), productos: productos || [] };
+        // Juntamos todos los pedazos en un solo mapa { idProducto: [fotos...] }
+        const fotosMap = Object.assign({}, ...fotoChunks.map(c => c || {}));
+        const prods = (productos || []).map(p => {
+          const f = fotosMap[p.id];
+          return (f && f.length) ? { ...p, fotos: f } : p;
+        });
+        const datos = { ...(main || {}), productos: prods };
         return json({ ok: true, datos });
       }
 
@@ -36,11 +46,42 @@ export default {
         }
 
         if (parsed.action === 'guardar') {
-          const { action, productos, productosDirty, ...main } = parsed;
+          const { action, productos, productosDirty, fotosDirty, ...main } = parsed;
 
+          // Siempre guardamos los datos generales.
           const writes = [env.RH_KV.put('rh_main', JSON.stringify(main))];
-          if (productosDirty || productos?.length > 0) {
-            writes.push(env.RH_KV.put('rh_productos', JSON.stringify(productos || [])));
+
+          if (fotosDirty) {
+            // El dispositivo mandó fotos nuevas: las repartimos en pedazos.
+            // MERGE seguro: leemos lo que ya hay y solo actualizamos la entrada
+            // de un producto si vino con fotos base64. Si un producto vino SIN
+            // fotos, NO lo tocamos (así ningún dispositivo borra fotos sin querer).
+            const fotoKeys = Array.from({ length: FOTO_CHUNKS }, (_, i) => `rh_fotos_${i}`);
+            const existentes = await Promise.all(fotoKeys.map(k => env.RH_KV.get(k, 'json')));
+            const mapa = Object.assign({}, ...existentes.map(c => c || {}));
+
+            for (const p of (productos || [])) {
+              const fotos = p.fotos || [];
+              const tieneBase64 = fotos.some(f => typeof f === 'string' && f.startsWith('data:'));
+              if (tieneBase64) mapa[p.id] = fotos; // guardamos el array completo (links + base64)
+            }
+
+            // Reconstruimos los pedazos a partir del mapa combinado.
+            const chunks = Array.from({ length: FOTO_CHUNKS }, () => ({}));
+            for (const id in mapa) {
+              chunks[chunkIndex(id)][id] = mapa[id];
+            }
+            chunks.forEach((c, i) => writes.push(env.RH_KV.put(`rh_fotos_${i}`, JSON.stringify(c))));
+
+            // En rh_productos guardamos los productos SIN las fotos base64 (livianos).
+            const meta = (productos || []).map(p => quitarBase64(p));
+            writes.push(env.RH_KV.put('rh_productos', JSON.stringify(meta)));
+
+          } else if (productosDirty || (productos && productos.length > 0)) {
+            // Edición de productos sin cambios de fotos: solo metadatos livianos.
+            // Quitamos base64 por las dudas y dejamos los pedazos de fotos intactos.
+            const meta = (productos || []).map(p => quitarBase64(p));
+            writes.push(env.RH_KV.put('rh_productos', JSON.stringify(meta)));
           }
 
           await Promise.all(writes);
@@ -55,6 +96,27 @@ export default {
     }
   }
 };
+
+// ── FOTOS EN PEDAZOS ──────────────────────────────────────────────────────────
+// Cantidad de "cajas" donde repartimos las fotos. Cada caja queda muy por
+// debajo del límite de 25 MB de Cloudflare KV, y el total puede crecer mucho.
+const FOTO_CHUNKS = 10;
+
+// A qué pedazo va cada producto (reparto estable según su id).
+function chunkIndex(id) {
+  const s = String(id);
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) >>> 0; }
+  return h % FOTO_CHUNKS;
+}
+
+// Devuelve el producto sin las fotos base64 (deja los links de internet).
+function quitarBase64(p) {
+  const fotos = (p.fotos || []).filter(f => typeof f === 'string' && !f.startsWith('data:'));
+  if (fotos.length === (p.fotos || []).length) return p;
+  return { ...p, fotos };
+}
+
 
 // ── SCRAPING (igual que antes) ────────────────────────────────────────────────
 

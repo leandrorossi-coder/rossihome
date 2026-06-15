@@ -2335,6 +2335,7 @@ function exportarVentasCSV() {
 const SCRIPT_URL = 'https://rossihome-proxy.leandro-rossi.workers.dev/';
 let syncTimer = null;
 let productosDirty = false; // true solo si guardarProds() fue llamado en esta sesión
+let fotosDirty = false; // true solo si cambiaron fotos (subir base64 al servidor en pedazos)
 
 // Storage local como cache
 async function sSet(k,v){ try{ if(window.storage) await window.storage.set(k,JSON.stringify(v)); }catch(e){ if(k==='rh_p') toast('⚠ Error al guardar en servidor. Las fotos solo están en este dispositivo. Exportá un backup.', 8000); } try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ if(e.name==='QuotaExceededError'||e.code===22) toast('⚠ Almacenamiento local lleno. Algunos datos pueden no guardarse. Exportá un backup.', 8000); } }
@@ -2378,12 +2379,17 @@ async function guardarEnScript() {
         } catch(e) { productosParaGuardar = productos; }
       }
     }
-    // Filtrar fotos base64 antes de enviar a Sheets (demasiado grandes — solo Drive URLs se sincronizan)
+    // Saca las fotos base64 (pesadas) de los productos. Solo deja los links.
     const sinBase64 = prods => prods.map(p => {
       const fotos = (p.fotos||[]).filter(f => f && !f.startsWith('data:'));
       return fotos.length === p.fotos?.length ? p : {...p, fotos, fotoPrincipal: 0};
     });
-    const datos = { ventas, productos: sinBase64(productosParaGuardar), presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, proveedores, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, caracteristicas, usuarios, gastosConceptos, lastSavedAt: ahora, version:2, productosDirty };
+    // Si hay fotos nuevas, mandamos los productos COMPLETOS (con base64) para que
+    // el servidor las guarde en pedazos. Si no, mandamos liviano (sin base64).
+    const enviarFotos = fotosDirty;
+    const productosPayload = enviarFotos ? productosParaGuardar : sinBase64(productosParaGuardar);
+    if (enviarFotos) mostrarSync('Subiendo fotos…', false);
+    const datos = { ventas, productos: productosPayload, presupuestos, movCaja, datosCuentas, liquidaciones, publicaciones, configLiq, clientes, categorias, pedidos, proveedores, activityLog, metas, plantillasWA, miLocal, arqueos, saldoInicialCaja, nroVentaCounter, caracteristicas, usuarios, gastosConceptos, lastSavedAt: ahora, version:2, productosDirty, fotosDirty: enviarFotos };
     localStorage.setItem('rh_lastCloudSave', String(ahora));
     const resp = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -2392,6 +2398,7 @@ async function guardarEnScript() {
     if (resp.ok) {
       mostrarSync('OK Guardado', false);
       localStorage.removeItem('rh_pendingSync');
+      if (enviarFotos) { fotosDirty = false; toast('OK Fotos subidas al servidor', 3000); }
     } else {
       mostrarSync('⚠ Error al guardar', true);
       localStorage.setItem('rh_pendingSync', '1');
@@ -2436,7 +2443,30 @@ async function leerDeScript() {
     if (d.productos && d.productos.length > 0) {
       // Filtrar IDs borrados localmente (lista negra permanente)
       const deletedIds = _getDeletedProdIds();
-      const prodsFiltrados = deletedIds.size > 0 ? d.productos.filter(p=>!deletedIds.has(String(p.id))) : d.productos;
+      let prodsFiltrados = deletedIds.size > 0 ? d.productos.filter(p=>!deletedIds.has(String(p.id))) : d.productos;
+      // PROTECCIÓN: si la nube todavía no tiene una foto base64 que SÍ tenemos
+      // local (caso típico durante la transición al servidor nuevo), conservamos
+      // la foto local para no perderla (y avisamos para subirla con el botón).
+      const localPorId = {};
+      (productos||[]).forEach(p => { localPorId[p.id] = p; });
+      let preservadas = 0;
+      prodsFiltrados = prodsFiltrados.map(cp => {
+        const lp = localPorId[cp.id];
+        if (!lp) return cp;
+        const cloudTieneB64 = (cp.fotos||[]).some(f => typeof f==='string' && f.startsWith('data:'));
+        const localTieneB64 = (lp.fotos||[]).some(f => typeof f==='string' && f.startsWith('data:'));
+        if (!cloudTieneB64 && localTieneB64) {
+          preservadas++;
+          return { ...cp, fotos: lp.fotos, fotoPrincipal: lp.fotoPrincipal||0 };
+        }
+        return cp;
+      });
+      // Avisamos (una sola vez) que hay fotos que todavía no están en el servidor,
+      // sin subirlas automáticamente para no trabar los guardados de ventas.
+      if (preservadas > 0 && esAdmin() && !sessionStorage.getItem('rh_avisoFotos')) {
+        sessionStorage.setItem('rh_avisoFotos','1');
+        setTimeout(()=>toast(`📷 Hay ${preservadas} productos con fotos que faltan subir al servidor. Andá a Admin → "Subir fotos al servidor".`, 9000), 2000);
+      }
       // Advertir si la nube trae menos productos que los que hay en memoria local
       if (productos.length > 0 && prodsFiltrados.length < productos.length - 3) {
         toast(`⚠ La nube tiene ${prodsFiltrados.length} productos, el local tiene ${productos.length}. Se usaron los de la nube. Si faltan productos, restaurá desde Admin.`, 8000);
@@ -5101,6 +5131,8 @@ async function guardarProd(){
     productos.unshift({id:Date.now(),...data});
     toast('OK Producto agregado');
   }
+  // Si el producto tiene fotos pesadas (base64), marcamos para subirlas al servidor.
+  if ((data.fotos||[]).some(f => typeof f==='string' && f.startsWith('data:'))) fotosDirty = true;
   await guardarProds(); cM('ovl-prod'); renderPrecios(); if(document.getElementById('pg-catalogo').classList.contains('on'))renderCatalogo(); editProdId=null;
 }
 function parseMarcasProv(marcasText) {
@@ -5788,6 +5820,9 @@ async function importarBackup(e){
       sSet(SK_CATEGORIAS, categorias),
     ]);
     migrarMovCaja();
+    // Al importar un backup forzamos subir productos y fotos (base64) al servidor.
+    productosDirty = true;
+    if((productos||[]).some(p=>(p.fotos||[]).some(f=>typeof f==='string'&&f.startsWith('data:')))) fotosDirty = true;
     await guardarEnScript();
     const info=document.getElementById('backup-info');
     if(info)info.textContent=`Backup importado: ${d.ventas?.length||0} ventas, ${d.productos?.length||0} productos`;
@@ -5795,6 +5830,17 @@ async function importarBackup(e){
     setTimeout(()=>location.reload(),1500);
   }catch(err){toast('Error al importar: '+err.message);}
   e.target.value='';
+}
+// Fuerza la subida de las fotos (base64) de este dispositivo al servidor, en pedazos.
+async function subirFotosAlServidor(){
+  if(!esAdmin()){toast('Sin permiso');return;}
+  const conFotos = (productos||[]).filter(p=>(p.fotos||[]).some(f=>typeof f==='string'&&f.startsWith('data:')));
+  if(!conFotos.length){ toast('No hay fotos nuevas para subir en este dispositivo', 5000); return; }
+  if(!confirm(`Se van a subir al servidor las fotos de ${conFotos.length} productos.\n\nHacelo desde la compu/celular donde SÍ se ven las fotos. Puede tardar un rato.`)) return;
+  fotosDirty = true;
+  productosDirty = true;
+  toast(`Subiendo fotos de ${conFotos.length} productos…`, 6000);
+  await guardarEnScript();
 }
 function exportarExcel(){
   if(!esAdmin()){toast('Sin permiso');return;}
@@ -10230,6 +10276,7 @@ async function cargarFotosMasivasProv(provId){
         sinProducto.push(file.name);
       }
     }
+    fotosDirty = true; // se cargaron fotos pesadas: subirlas al servidor
     await guardarProds();
     const prodsCon = [...new Set(provProds.filter(p=>p.fotos&&p.fotos.length).map(p=>p.nombre))].length;
     toast(`OK ${actualizados} fotos cargadas en ${prodsCon} productos${sinProducto.length?` · ${sinProducto.length} sin coincidencia`:''}`, 5000);
@@ -11850,6 +11897,7 @@ renderAdmin = function(){
           ⬆ Importar backup
           <input type="file" id="backup-input" accept=".json" style="display:none;" onchange="importarBackup(event)">
         </label>
+        <button class="btn btn-green btn-sm" onclick="subirFotosAlServidor()" title="Sube al servidor las fotos de productos para que se vean en todos los dispositivos">☁ Subir fotos al servidor</button>
         <button class="btn btn-danger btn-sm" onclick="renumerarVentasDesde1()" title="Renumera todas las ventas en orden cronológico desde #1">🔢 Renumerar ventas</button>
       </div>
       <div id="backup-info" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>
