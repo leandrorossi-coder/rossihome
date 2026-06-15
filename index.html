@@ -10213,11 +10213,26 @@ async function cargarFotosMasivasProv(provId){
       // 1a. Coincidencia por SKU si el producto tiene campo sku
       prod = provProds.find(p => p.sku && fname.includes(p.sku.toUpperCase()));
 
-      // 1b. Extraer código del nombre de archivo y buscarlo como palabra completa en el nombre
-      // Ej: RHEEM_TEC085RH_1.PNG → busca "TEC085RH" en nombre del producto
+      // 1b. Extraer el/los código(s) del nombre de archivo y emparejar por código EXACTO
+      // de producto (codigoOriginal o sku). Es lo único que distingue modelos mellizos:
+      // FUNCTIONAL vs normal, gas natural vs envasado, alta recuperación, etc.
+      // Ej: RHEEM_TGNP080RH_1.PNG → código "TGNP080RH" == codigoOriginal del producto.
       if (!prod) {
         const partes = fname.replace(/\.\w+$/, '').split('_');
-        for (let i = 1; i < partes.length - 1; i++) {
+        for (let i = 1; i < partes.length; i++) {
+          const codigo = partes[i];
+          if (codigo.length < 4) continue;
+          const porCodigo = provProds.find(p =>
+            (p.codigoOriginal && p.codigoOriginal.toUpperCase() === codigo) ||
+            (p.sku && p.sku.toUpperCase() === codigo)
+          );
+          if (porCodigo) { prod = porCodigo; break; }
+        }
+      }
+      // 1c. Si no hubo código exacto, buscar el código como palabra completa dentro del nombre.
+      if (!prod) {
+        const partes = fname.replace(/\.\w+$/, '').split('_');
+        for (let i = 1; i < partes.length; i++) {
           const codigo = partes[i];
           if (codigo.length >= 4) {
             const encontrado = provProds.find(p => codigoExacto(p.nombre||'', codigo));
