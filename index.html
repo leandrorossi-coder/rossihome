@@ -4706,6 +4706,22 @@ async function cobrarRapido(vid,idx){
   abrirCobrarCuota(vid,idx);
 }
 
+// Genera los movimientos de gasto por comisión de Mercado Pago para un cobro/pago a crédito.
+// Centraliza el cálculo para que sea idéntico en confirmarCobro, pago a cuenta y cambio de medio.
+// Devuelve [] si el medio no cae en la caja Mercado Pago.
+function gastosFeeMP(medio, monto, fecha, nombreCli, grupo) {
+  if (cajaDeMovimiento({pago: medio}) !== 'MERCADO_PAGO') return [];
+  const extras = [];
+  if (isTC(medio) && medio !== 'TC1' && MP_FEES[medio]) {
+    extras.push({ id: uid(), tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+      concepto:`Costo interés ${medio} — ${nombreCli}`, monto: Math.round(monto * MP_FEES[medio] * 100) / 100, auto:true, grupo });
+  }
+  const feeServicio = isTC(medio) ? MP_FEES.TC1 : (MP_FEES[medio]||0);
+  extras.push({ id: uid(), tipo:'gasto', fecha, caja:'MERCADO_PAGO',
+    concepto:`Cargo MP — ${nombreCli}`, monto: Math.round(monto * feeServicio * 100) / 100, auto:true, grupo });
+  return extras;
+}
+
 // Eliminar cobro registrado
 async function eliminarCobro(vid, cobroId) {
   if(!esAdmin()){toast('Sin permiso');return;}
@@ -4716,9 +4732,11 @@ async function eliminarCobro(vid, cobroId) {
   if(!confirm(`¿Eliminás el cobro de ${label}?\nEsto también eliminará el movimiento de caja correspondiente.`))return;
   if(cobro.tipo==='anticipo') v.cpData.anticipoPagado=false;
   v.cpData.cobros=(v.cpData.cobros||[]).filter(c=>String(c.id)!==String(cobroId));
-  // Eliminar movimiento de caja asociado (creado con id = cobro.id + 1)
-  const movId = cobro.id + 1;
-  movCaja = movCaja.filter(m => m.id !== movId && m.id !== cobro.id);
+  // Eliminar TODOS los movimientos de caja del cobro: el ingreso y, si se cobró por
+  // Mercado Pago, los gastos de comisión (van agrupados con grupo 'cobro_'+cobro.id).
+  // Se mantiene el borrado por id para cobros viejos que no tienen grupo.
+  const grupoCobro = 'cobro_' + cobro.id;
+  movCaja = movCaja.filter(m => m.grupo !== grupoCobro && m.id !== cobro.id + 1 && m.id !== cobro.id);
   await guardarVentas(); await guardarCajaData(); renderCreditos(); toast('OK Cobro eliminado');
 }
 
@@ -4744,9 +4762,21 @@ async function editarMedioCobro(vid, cobroId) {
   div.querySelector('#_edit-medio-ok').onclick = async () => {
     const nuevoMedio = div.querySelector('#_edit-medio-sel').value;
     cobro.medio = nuevoMedio;
-    // Actualizar movimiento de caja asociado
-    const mov = movCaja.find(m => m.id === cobro.id+1 || m.id === cobro.id);
-    if(mov) { mov.medio = nuevoMedio; mov.caja = cajaDeMovimiento({pago: nuevoMedio}); }
+    const grupoCobro = 'cobro_' + cobro.id;
+    // Quitar los gastos de comisión MP viejos de este cobro (si los había)
+    movCaja = movCaja.filter(m => !(m.grupo === grupoCobro && m.tipo === 'gasto' && m.auto));
+    // Actualizar el movimiento de ingreso (la caja cambia según el nuevo medio)
+    const mov = movCaja.find(m => m.grupo === grupoCobro && m.tipo === 'ingreso')
+             || movCaja.find(m => m.id === cobro.id+1 || m.id === cobro.id);
+    if (mov) {
+      mov.medio = nuevoMedio;
+      mov.caja = cajaDeMovimiento({pago: nuevoMedio});
+      if (!mov.grupo) mov.grupo = grupoCobro; // asegurar grupo en cobros viejos
+      // Recrear la comisión si el nuevo medio cae en Mercado Pago
+      const nuevosFees = gastosFeeMP(nuevoMedio, mov.monto, mov.fecha, cliNom(v), grupoCobro);
+      if (nuevosFees.length) movCaja.unshift(...nuevosFees.reverse());
+      cobro.gastoMP = nuevosFees.length > 0 || undefined;
+    }
     div.remove();
     await guardarVentas(); await guardarCajaData();
     verHistorialCobros(vid);
@@ -4954,9 +4984,11 @@ async function guardarPagoCuenta() {
   // Aplicar primero al anticipo si está pendiente
   if (cp.anticipo > 0 && !cp.anticipoPagado && monto > 0) {
     const aplicar = Math.min(monto, cp.anticipo);
-    cp.cobros.push({ id: ts++, tipo:'anticipo', monto:aplicar, medio, fecha, obs, cobrador: usuarioActual?.nombre||'' });
+    const idC = ts++; const grupoC = cajaCobro==='MERCADO_PAGO' ? 'cobro_'+idC : null;
+    cp.cobros.push({ id: idC, tipo:'anticipo', monto:aplicar, medio, fecha, obs, cobrador: usuarioActual?.nombre||'', gastoMP: cajaCobro==='MERCADO_PAGO'||undefined });
     movCaja.unshift({ id: ts++, tipo:'ingreso', fecha, caja:cajaCobro,
-      concepto:`Crédito Anticipo - ${v.producto} - ${cliNom(v)}`, monto:aplicar, medio, obs, cobrador: usuarioActual?.nombre||'' });
+      concepto:`Crédito Anticipo - ${v.producto} - ${cliNom(v)}`, monto:aplicar, medio, obs, cobrador: usuarioActual?.nombre||'', grupo: grupoC });
+    if (grupoC) movCaja.unshift(...gastosFeeMP(medio, aplicar, fecha, cliNom(v), grupoC).reverse());
     cp.anticipoPagado = true;
     monto -= aplicar;
   }
@@ -4966,9 +4998,11 @@ async function guardarPagoCuenta() {
     if (monto <= 0) break;
     const pendiente = cp.cuota - montoPagadoCuota(cp, cuota.idx);
     const aplicar = Math.min(monto, pendiente);
-    cp.cobros.push({ id: ts++, tipo:'cuota', idx:cuota.idx, monto:aplicar, medio, fecha, obs, cobrador: usuarioActual?.nombre||'' });
+    const idC = ts++; const grupoC = cajaCobro==='MERCADO_PAGO' ? 'cobro_'+idC : null;
+    cp.cobros.push({ id: idC, tipo:'cuota', idx:cuota.idx, monto:aplicar, medio, fecha, obs, cobrador: usuarioActual?.nombre||'', gastoMP: cajaCobro==='MERCADO_PAGO'||undefined });
     movCaja.unshift({ id: ts++, tipo:'ingreso', fecha, caja:cajaCobro,
-      concepto:`Crédito Cuota ${cuota.idx+1} - ${v.producto} - ${cliNom(v)}`, monto:aplicar, medio, obs, cobrador: usuarioActual?.nombre||'' });
+      concepto:`Crédito Cuota ${cuota.idx+1} - ${v.producto} - ${cliNom(v)}`, monto:aplicar, medio, obs, cobrador: usuarioActual?.nombre||'', grupo: grupoC });
+    if (grupoC) movCaja.unshift(...gastosFeeMP(medio, aplicar, fecha, cliNom(v), grupoC).reverse());
     monto -= aplicar;
   }
   try { await guardarCajaData(); } catch(e){}
