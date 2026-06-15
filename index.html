@@ -2204,6 +2204,26 @@ const _hesc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function obtenerProximoNroVenta(){
   return Math.max(0, ...ventas.map(v => parseInt(v.nroVenta||0)||0)) + 1;
 }
+// Reconcilia números de venta duplicados (pueden aparecer si dos equipos cargan ventas offline
+// a la vez). Es determinístico: conserva el número en la venta creada primero (id menor) y
+// renumera las demás, así todos los dispositivos convergen al mismo resultado tras sincronizar.
+function reconciliarNroVentas(){
+  const porNro = {};
+  ventas.forEach(v => { const n = parseInt(v.nroVenta); if (n) (porNro[n] = porNro[n] || []).push(v); });
+  let maxNro = Math.max(0, ...ventas.map(v => parseInt(v.nroVenta)||0));
+  let cambios = 0;
+  Object.values(porNro).forEach(grupo => {
+    if (grupo.length < 2) return;
+    grupo.sort((a,b) => (a.id||0) - (b.id||0)); // el más viejo conserva su número
+    grupo.slice(1).forEach(v => { maxNro++; v.nroVenta = maxNro; cambios++; });
+  });
+  if (cambios > 0) {
+    nroVentaCounter = maxNro + 1;
+    guardarVentas();
+    if (typeof esAdmin === 'function' && esAdmin()) toast(`Se renumeraron ${cambios} venta(s) con número duplicado para evitar conflictos.`, 6000);
+  }
+  return cambios;
+}
 function migrarMovCaja() {
   let cambio = false;
   // Corregir entradas con caja:'local'
@@ -2439,7 +2459,7 @@ async function leerDeScript() {
     const data = await resp.json();
     if (!data.ok) return false;
     const d = data.datos;
-    if (d.ventas && d.ventas.length > 0) ventas = d.ventas;
+    if (d.ventas && d.ventas.length > 0) { ventas = d.ventas; reconciliarNroVentas(); }
     if (d.productos && d.productos.length > 0) {
       // Filtrar IDs borrados localmente (lista negra permanente)
       const deletedIds = _getDeletedProdIds();
@@ -3099,7 +3119,7 @@ function recalc() {
   if (margenEl) {
     const costo = parseFloat(document.getElementById('f-costo').value)||0;
     if (costo > 0 && precioNeto > 0) {
-      const ganancia = precioNeto - (costo * cant);
+      const ganancia = precioNeto - costo; // #f-costo ya es el costo TOTAL (Σ costoUnit × cantidad)
       const pct = Math.round(ganancia / precioNeto * 100);
       const color = pct < 0 ? '#c0392b' : pct < 15 ? '#e67e22' : '#2a7a4b';
       margenEl.style.display = 'block';
@@ -3251,8 +3271,11 @@ function selProdItem(itemId, prodId) {
 }
 
 function sincronizarItemsVenta() {
-  const totalCosto = ventaItems.reduce((s, x) => s + ((x.costo||0) * (x.cantidad||1)), 0);
-  const noms = ventaItems.filter(x => x.prod).map(x => x.prod);
+  // Solo cuentan los renglones CON nombre, para que el total siempre coincida con los items guardados
+  // (un renglón con precio pero sin nombre se descarta del detalle, así que tampoco debe sumar al total).
+  const itemsValidos = ventaItems.filter(x => x.prod);
+  const totalCosto = itemsValidos.reduce((s, x) => s + ((x.costo||0) * (x.cantidad||1)), 0);
+  const noms = itemsValidos.map(x => x.prod);
   const prodNom = noms.length === 1 ? noms[0] : (noms.length > 1 ? noms.join(' + ') : '—');
   const esMixto = document.getElementById('chk-mixto')?.checked;
   const elProd = document.getElementById('f-prod');
@@ -3263,11 +3286,11 @@ function sincronizarItemsVenta() {
   if (elCosto) elCosto.value = totalCosto;
   if (!esMixto) {
     // 1 item: usar precio unitario + cantidad para que recalc() muestre "N × $precio"
-    if (ventaItems.length === 1) {
-      if (elPrecio) elPrecio.value = ventaItems[0].precioUnit || 0;
-      if (elCant) elCant.value = ventaItems[0].cantidad || 1;
+    if (itemsValidos.length === 1) {
+      if (elPrecio) elPrecio.value = itemsValidos[0].precioUnit || 0;
+      if (elCant) elCant.value = itemsValidos[0].cantidad || 1;
     } else {
-      const totalBruto = ventaItems.reduce((s, x) => s + ((x.precioUnit||0) * (x.cantidad||1)), 0);
+      const totalBruto = itemsValidos.reduce((s, x) => s + ((x.precioUnit||0) * (x.cantidad||1)), 0);
       if (elPrecio) elPrecio.value = totalBruto || 0;
       if (elCant) elCant.value = 1;
     }
@@ -3336,7 +3359,17 @@ async function guardar() {
   const precioLista = Math.max(0, subtotalBruto - descuento); // precio lista (lo que vale el producto)
   // Para TC: el precio registrado es el total que paga el cliente en cuotas
   const precioVenta = isTC(pago) ? Math.round(precioLista * (TC_RC[pago]||1)) : precioLista;
-  const pagosDetalle = esMixto && pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precioVenta, label: PAGO_LBL[pagoSimple]||pagoSimple}];
+  let pagosDetalle = esMixto && pagosVenta.length > 0 ? [...pagosVenta] : [{pago: pagoSimple, monto: precioVenta, label: PAGO_LBL[pagoSimple]||pagoSimple}];
+  // En pago mixto con descuento, prorratear el descuento sobre los pagos para que sumen el NETO
+  // (precioVenta) y no el bruto. Si no, la caja registra de más que el precio real de la venta.
+  if (esMixto && pagosVenta.length > 0 && descuento > 0) {
+    const sumaBruta = pagosDetalle.reduce((s,p)=>s+(p.monto||0),0);
+    if (sumaBruta > 0) {
+      pagosDetalle = pagosDetalle.map(p => ({...p, monto: Math.round((p.monto||0) * precioVenta / sumaBruta)}));
+      const dif = precioVenta - pagosDetalle.reduce((s,p)=>s+(p.monto||0),0);
+      if (dif !== 0) pagosDetalle[0].monto += dif; // ajuste de redondeo para que sumen exacto
+    }
+  }
   // nroVenta autoincrement
   const nroVenta = obtenerProximoNroVenta();
 
