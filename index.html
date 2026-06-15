@@ -6242,6 +6242,7 @@ async function duplicarPres(id) {
 
 function convertirPresAVenta(id) {
   const p=presupuestos.find(x=>x.id===id); if(!p)return;
+  if(p.ventaId && !confirm(`Este presupuesto ya se convirtió a la venta #${p.ventaNro||''}.\n¿Querés crear OTRA venta igual?`)) return;
   const div=document.createElement('div');
   div.id='pres-venta-popup';
   div.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;';
@@ -6271,21 +6272,31 @@ async function confirmarConvPres(id) {
   const nroVenta=nroVentaCounter;
   let precio=0, producto='', items=[];
   if(p.tipo===1){
-    precio=p.precio||0;
+    precio=presPrecio(p);            // aplica cantidad y descuento
     producto=p.producto||'';
   } else {
     precio=p.items?.reduce((s,i)=>s+i.cant*i.precioUnit,0)||0;
     producto=p.items?.map(i=>`${i.cant}x ${i.desc}`).join(', ')||'';
     items=p.items?.map(i=>({prod:i.desc,cantidad:i.cant,precioUnit:i.precioUnit||0,costo:0}))||[];
   }
+  // El presupuesto solo guarda el nombre del cliente: intentar completar el contacto desde el maestro.
+  const cliTxt=(p.cliente||'').trim().toLowerCase();
+  const cliMatch = cliTxt ? clientes.find(c=>{
+    const a=((c.apellido||'')+' '+(c.nombre||'')).trim().toLowerCase();
+    const b=((c.nombre||'')+' '+(c.apellido||'')).trim().toLowerCase();
+    return a===cliTxt||b===cliTxt||(c.nombre||'').toLowerCase()===cliTxt||(c.apellido||'').toLowerCase()===cliTxt;
+  }) : null;
   const nuevaVenta={
     id:Date.now(), nroVenta, fecha:hoy(),
-    apellido:p.cliente||'', nombre:'', dni:'', tel:'', dir:'', obs:'Generado desde presupuesto #'+String(p.id).slice(-6),
+    apellido: cliMatch?.apellido || p.cliente||'', nombre: cliMatch?.nombre||'',
+    dni: cliMatch?.dni||'', tel: cliMatch?.tel||'', dir: cliMatch?.dir||'',
+    obs:'Generado desde presupuesto #'+String(p.id).slice(-6),
     producto, precio, formaPago:pago, estado:'pendiente', estadoEntrega:'pendiente',
     items
   };
   ventas.unshift(nuevaVenta);
   p.estado='concretado';
+  p.ventaId=nuevaVenta.id; p.ventaNro=nroVenta;
   actualizarMaestroClientes(nuevaVenta);
   await Promise.all([guardarVentas(), guardarPresupuestos(), guardarClientes()]);
   renderPresupuestos();
@@ -6294,6 +6305,38 @@ async function confirmarConvPres(id) {
 }
 
 // ---
+// Precio efectivo de un presupuesto tipo 1: precio unitario × cantidad − descuento.
+function presPrecio(p){ return Math.max(0, (p.precio||0) * (p.cantidad||1) - (p.descuento||0)); }
+// Filas de formas de pago de un presupuesto tipo 1 — ÚNICA fuente de verdad del cálculo
+// (contado 10% off, TC con recargo, CP con anticipo+cuotas). La usan ver/WhatsApp/email.
+function presFilasPago(p){
+  const precio = presPrecio(p);
+  return (p.pagos||[]).map(pago=>{
+    let desc='', detalle='', totalNum=precio;
+    if(pago==='EFEC_TRANSF'||pago==='EFECTIVO'||pago==='TRANSF'){
+      totalNum = Math.round(precio*0.9);
+      desc = pago==='EFECTIVO'?'Efectivo':pago==='TRANSF'?'Transferencia':'Efectivo / Transferencia';
+    } else if(isTC(pago)){
+      const n=TC_N[pago]||1, r=TC_RC[pago]||1;
+      totalNum = Math.round(precio*r);
+      desc = PAGO_LBL[pago]||pago;
+      detalle = n>1?`${n} cuotas de $${fmt(Math.round(totalNum/n))}`:'1 pago';
+    } else if(isCP(pago)){
+      const n=CP_N[pago]||2, ant=Math.round(precio*ANTICIPO_PCT), saldo=precio-ant;
+      const interes=CP_INT['mensual']?.[n]||0, tot=Math.round(saldo*(1+interes)), cuo=Math.round(tot/n);
+      desc = `Crédito Personal ${n} cuotas`;
+      detalle = `Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`;
+      totalNum = ant+tot;
+    } else if(pago==='ANT2C'){
+      const ant=Math.round(precio*ANTICIPO_PCT), saldo=precio-ant, cuo=Math.round(saldo/2);
+      desc='Anticipo + 2 cuotas (Lista)'; detalle=`Anticipo $${fmt(ant)} + 2x$${fmt(cuo)}`; totalNum=precio;
+    } else if(pago==='AHORRO'){
+      desc='Plan de Ahorro'; detalle='Pagos a cuenta libres'; totalNum=precio;
+    } else { desc = PAGO_LBL[pago]||pago; }
+    return { pago, desc, detalle, totalNum, totalStr:`$${fmt(totalNum)}` };
+  });
+}
+
 function verPresupuesto(id) {
   const p=presupuestos.find(x=>x.id===id); if(!p)return;
   const headerHTML=`
@@ -6321,33 +6364,12 @@ function verPresupuesto(id) {
 
   let bodyHTML='';
   if(p.tipo===1){
-    // Calcular filas de precios
-    const precio=p.precio;
-    const filas=p.pagos.map(pago=>{
-      let desc='',cuota='',total='';
-      if(pago==='EFECTIVO'||pago==='TRANSF'){
-        desc=pago==='EFECTIVO'?'Efectivo':'Transferencia';
-        total=`$${fmt(precio)}`;
-      } else if(isTC(pago)){
-        const n=TC_N[pago]||1,r=TC_RC[pago]||1;
-        const tot=Math.round(precio*r),cuo=Math.round(tot/n);
-        desc=PAGO_LBL[pago]||pago;
-        cuota=n>1?`${n} cuotas de $${fmt(cuo)}`:'1 pago';
-        total=`$${fmt(tot)}`;
-      } else if(isCP(pago)){
-        const n=CP_N[pago]||2,freq='mensual';
-        const ant=Math.round(precio*ANTICIPO_PCT),saldo=precio-ant;
-        const interes=CP_INT[freq]?.[n]||0,tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);
-        desc=`Crédito Personal ${n} cuotas`;
-        cuota=`Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`;
-        total=`$${fmt(ant+tot)}`;
-      }
-      return`<tr>
-        <td style="padding:9px 12px;font-size:13px;border-bottom:1px solid #f0ece6;">${desc}</td>
-        <td style="padding:9px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid #f0ece6;">${cuota}</td>
-        <td style="padding:9px 12px;font-size:14px;font-weight:700;text-align:right;border-bottom:1px solid #f0ece6;color:var(--navy);">${total}</td>
-      </tr>`;
-    }).join('');
+    // Filas de precios (cálculo unificado: contado 10% off, cantidad y descuento incluidos)
+    const filas=presFilasPago(p).map(f=>`<tr>
+        <td style="padding:9px 12px;font-size:13px;border-bottom:1px solid #f0ece6;">${f.desc}</td>
+        <td style="padding:9px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid #f0ece6;">${f.detalle}</td>
+        <td style="padding:9px 12px;font-size:14px;font-weight:700;text-align:right;border-bottom:1px solid #f0ece6;color:var(--navy);">${f.totalStr}</td>
+      </tr>`).join('');
     bodyHTML=`
       <div style="padding:14px 18px;">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">Producto</div>
@@ -6418,18 +6440,9 @@ function waPres(id) {
   if(p.cliente) msg+=`Para: ${p.cliente}\n`;
   msg+=`\n`;
   if(p.tipo===1){
-    msg+=`📦 ${p.producto}\n Precio de lista: $${fmt(p.precio)}\n\n`;
-    p.pagos.forEach(pago=>{
-      if(pago==='EFECTIVO'||pago==='TRANSF'){
-        msg+=`• ${pago==='EFECTIVO'?'Efectivo':'Transferencia'}: $${fmt(p.precio)}\n`;
-      } else if(isTC(pago)){
-        const n=TC_N[pago]||1,r=TC_RC[pago]||1,tot=Math.round(p.precio*r),cuo=Math.round(tot/n);
-        msg+=`• ${PAGO_LBL[pago]}: ${n>1?`${n}x$${fmt(cuo)} = `:''}$${fmt(tot)}\n`;
-      } else if(isCP(pago)){
-        const n=CP_N[pago]||2,ant=Math.round(p.precio*ANTICIPO_PCT),saldo=p.precio-ant;
-        const interes=CP_INT['mensual']?.[n]||0,tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);
-        msg+=`• CP ${n} cuotas: Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}\n`;
-      }
+    msg+=`📦 ${p.producto}${p.cantidad>1?` (x${p.cantidad})`:''}\n\n`;
+    presFilasPago(p).forEach(f=>{
+      msg+=`• ${f.desc}${f.detalle?` (${f.detalle})`:''}: ${f.totalStr}\n`;
     });
   } else {
     p.items?.forEach(i=>{ msg+=`• ${i.cant}x ${i.desc}: $${fmt(i.cant*i.precioUnit)}\n`; });
@@ -6445,12 +6458,9 @@ function emailPres(id) {
   const p=presupuestos.find(x=>x.id===id); if(!p)return;
   let body=`Estimado/a ${p.cliente||'cliente'},\n\nAdjunto encontrará el presupuesto solicitado de ROSSI HOME.\n\n`;
   if(p.tipo===1){
-    body+=`Producto: ${p.producto}\nPrecio de lista: $${fmt(p.precio)}\n\n`;
-    p.pagos.forEach(pago=>{
-      if(pago==='EFECTIVO') body+=`• Efectivo: $${fmt(p.precio)}\n`;
-      else if(pago==='TRANSF') body+=`• Transferencia: $${fmt(p.precio)}\n`;
-      else if(isTC(pago)){const n=TC_N[pago]||1,r=TC_RC[pago]||1,tot=Math.round(p.precio*r),cuo=Math.round(tot/n);body+=`• ${PAGO_LBL[pago]}: ${n>1?`${n} cuotas de $${fmt(cuo)} = `:''}$${fmt(tot)}\n`;}
-      else if(isCP(pago)){const n=CP_N[pago]||2,ant=Math.round(p.precio*ANTICIPO_PCT),saldo=p.precio-ant,interes=CP_INT['mensual']?.[n]||0,tot=Math.round(saldo*(1+interes)),cuo=Math.round(tot/n);body+=`• Crédito Personal ${n} cuotas: Anticipo $${fmt(ant)} + ${n} cuotas de $${fmt(cuo)}\n`;}
+    body+=`Producto: ${p.producto}${p.cantidad>1?` (cantidad: ${p.cantidad})`:''}\n\n`;
+    presFilasPago(p).forEach(f=>{
+      body+=`• ${f.desc}${f.detalle?` (${f.detalle})`:''}: ${f.totalStr}\n`;
     });
   } else {
     p.items?.forEach(i=>{body+=`• ${i.cant}x ${i.desc}: $${fmt(i.cant*i.precioUnit)}\n`;});
