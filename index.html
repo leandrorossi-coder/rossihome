@@ -719,6 +719,9 @@ select option{text-transform:uppercase;}
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;cursor:pointer;">
         <input type="checkbox" id="cat-foto" onchange="renderCatalogo()"> Con foto
       </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;cursor:pointer;">
+        <input type="checkbox" id="cat-disc" onchange="renderCatalogo()"> + Discontinuos
+      </label>
       <button class="btn btn-ghost btn-sm" onclick="abrirCategoriasModal()">+ Categoria</button>
       <button class="btn btn-ghost btn-sm" onclick="exportarCatalogo()" title="Exportar lista filtrada a Excel">⬇ CSV</button>
     </div>
@@ -2196,6 +2199,7 @@ let ventasSortAsc = false;
 let creditosSortSaldo = false; // false = por riesgo (default), true = por saldo pendiente desc
 let nroVentaCounter = 0;
 let _uid = Date.now(); function uid() { return ++_uid; }
+let _pendNuevosProv = null;
 const SK_PEDIDOS='rh_ped_v1', SK_ACTIVIDAD='rh_act_v1', SK_METAS='rh_metas_v1', SK_PLANTILLAS='rh_plant_v1', SK_MILOCAL='rh_milocal_v1', SK_ARQUEOS='rh_arq_v1', SK_NROVENTA='rh_nroventa_v1', SK_PROVEEDORES='rh_prov_v1';
 const SK_CATEGORIAS = 'rh_cat_v2';
 const SK_CARACTERISTICAS = 'rh_car_v1';
@@ -5508,6 +5512,7 @@ function renderCatalogo(){
   const sortF=(document.getElementById('cat-sort')?.value||'');
   const destF=document.getElementById('cat-dest').checked;
   const fotoF=document.getElementById('cat-foto').checked;
+  const discF=document.getElementById('cat-disc')?.checked||false;
 
   // Poblar select categorías
   const sel=document.getElementById('cat-cat');
@@ -5554,7 +5559,7 @@ function renderCatalogo(){
     }
   }
 
-  let lista=productos.filter(p=>p.visible!==false);
+  let lista=productos.filter(p=>p.visible!==false&&(discF||!p.discontinuo));
   if(q)lista=lista.filter(p=>_matchBusqueda((p.nombre||'')+' '+(p.proveedor||'')+' '+(p.categoria||'')+' '+(p.marca||'')+' '+(p.etiquetas||[]).join(' ')+' '+(p.codigoOriginal||''), q));
   if(catF)lista=lista.filter(p=>p.categoria===catF);
   if(subcatF)lista=lista.filter(p=>(p.subcategoria||'')===subcatF);
@@ -5589,7 +5594,7 @@ function renderCatalogo(){
   if(catalogoView==='grid'){
     listCont.style.display='none';
     gridCont.innerHTML=`<div class="cat-grid">${lista.map(p=>{
-      const foto=p.fotos&&p.fotos.length?p.fotos[p.fotoPrincipal||0]:null;
+      const foto=p.fotos&&p.fotos.length?p.fotos[Math.min(p.fotoPrincipal||0,p.fotos.length-1)]:null;
       const tags=(p.etiquetas||[]).map(t=>`<span class="cat-tag">${t}</span>`).join('');
       const enLista=p.enLista!==false;
       const btnLista=enLista
@@ -5600,6 +5605,7 @@ function renderCatalogo(){
         <div class="cat-img" style="background:#fff;">${foto?`<img src="${foto}" style="width:100%;height:100%;object-fit:contain;">`:'📷'}
           <div class="cat-badges">${stockBadge(p.stock)}</div>
           ${p.destacado?'<div class="cat-star">★</div>':''}
+          ${p.discontinuo?'<div style="position:absolute;top:4px;left:4px;font-size:9px;background:#888;color:#fff;padding:1px 5px;border-radius:4px;opacity:.85;">DISC.</div>':''}
         </div>
         <div class="cat-body">
           ${tags?`<div class="cat-tags">${tags}</div>`:''}
@@ -5619,7 +5625,7 @@ function renderCatalogo(){
     gridCont.innerHTML='';
     listCont.style.display='block';
     document.getElementById('cat-tbody').innerHTML=lista.map(p=>{
-      const foto=p.fotos&&p.fotos.length?p.fotos[p.fotoPrincipal||0]:null;
+      const foto=p.fotos&&p.fotos.length?p.fotos[Math.min(p.fotoPrincipal||0,p.fotos.length-1)]:null;
       const enLista=p.enLista!==false;
       const btnLista=enLista
         ? (admin?`<button class="btn btn-sm" style="background:var(--gbg);color:var(--green);border:1px solid #a0d8b8;font-size:11px;" onclick="toggleEnLista(${p.id})">✔</button>`
@@ -10110,7 +10116,11 @@ async function confirmarImportarLista(provId){
   }
   if(!productos_lista.length){ toast('! No se encontraron productos válidos'); return; }
   // Snapshot de seguridad antes de aplicar la lista
-  try { localStorage.setItem('rh_prod_snapshot', JSON.stringify({fecha: hoy(), cantidad: productos.length, productos})); } catch(e){}
+  try {
+    localStorage.setItem('rh_prod_snapshot', JSON.stringify({fecha: hoy(), cantidad: productos.length, productos}));
+  } catch(e) {
+    toast('⚠ No se pudo guardar respaldo local (almacenamiento lleno) — continuando igual');
+  }
   toast('Procesando...');
   await aplicarListaProv(productos_lista,prov);
 }
@@ -10157,6 +10167,7 @@ async function aplicarListaProv(lista_nueva, prov){
 
   await guardarProds();
   await guardarEnScript();
+  _pendNuevosProv = nuevos;
   mostrarResultadoListaProv(nuevos, actualizados, faltantes, prov);
 }
 
@@ -10176,7 +10187,7 @@ function mostrarResultadoListaProv(nuevos, actualizados, faltantes, prov){
         <label for="nuevo_${i}" style="font-size:13px;flex:1;">${p.nombre}</label>
         <span style="font-size:12px;color:var(--muted);">$${fmt(p.precio)}</span>
       </div>`).join('')}
-      <button class="btn btn-green btn-sm" style="margin-top:8px;" onclick="confirmarNuevosProv(${JSON.stringify(nuevos).replace(/"/g,'&quot;')},${prov.id},this)">✅ Confirmar nuevos</button>
+      <button class="btn btn-green btn-sm" style="margin-top:8px;" onclick="confirmarNuevosProv(_pendNuevosProv,${prov.id},this)">✅ Confirmar nuevos</button>
     </div>`;
   }
 
@@ -10211,7 +10222,7 @@ async function confirmarNuevosProv(nuevos, provId, btn){
     const visible = chk ? chk.checked : true;
     const sku = generarSKU(prov.nombre, item.nombre);
     productos.unshift({
-      id: Date.now()+i,
+      id: uid(),
       sku, nombre: item.nombre,
       proveedor: prov.nombre,
       marca: item.marcaConfig ? item.marcaConfig.nombre : (item.marca||''),
