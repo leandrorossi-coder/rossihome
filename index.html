@@ -10912,10 +10912,39 @@ renderVentas = function(){
   } else {
     lista=filtroVend==='TODAS'?ventas:ventas.filter(v=>v.vendedora===filtroVend);
   }
-  if(filtroEstadoEntrega && filtroEstadoEntrega!=='TODOS') lista = lista.filter(v=>(v.estadoEntrega||'pendiente')===filtroEstadoEntrega);
-  const q = (document.getElementById('ventas-buscar')?.value||'').toLowerCase();
+  lista = [...lista];
+  // Canceladas: mostrarlas solo si el pill activo es "cancelada"; si no, excluirlas (no inflan el facturado)
+  if (filtroEstadoEntrega === 'cancelada') lista = lista.filter(v => v.cancelada);
+  else lista = lista.filter(v => !v.cancelada);
+  // Filtro por forma de pago
+  const filtroPago = document.getElementById('ventas-filtro-pago')?.value||'';
+  if (filtroPago) {
+    if (filtroPago === 'CP') lista = lista.filter(v => isCPorL30(v.pago) && !isL30(v.pago));
+    else lista = lista.filter(v => v.pago === filtroPago || (v.pagosDetalle && v.pagosDetalle.some(p => p.pago === filtroPago)));
+  }
+  // Filtro por rango de fechas
+  const desde = document.getElementById('ventas-desde')?.value||'';
+  const hasta = document.getElementById('ventas-hasta')?.value||'';
+  if (desde) lista = lista.filter(v => (v.fecha||'') >= desde);
+  if (hasta) lista = lista.filter(v => (v.fecha||'') <= hasta);
+  // Filtro por estado de entrega (excepto "cancelada", ya resuelto arriba)
+  if (filtroEstadoEntrega && filtroEstadoEntrega!=='TODOS' && filtroEstadoEntrega!=='cancelada') lista = lista.filter(v=>(v.estadoEntrega||'pendiente')===filtroEstadoEntrega);
+  // Búsqueda
+  const q = (document.getElementById('ventas-buscar')?.value||'').toLowerCase().trim();
   if(q) lista = lista.filter(v=> prodBuscar(v,q) || cliNom(v).toLowerCase().includes(q));
-  lista = [...lista].sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+  // Ordenamiento por columna (fecha/vendedora/precio)
+  const sortCol = ventasSortCol || 'fecha';
+  const sortAsc = ventasSortAsc;
+  lista.sort((a,b) => {
+    if (sortCol === 'precio') { const va=a.precio||0, vb=b.precio||0; return sortAsc ? va-vb : vb-va; }
+    const va=a[sortCol]||'', vb=b[sortCol]||'';
+    return sortAsc ? (va+'').localeCompare(vb+'') : (vb+'').localeCompare(va+'');
+  });
+  // Íconos de orden en los encabezados
+  ['fecha','vendedora','precio'].forEach(col => {
+    const el = document.getElementById('sort-ico-'+col);
+    if (el) el.textContent = col===sortCol ? (sortAsc?'↑':'↓') : '';
+  });
   document.getElementById('cnt-ventas').textContent=`${lista.length} registros`;
 
   const total = lista.reduce((s,v)=>s+(v.precio||0),0);
