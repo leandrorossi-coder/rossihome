@@ -3656,8 +3656,9 @@ function editarVenta(id) {
       const siChk=document.getElementById('cp-sin-interes');
       if(siChk) siChk.checked = (v.cpData.interes===0 || (v.cpData.nCuotas||1)<=1);
       recalcCP();
-      // Si ya tiene cobros, bloquear parámetros del crédito para evitar inconsistencia
-      const tieneCobros=(v.cpData.cobros||[]).filter(c=>c.tipo==='cuota').length>0 || v.cpData.anticipoPagado;
+      // Si ya tiene CUALQUIER cobro registrado (cuota, anticipo o a cuenta), bloquear los
+      // parámetros del crédito: cambiar precio/cuotas con plata ya cobrada descuadra el saldo.
+      const tieneCobros=(v.cpData.cobros||[]).length>0 || v.cpData.anticipoPagado;
       if(tieneCobros){
         ['cp-lista','cp-ant','cp-ncuotas','cp-freq','cp-fecha1','cp-pct-ant','cp-sin-interes','cp-cuota-manual'].forEach(id=>{
           const el=document.getElementById(id); if(el){el.disabled=true;el.title='No se puede modificar: ya tiene cobros registrados';}
@@ -4801,6 +4802,7 @@ async function eliminarCobro(vid, cobroId) {
   // Se mantiene el borrado por id para cobros viejos que no tienen grupo.
   const grupoCobro = 'cobro_' + cobro.id;
   movCaja = movCaja.filter(m => m.grupo !== grupoCobro && m.id !== cobro.id + 1 && m.id !== cobro.id);
+  logActividad(`Eliminó cobro de ${label} — Venta #${v.nroVenta||v.id} (${cliNom(v)})`);
   await guardarVentas(); await guardarCajaData(); renderCreditos(); toast('OK Cobro eliminado');
 }
 
