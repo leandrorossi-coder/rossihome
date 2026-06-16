@@ -3344,6 +3344,7 @@ async function guardar() {
   const prod   = document.getElementById('f-prod').value.trim()||'—';
   const precio = parseFloat(document.getElementById('f-precio').value)||0;
   if (!precio || precio <= 0) { toast('⚠ El precio debe ser mayor a $0'); _guardandoVenta=false; if(btnG){btnG.disabled=false;btnG.textContent=btnGOrig;} return; }
+  if (prod === '—' || prod === '') { if(!confirm('No cargaste ningún producto en esta venta. ¿Guardar igual?')) { _guardandoVenta=false; if(btnG){btnG.disabled=false;btnG.textContent=btnGOrig;} return; } }
   const costo  = parseFloat(document.getElementById('f-costo').value)||0;
   // Usar pagosVenta si hay múltiples, sino el select simple
   const esMixto = document.getElementById('chk-mixto').checked;
