@@ -627,6 +627,7 @@ select option{text-transform:uppercase;}
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn" style="background:var(--navy);color:#fff;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="abrirAgendaCobranza()" title="Ver agenda de cobros del día y vencidos">📅 Agenda del día</button>
       <button class="btn" style="background:#7a2533;color:#fff;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="abrirRankingCobranza()" title="Cartera vencida: total a cobrar, % de mora y top deudores">📊 Cobranza</button>
+      <button class="btn" style="background:#1a6e3c;color:#fff;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="abrirProyeccion()" title="Proyección de ingresos por cuotas del mes">📈 Proyección</button>
       <input id="cred-buscar" type="text" placeholder="Buscar cliente o producto..." oninput="clearTimeout(window._credT);window._credT=setTimeout(renderCreditos,250)"
         style="flex:1;min-width:150px;border:1.5px solid var(--border);border-radius:9px;padding:7px 12px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
       <select id="cred-vendedor" onchange="renderCreditos()"
@@ -13486,6 +13487,169 @@ function renderPnL() {
 
 // goTab ya maneja el panel financiero directamente
 
+// ──────────────────────────────────────────────
+// PROYECCIÓN DE INGRESOS DEL MES
+// ──────────────────────────────────────────────
+function abrirProyeccion() {
+  const sel = document.getElementById('proy-mes');
+  if (sel && sel.options.length === 0) {
+    const hoyD = new Date();
+    for (let i = -1; i <= 3; i++) {
+      const d = new Date(hoyD.getFullYear(), hoyD.getMonth() + i, 1);
+      const val = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      const lbl = d.toLocaleString('es-AR', {month: 'long', year: 'numeric'});
+      const opt = document.createElement('option');
+      opt.value = val; opt.textContent = lbl[0].toUpperCase() + lbl.slice(1);
+      if (i === 0) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+  calcProyeccion();
+  document.getElementById('ovl-proyeccion').classList.add('on');
+}
+
+function calcProyeccion() {
+  const mes = document.getElementById('proy-mes')?.value || hoy().slice(0, 7);
+  const [anio, nMes] = mes.split('-').map(Number);
+  // Primer y último día del mes seleccionado
+  const primerDia = mes + '-01';
+  const ultimoDia = mes + '-' + String(new Date(anio, nMes, 0).getDate()).padStart(2, '0');
+
+  // Semanas del mes (domingo a sábado, cortadas al mes)
+  const semanas = [];
+  let cur = new Date(anio, nMes - 1, 1);
+  const fin = new Date(anio, nMes, 0);
+  while (cur <= fin) {
+    const ini = new Date(cur);
+    // fin de semana: próximo sábado o fin de mes
+    const dow = cur.getDay(); // 0=dom
+    const diasHastaSab = dow === 0 ? 6 : (6 - dow);
+    let finSem = new Date(cur);
+    finSem.setDate(cur.getDate() + diasHastaSab);
+    if (finSem > fin) finSem = new Date(fin);
+    semanas.push({
+      ini: ini.toISOString().slice(0,10),
+      fin: finSem.toISOString().slice(0,10),
+      cobrado: 0, pendiente: 0, vencido: 0,
+      items: []
+    });
+    cur = new Date(finSem);
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  let totalEsperado = 0, totalCobrado = 0, totalPendiente = 0, totalVencido = 0;
+  const h = hoy();
+
+  // Iterar todos los créditos activos (y finalizados: también pueden tener cuotas en el mes)
+  const cpsActivos = ventas.filter(v => !v.cancelada && v.cpData);
+  cpsActivos.forEach(v => {
+    const cp = v.cpData;
+    const fechas = buildFechasCuotas(cp);
+    for (let i = 0; i < (cp.nCuotas || 0); i++) {
+      const fecha = fechas[i];
+      if (!fecha || fecha < primerDia || fecha > ultimoDia) continue;
+      const est = estadoCuotaCP(cp, i);
+      const monto = cp.cuota || 0;
+      const pagado = montoPagadoCuota(cp, i);
+      const debe = Math.max(0, monto - pagado);
+
+      totalEsperado += monto;
+      if (est === 'pagada') {
+        totalCobrado += monto;
+      } else if (est === 'vencida') {
+        totalVencido += debe;
+        totalPendiente += debe;
+      } else {
+        totalPendiente += debe;
+      }
+
+      // Asignar a semana
+      const sem = semanas.find(s => fecha >= s.ini && fecha <= s.fin);
+      if (sem) {
+        if (est === 'pagada') sem.cobrado += monto;
+        else if (est === 'vencida') { sem.vencido += debe; sem.pendiente += debe; }
+        else sem.pendiente += debe;
+        sem.items.push({
+          fecha, monto, pagado, debe, est,
+          cliente: cliNom(v),
+          producto: v.producto || '',
+          vid: v.id
+        });
+      }
+    }
+    // Anticipo pendiente en el mes
+    if (cp.anticipo && cp.anticipo > 0 && !cp.anticipoPagado) {
+      const fAnt = cp.fechaPrimeraCuota || '';
+      if (fAnt >= primerDia && fAnt <= ultimoDia) {
+        totalEsperado += cp.anticipo;
+        totalPendiente += cp.anticipo;
+        const sem = semanas.find(s => fAnt >= s.ini && fAnt <= s.fin);
+        if (sem) {
+          sem.pendiente += cp.anticipo;
+          sem.items.push({
+            fecha: fAnt, monto: cp.anticipo, pagado: 0, debe: cp.anticipo, est: 'pendiente',
+            cliente: cliNom(v), producto: v.producto || ' (anticipo)', vid: v.id
+          });
+        }
+      }
+    }
+  });
+
+  // KPIs
+  const kpiFmt = (lbl, val, color, sub) =>
+    `<div style="background:var(--cream2);border-radius:10px;padding:10px 8px;text-align:center;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:3px;">${lbl}</div>
+      <div style="font-size:16px;font-weight:700;color:${color};">$${fmt(val)}</div>
+      ${sub ? `<div style="font-size:10px;color:var(--muted);">${sub}</div>` : ''}
+    </div>`;
+
+  document.getElementById('proy-kpis').innerHTML =
+    kpiFmt('Total esperado', totalEsperado, 'var(--navy)') +
+    kpiFmt('Ya cobrado', totalCobrado, 'var(--green)', totalEsperado > 0 ? Math.round(totalCobrado / totalEsperado * 100) + '% del mes' : '') +
+    kpiFmt('Por cobrar', totalPendiente, totalVencido > 0 ? 'var(--red)' : 'var(--orange)',
+      totalVencido > 0 ? `🔴 $${fmt(totalVencido)} vencido` : '');
+
+  // Contenido por semanas
+  let html = '';
+  if (totalEsperado === 0) {
+    html = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:14px;">No hay cuotas programadas para este mes.</div>';
+  } else {
+    semanas.forEach((sem, si) => {
+      const total = sem.cobrado + sem.pendiente;
+      if (total === 0) return;
+      const iniD = new Date(sem.ini + 'T12:00:00');
+      const finD = new Date(sem.fin + 'T12:00:00');
+      const lbl = si === 0 ? 'Semana 1' : si === 1 ? 'Semana 2' : si === 2 ? 'Semana 3' : si === 3 ? 'Semana 4' : 'Semana 5';
+      const rango = iniD.toLocaleString('es-AR',{day:'numeric',month:'short'}) + ' – ' + finD.toLocaleString('es-AR',{day:'numeric',month:'short'});
+      html += `<div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-weight:600;font-size:13px;color:var(--navy);">${lbl} <span style="font-size:11px;color:var(--muted);font-weight:400;">${rango}</span></div>
+          <div style="font-size:13px;font-weight:700;">$${fmt(total)}</div>
+        </div>`;
+      // Barra de progreso
+      const pct = total > 0 ? Math.round(sem.cobrado / total * 100) : 0;
+      html += `<div style="background:var(--border);border-radius:4px;height:6px;margin-bottom:8px;overflow:hidden;">
+        <div style="width:${pct}%;background:var(--green);height:100%;border-radius:4px;transition:width .3s;"></div>
+      </div>`;
+      // Items de la semana
+      sem.items.sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(it => {
+        const col = it.est === 'pagada' ? 'var(--green)' : it.est === 'vencida' ? 'var(--red)' : 'var(--orange)';
+        const ico = it.est === 'pagada' ? '✅' : it.est === 'vencida' ? '🔴' : '⬜';
+        const diaD = new Date(it.fecha + 'T12:00:00');
+        const diaLbl = diaD.toLocaleString('es-AR', {weekday:'short', day:'numeric'});
+        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;background:var(--cream2);margin-bottom:4px;font-size:12px;">
+          <span style="font-size:14px;">${ico}</span>
+          <span style="color:var(--muted);min-width:60px;">${diaLbl}</span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${it.cliente} <span style="color:var(--muted);">${it.producto}</span></span>
+          <span style="font-weight:600;color:${col};">$${fmt(it.monto)}</span>
+        </div>`;
+      });
+      html += '</div>';
+    });
+  }
+  document.getElementById('proy-content').innerHTML = html;
+}
+
 
 </script>
 
@@ -13996,6 +14160,24 @@ function renderPnL() {
       <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;">
         <button class="btn btn-ghost" style="flex:1;" onclick="cM('ovl-agenda-cobr')">Cerrar</button>
         <button class="btn" style="flex:1;background:var(--navy);color:#fff;" onclick="waReminderMasivo()">📲 WA Masivo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROYECCIÓN DE INGRESOS DEL MES -->
+<div class="overlay" id="ovl-proyeccion" onclick="cM('ovl-proyeccion',event)">
+  <div class="modal" style="max-width:560px;">
+    <div class="mh" style="background:#1a6e3c;"><h3 style="color:#fff;">📈 Proyección de ingresos</h3><span class="mx" style="color:#fff;" onclick="cM('ovl-proyeccion')">X</span></div>
+    <div class="mb" style="padding:0;">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap;">Mes</label>
+        <select id="proy-mes" onchange="calcProyeccion()" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);"></select>
+      </div>
+      <div id="proy-kpis" style="padding:12px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;"></div>
+      <div id="proy-content" style="max-height:58vh;overflow-y:auto;padding:12px 14px;"></div>
+      <div style="padding:12px 14px;border-top:1px solid var(--border);">
+        <button class="btn btn-ghost" style="width:100%;" onclick="cM('ovl-proyeccion')">Cerrar</button>
       </div>
     </div>
   </div>
