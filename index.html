@@ -7012,64 +7012,9 @@ function cajaPropiaDeLocal() {
   return null;
 }
 
-function renderCaja() {
-  const cajaPropia = cajaPropiaDeLocal();
-  const soloLectura = !!cajaPropia;
-
-  // Bloquear botones de acción para usuarios con caja propia
-  const btnBar = document.querySelector('#pg-caja [onclick="abrirGasto()"]')?.parentElement;
-  if (btnBar) btnBar.style.display = soloLectura ? 'none' : '';
-
-  // Forzar filtro y ocultar selects para Rosa/Gabriela
-  const filtroCajaEl = document.getElementById('caja-filtro-caja');
-  const filtroTipoEl = document.getElementById('caja-filtro-tipo');
-  if (cajaPropia && filtroCajaEl) {
-    filtroCajaEl.value = cajaPropia;
-    filtroCajaEl.style.display = 'none';
-    if (filtroTipoEl) filtroTipoEl.style.display = 'none';
-  } else if (filtroCajaEl) {
-    filtroCajaEl.style.display = '';
-    if (filtroTipoEl) filtroTipoEl.style.display = '';
-  }
-
-  const saldos = saldosCaja();
-  const total = Object.entries(saldos).filter(([k])=>k!=='ROSA'&&k!=='GABRIELA'&&k!=='VARIOS').reduce((s,[,v])=>s+v,0);
-
-  // Resumen cajas — solo mostrar la caja propia si aplica
-  document.getElementById('caja-resumen').innerHTML = `
-    ${!cajaPropia ? `<div style="background:var(--navy);color:#fff;border-radius:10px;padding:12px;text-align:center;grid-column:1/-1;">
-      <div style="font-size:11px;opacity:.6;text-transform:uppercase;">Total General</div>
-      <div style="font-size:22px;font-weight:700;">$${fmt(total)}</div>
-    </div>` : ''}
-    ${Object.entries(CAJAS_LABEL).filter(([k])=> !cajaPropia || k===cajaPropia).map(([k,lbl]) => {
-      const esSueldo = ['ROSA','GABRIELA'].includes(k);
-      const tope = esSueldo ? topeDelMes(k) : 0;
-      const cobradoMes = esSueldo ? cobradoEnCajaMes(k) : 0;
-      const pct = esSueldo ? Math.min(100, Math.round((cobradoMes/tope)*100)) : 0;
-      return `
-      <div style="background:var(--cream2);border-radius:10px;padding:10px;text-align:center;${!cajaPropia?'cursor:pointer;':''}" ${!cajaPropia?`onclick="document.getElementById('caja-filtro-caja').value='${k}';renderCaja();"`:''}>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">${lbl}</div>
-        <div style="font-size:16px;font-weight:700;color:${saldos[k]>=0?'var(--green)':'var(--red)'};">$${fmt(saldos[k])}</div>
-        ${(k==='MERCADO_PAGO'||k==='FLEX')&&saldosUSD()[k]!==0?`<div style="font-size:12px;font-weight:700;color:var(--gold);margin-top:2px;">USD ${saldosUSD()[k].toFixed(2)}</div>`:''}
-        ${esSueldo ? `
-          <div style="background:var(--border);border-radius:4px;height:4px;margin-top:6px;">
-            <div style="background:${pct>=100?'var(--red)':pct>=80?'var(--gold2)':'var(--green)'};height:4px;border-radius:4px;width:${pct}%;transition:width .3s;"></div>
-          </div>
-          <div style="font-size:9px;color:${pct>=100?'var(--red)':'var(--muted)'};margin-top:3px;font-weight:${pct>=100?700:400};">
-            ${pct}% · $${fmt(cobradoMes)} de $${fmt(tope)} este mes
-          </div>
-        ` : ''}
-      </div>`;
-    }).join('')}`;
-
-  // Filtros
-  const filtroCaja = document.getElementById('caja-filtro-caja').value;
-  const filtroTipo = document.getElementById('caja-filtro-tipo').value;
-  const filtroDesde = document.getElementById('caja-filtro-desde').value;
-  const filtroHasta = document.getElementById('caja-filtro-hasta').value;
-  const filtroQ = (document.getElementById('caja-q')?.value||'').toLowerCase();
-
-  // Construir lista unificada de movimientos
+// Construye la lista unificada de movimientos de caja (ventas + cobros + manuales).
+// Usada por renderCaja() y por el Cierre Z del día.
+function construirMovimientosCaja() {
   let todos = [];
 
   // Ventas como ingresos (AHORRO se registra por pagos separados)
@@ -7171,6 +7116,167 @@ function renderCaja() {
         desc:m.concepto, sub:m.obs||'', monto:m.monto, signo:1, montoUSD:m.montoUSD, tipoCambio:m.tipoCambio});
     }
   });
+
+  return todos;
+}
+
+// ===
+// CIERRE Z — resumen de caja del día (ventas, cobros, gastos, medios y neto)
+// ===
+function _datosCierreZ(fecha){
+  const movs = construirMovimientosCaja().filter(m => m.fecha === fecha);
+  // Por caja (medio de pago): ingresos y gastos
+  const porCaja = {};
+  let totalIngresos = 0, totalGastos = 0;
+  let nVentas = 0, montoVentas = 0, nCobros = 0, montoCobros = 0;
+  movs.forEach(m => {
+    if (m.tipo === 'traspaso') return; // movimiento interno, no afecta el neto del día
+    if (!porCaja[m.caja]) porCaja[m.caja] = { ingreso:0, gasto:0 };
+    if (m.tipo === 'ingreso') {
+      porCaja[m.caja].ingreso += m.monto; totalIngresos += m.monto;
+      if (typeof m.id === 'string' && m.id.startsWith('v_')) { nVentas++; montoVentas += m.monto; }
+      if (m.grupo && String(m.grupo).startsWith('cobro_')) { nCobros++; montoCobros += m.monto; }
+    } else if (m.tipo === 'gasto') {
+      porCaja[m.caja].gasto += m.monto; totalGastos += m.monto;
+    }
+  });
+  return { porCaja, totalIngresos, totalGastos, neto: totalIngresos - totalGastos, nVentas, montoVentas, nCobros, montoCobros };
+}
+
+function abrirCierreZ(){
+  const f = document.getElementById('cierrez-fecha');
+  if (f) f.value = hoy();
+  calcularCierreZ();
+  document.getElementById('ovl-cierrez').classList.add('on');
+}
+
+function calcularCierreZ(){
+  const fecha = document.getElementById('cierrez-fecha')?.value || hoy();
+  const cont = document.getElementById('cierrez-content');
+  if (!cont) return;
+  const d = _datosCierreZ(fecha);
+
+  const filasCaja = Object.entries(d.porCaja)
+    .filter(([,v]) => v.ingreso || v.gasto)
+    .sort((a,b) => (b[1].ingreso-b[1].gasto) - (a[1].ingreso-a[1].gasto))
+    .map(([k,v]) => {
+      const neto = v.ingreso - v.gasto;
+      return `<tr>
+        <td style="padding:7px 8px;font-size:13px;font-weight:600;border-bottom:1px solid #f0ece6;">${CAJAS_LABEL[k]||k}</td>
+        <td style="padding:7px 8px;font-size:12px;text-align:right;color:var(--green);border-bottom:1px solid #f0ece6;">${v.ingreso?'+$'+fmt(v.ingreso):'—'}</td>
+        <td style="padding:7px 8px;font-size:12px;text-align:right;color:var(--red);border-bottom:1px solid #f0ece6;">${v.gasto?'−$'+fmt(v.gasto):'—'}</td>
+        <td style="padding:7px 8px;font-size:13px;font-weight:700;text-align:right;border-bottom:1px solid #f0ece6;color:var(--navy);">$${fmt(neto)}</td>
+      </tr>`;
+    }).join('');
+
+  cont.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+      <div style="background:var(--cream2);border-radius:9px;padding:10px;text-align:center;">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Ventas del día</div>
+        <div style="font-size:17px;font-weight:700;color:var(--navy);">${d.nVentas}</div>
+        <div style="font-size:11px;color:var(--muted);">$${fmt(d.montoVentas)}</div>
+      </div>
+      <div style="background:var(--cream2);border-radius:9px;padding:10px;text-align:center;">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Cobros crédito</div>
+        <div style="font-size:17px;font-weight:700;color:var(--navy);">${d.nCobros}</div>
+        <div style="font-size:11px;color:var(--muted);">$${fmt(d.montoCobros)}</div>
+      </div>
+    </div>
+    ${filasCaja ? `<table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
+      <thead><tr style="background:var(--cream2);">
+        <th style="padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--muted);">Medio</th>
+        <th style="padding:6px 8px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--muted);">Ingresos</th>
+        <th style="padding:6px 8px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--muted);">Gastos</th>
+        <th style="padding:6px 8px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--muted);">Neto</th>
+      </tr></thead><tbody>${filasCaja}</tbody></table>`
+      : '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">Sin movimientos este día</div>'}
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid var(--border);font-size:13px;">
+      <span style="color:var(--green);font-weight:600;">Ingresos: +$${fmt(d.totalIngresos)}</span>
+      <span style="color:var(--red);font-weight:600;">Gastos: −$${fmt(d.totalGastos)}</span>
+    </div>
+    <div style="text-align:center;background:var(--navy);color:#fff;border-radius:9px;padding:12px;margin-top:6px;">
+      <div style="font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.5px;">Neto del día</div>
+      <div style="font-size:22px;font-weight:700;">${d.neto>=0?'+':'−'}$${fmt(Math.abs(d.neto))}</div>
+    </div>`;
+}
+
+function waCierreZ(){
+  const fecha = document.getElementById('cierrez-fecha')?.value || hoy();
+  const d = _datosCierreZ(fecha);
+  let msg = `*ROSSI HOME — Cierre del día*\n${fmtD(fecha)}\n\n`;
+  msg += `🛒 Ventas: ${d.nVentas} ($${fmt(d.montoVentas)})\n`;
+  msg += `💳 Cobros crédito: ${d.nCobros} ($${fmt(d.montoCobros)})\n\n`;
+  const filas = Object.entries(d.porCaja).filter(([,v])=>v.ingreso||v.gasto).sort((a,b)=>(b[1].ingreso-b[1].gasto)-(a[1].ingreso-a[1].gasto));
+  if (filas.length) {
+    msg += `*Por medio de pago:*\n`;
+    filas.forEach(([k,v]) => { msg += `• ${CAJAS_LABEL[k]||k}: $${fmt(v.ingreso - v.gasto)}\n`; });
+    msg += `\n`;
+  }
+  msg += `Ingresos: +$${fmt(d.totalIngresos)}\n`;
+  msg += `Gastos: −$${fmt(d.totalGastos)}\n`;
+  msg += `*Neto del día: ${d.neto>=0?'+':'−'}$${fmt(Math.abs(d.neto))}*`;
+  abrirWASelector(msg);
+}
+
+function renderCaja() {
+  const cajaPropia = cajaPropiaDeLocal();
+  const soloLectura = !!cajaPropia;
+
+  // Bloquear botones de acción para usuarios con caja propia
+  const btnBar = document.querySelector('#pg-caja [onclick="abrirGasto()"]')?.parentElement;
+  if (btnBar) btnBar.style.display = soloLectura ? 'none' : '';
+
+  // Forzar filtro y ocultar selects para Rosa/Gabriela
+  const filtroCajaEl = document.getElementById('caja-filtro-caja');
+  const filtroTipoEl = document.getElementById('caja-filtro-tipo');
+  if (cajaPropia && filtroCajaEl) {
+    filtroCajaEl.value = cajaPropia;
+    filtroCajaEl.style.display = 'none';
+    if (filtroTipoEl) filtroTipoEl.style.display = 'none';
+  } else if (filtroCajaEl) {
+    filtroCajaEl.style.display = '';
+    if (filtroTipoEl) filtroTipoEl.style.display = '';
+  }
+
+  const saldos = saldosCaja();
+  const total = Object.entries(saldos).filter(([k])=>k!=='ROSA'&&k!=='GABRIELA'&&k!=='VARIOS').reduce((s,[,v])=>s+v,0);
+
+  // Resumen cajas — solo mostrar la caja propia si aplica
+  document.getElementById('caja-resumen').innerHTML = `
+    ${!cajaPropia ? `<div style="background:var(--navy);color:#fff;border-radius:10px;padding:12px;text-align:center;grid-column:1/-1;">
+      <div style="font-size:11px;opacity:.6;text-transform:uppercase;">Total General</div>
+      <div style="font-size:22px;font-weight:700;">$${fmt(total)}</div>
+    </div>` : ''}
+    ${Object.entries(CAJAS_LABEL).filter(([k])=> !cajaPropia || k===cajaPropia).map(([k,lbl]) => {
+      const esSueldo = ['ROSA','GABRIELA'].includes(k);
+      const tope = esSueldo ? topeDelMes(k) : 0;
+      const cobradoMes = esSueldo ? cobradoEnCajaMes(k) : 0;
+      const pct = esSueldo ? Math.min(100, Math.round((cobradoMes/tope)*100)) : 0;
+      return `
+      <div style="background:var(--cream2);border-radius:10px;padding:10px;text-align:center;${!cajaPropia?'cursor:pointer;':''}" ${!cajaPropia?`onclick="document.getElementById('caja-filtro-caja').value='${k}';renderCaja();"`:''}>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;">${lbl}</div>
+        <div style="font-size:16px;font-weight:700;color:${saldos[k]>=0?'var(--green)':'var(--red)'};">$${fmt(saldos[k])}</div>
+        ${(k==='MERCADO_PAGO'||k==='FLEX')&&saldosUSD()[k]!==0?`<div style="font-size:12px;font-weight:700;color:var(--gold);margin-top:2px;">USD ${saldosUSD()[k].toFixed(2)}</div>`:''}
+        ${esSueldo ? `
+          <div style="background:var(--border);border-radius:4px;height:4px;margin-top:6px;">
+            <div style="background:${pct>=100?'var(--red)':pct>=80?'var(--gold2)':'var(--green)'};height:4px;border-radius:4px;width:${pct}%;transition:width .3s;"></div>
+          </div>
+          <div style="font-size:9px;color:${pct>=100?'var(--red)':'var(--muted)'};margin-top:3px;font-weight:${pct>=100?700:400};">
+            ${pct}% · $${fmt(cobradoMes)} de $${fmt(tope)} este mes
+          </div>
+        ` : ''}
+      </div>`;
+    }).join('')}`;
+
+  // Filtros
+  const filtroCaja = document.getElementById('caja-filtro-caja').value;
+  const filtroTipo = document.getElementById('caja-filtro-tipo').value;
+  const filtroDesde = document.getElementById('caja-filtro-desde').value;
+  const filtroHasta = document.getElementById('caja-filtro-hasta').value;
+  const filtroQ = (document.getElementById('caja-q')?.value||'').toLowerCase();
+
+  // Construir lista unificada de movimientos
+  let todos = construirMovimientosCaja();
 
   // Aplicar filtros
   if (filtroCaja !== 'TODAS') todos = todos.filter(m => m.caja === filtroCaja);
@@ -12623,7 +12729,8 @@ async function guardarEmpresaConfig(){
                    pg.querySelector('[onclick="abrirGasto()"]')?.parentElement;
     if(btnBar){
       btnBar.insertAdjacentHTML('beforeend',
-        `<button id="btn-arqueo" class="btn btn-ghost" onclick="abrirArqueo()">🧮 Arqueo</button>
+        `<button id="btn-cierrez" class="btn" style="background:var(--navy);color:#fff;" onclick="abrirCierreZ()">📋 Cierre Z</button>
+         <button id="btn-arqueo" class="btn btn-ghost" onclick="abrirArqueo()">🧮 Arqueo</button>
          <button class="btn btn-ghost" onclick="toggleHistorialArqueos()">📋 Historial arqueos</button>
          <button id="btn-export-caja" class="btn btn-ghost" onclick="exportarCajaCSV()">⬇ CSV</button>`);
       obs.disconnect();
@@ -13489,6 +13596,24 @@ function renderPnL() {
   <div class="modal">
     <div class="mh"><h3>Confirmar venta</h3><span class="mx" onclick="cM('ovl-confirm-venta')">X</span></div>
     <div class="mb" id="confirm-venta-body"></div>
+  </div>
+</div>
+
+<!-- CIERRE Z — RESUMEN DEL DÍA -->
+<div class="overlay" id="ovl-cierrez" onclick="cM('ovl-cierrez',event)">
+  <div class="modal" style="max-width:520px;">
+    <div class="mh" style="background:var(--navy);"><h3 style="color:#fff;">📋 Cierre del día</h3><span class="mx" style="color:#fff;" onclick="cM('ovl-cierrez')">X</span></div>
+    <div class="mb" style="padding:0;">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <label style="font-size:12px;color:var(--muted);">Fecha</label>
+        <input type="date" id="cierrez-fecha" onchange="calcularCierreZ()" style="flex:1;border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;font-family:'Outfit',sans-serif;">
+      </div>
+      <div id="cierrez-content" style="max-height:62vh;overflow-y:auto;padding:14px;"></div>
+      <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="cM('ovl-cierrez')">Cerrar</button>
+        <button class="btn btn-green" style="flex:1;" onclick="waCierreZ()">📲 Enviar por WhatsApp</button>
+      </div>
+    </div>
   </div>
 </div>
 
