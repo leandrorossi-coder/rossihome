@@ -1823,6 +1823,9 @@ select option{text-transform:uppercase;}
         <div class="fg"><label>Cantidad</label><input type="number" id="p1-cantidad" value="1" min="1" oninput="calcPres1()"></div>
         <div class="fg"><label>Descuento ($)</label><input type="number" id="p1-desc" placeholder="0" min="0" oninput="calcPres1()"></div>
       </div>
+      <div class="fg"><label>Anticipo para crédito ($) — opcional</label>
+        <input type="number" id="p1-anticipo" placeholder="Vacío = sin anticipo" min="0" oninput="calcPres1()">
+      </div>
       <div class="fg"><label>Formas de pago a mostrar</label>
         <div style="display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px;" id="p1-pagos-check">
           <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;background:var(--cream2);padding:8px 10px;border-radius:8px;"><input type="checkbox" value="EFEC_TRANSF" onchange="calcPres1()"> Efectivo / Transferencia</label>
@@ -6025,6 +6028,7 @@ function abrirPres(tipo) {
     document.getElementById('p1-obs').value = '';
     const p1cantEl = document.getElementById('p1-cantidad'); if(p1cantEl) p1cantEl.value = '1';
     const p1descEl = document.getElementById('p1-desc'); if(p1descEl) p1descEl.value = '';
+    const p1antEl = document.getElementById('p1-anticipo'); if(p1antEl) p1antEl.value = '';
     document.getElementById('p1-preview').style.display = 'none';
     // Validez: 7 días por defecto
     const v = new Date(); v.setDate(v.getDate()+7);
@@ -6077,6 +6081,7 @@ function calcPres1() {
   const cantidad = Math.max(1, parseInt(document.getElementById('p1-cantidad')?.value)||1);
   const descuento = parseFloat(document.getElementById('p1-desc')?.value)||0;
   const precio = Math.max(0, (precioBase * cantidad) - descuento);
+  const antLibre = _antLibre(precio, parseFloat(document.getElementById('p1-anticipo')?.value)||0);
 
   const filas = checks.map(pago => {
     let desc='', cuota='', total='';
@@ -6096,19 +6101,19 @@ function calcPres1() {
       total = `$${fmt(tot)}`;
     } else if (isCP(pago)) {
       const n=CP_N[pago]||2, freq='mensual';
-      const ant=Math.round(precio*ANTICIPO_PCT);
+      const ant=antLibre;
       const saldo=precio-ant, interes=CP_INT[freq]?.[n]||0;
       const tot=Math.round(saldo*(1+interes)), cuo=Math.round(tot/n);
       desc = `CP ${n} cuotas (mensual)`;
-      cuota = `Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`;
+      cuota = ant>0 ? `Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}` : `${n}x$${fmt(cuo)} (sin anticipo)`;
       total = `$${fmt(ant+tot)}`;
     }
     if (pago === 'ANT2C') {
-      const ant = Math.round(precio * ANTICIPO_PCT);
+      const ant = antLibre;
       const saldo = precio - ant;
       const cuo = Math.round(saldo / 2);
       desc = 'Anticipo + 2 cuotas (Lista)';
-      cuota = `Anticipo $${fmt(ant)} + 2x$${fmt(cuo)}`;
+      cuota = ant>0 ? `Anticipo $${fmt(ant)} + 2x$${fmt(cuo)}` : `2x$${fmt(cuo)} (sin anticipo)`;
       total = `$${fmt(precio)}`;
     } else if (pago === 'AHORRO') {
       desc = 'Plan de Ahorro';
@@ -6186,6 +6191,7 @@ async function guardarPres(tipo) {
     pres.precio  = precio;
     pres.cantidad = Math.max(1, parseInt(document.getElementById('p1-cantidad')?.value)||1);
     pres.descuento = parseFloat(document.getElementById('p1-desc')?.value)||0;
+    pres.anticipo = parseFloat(document.getElementById('p1-anticipo')?.value)||0;
     pres.pagos   = checks;
     cM('ovl-pres1');
   } else {
@@ -6397,6 +6403,8 @@ function presPrecio(p){ return Math.max(0, (p.precio||0) * (p.cantidad||1) - (p.
 // (contado 10% off, TC con recargo, CP con anticipo+cuotas). La usan ver/WhatsApp/email.
 function presFilasPago(p){
   const precio = presPrecio(p);
+  // Anticipo libre: usa el guardado en el presupuesto; si es viejo (sin campo), 50% por compatibilidad.
+  const antPres = (p.anticipo!=null) ? _antLibre(precio, p.anticipo) : Math.round(precio*ANTICIPO_PCT);
   return (p.pagos||[]).map(pago=>{
     let desc='', detalle='', totalNum=precio;
     if(pago==='EFEC_TRANSF'||pago==='EFECTIVO'||pago==='TRANSF'){
@@ -6408,14 +6416,14 @@ function presFilasPago(p){
       desc = PAGO_LBL[pago]||pago;
       detalle = n>1?`${n} cuotas de $${fmt(Math.round(totalNum/n))}`:'1 pago';
     } else if(isCP(pago)){
-      const n=CP_N[pago]||2, ant=Math.round(precio*ANTICIPO_PCT), saldo=precio-ant;
+      const n=CP_N[pago]||2, ant=antPres, saldo=precio-ant;
       const interes=CP_INT['mensual']?.[n]||0, tot=Math.round(saldo*(1+interes)), cuo=Math.round(tot/n);
       desc = `Crédito Personal ${n} cuotas`;
-      detalle = `Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}`;
+      detalle = ant>0 ? `Anticipo $${fmt(ant)} + ${n}x$${fmt(cuo)}` : `${n}x$${fmt(cuo)} (sin anticipo)`;
       totalNum = ant+tot;
     } else if(pago==='ANT2C'){
-      const ant=Math.round(precio*ANTICIPO_PCT), saldo=precio-ant, cuo=Math.round(saldo/2);
-      desc='Anticipo + 2 cuotas (Lista)'; detalle=`Anticipo $${fmt(ant)} + 2x$${fmt(cuo)}`; totalNum=precio;
+      const ant=antPres, saldo=precio-ant, cuo=Math.round(saldo/2);
+      desc='Anticipo + 2 cuotas (Lista)'; detalle=ant>0?`Anticipo $${fmt(ant)} + 2x$${fmt(cuo)}`:`2x$${fmt(cuo)} (sin anticipo)`; totalNum=precio;
     } else if(pago==='AHORRO'){
       desc='Plan de Ahorro'; detalle='Pagos a cuenta libres'; totalNum=precio;
     } else { desc = PAGO_LBL[pago]||pago; }
@@ -6430,27 +6438,32 @@ function presFilasPago(p){
 // ===
 function abrirSimulador(){
   const elP=document.getElementById('sim-precio'); if(elP) elP.value='';
+  const elA=document.getElementById('sim-anticipo'); if(elA) elA.value='';
   const elN=document.getElementById('sim-prod'); if(elN) elN.value='';
   const res=document.getElementById('sim-result'); if(res) res.innerHTML='';
   const wa=document.getElementById('sim-wa-btn'); if(wa) wa.style.display='none';
   document.getElementById('ovl-simulador').classList.add('on');
   setTimeout(()=>document.getElementById('sim-precio')?.focus(),100);
 }
-function simularPlanes(precio){
+// Anticipo libre: se acota entre 0 y el precio (0 = sin anticipo).
+function _antLibre(precio, anticipo){ return Math.min(Math.max(0, anticipo||0), precio); }
+function simularPlanes(precio, anticipo){
   const planes=[{nombre:'Contado (efectivo/transf.)', detalle:'10% de descuento', total:Math.round(precio*0.9), destacado:true}];
+  const ant=_antLibre(precio, anticipo), saldo=precio-ant;
   [3,6,9,12].forEach(n=>{
-    const ant=Math.round(precio*ANTICIPO_PCT), saldo=precio-ant;
     const interes=CP_INT.mensual[n]||0, tot=Math.round(saldo*(1+interes)), cuo=Math.round(tot/n);
-    planes.push({nombre:`Crédito ${n} cuotas`, detalle:`Anticipo $${fmt(ant)} + ${n} × $${fmt(cuo)}`, total:ant+tot});
+    const detalle = ant>0 ? `Anticipo $${fmt(ant)} + ${n} × $${fmt(cuo)}` : `${n} × $${fmt(cuo)} (sin anticipo)`;
+    planes.push({nombre:`Crédito ${n} cuotas`, detalle, total:ant+tot});
   });
   return planes;
 }
 function calcularSimulador(){
   const precio=parseFloat(document.getElementById('sim-precio').value)||0;
+  const anticipo=parseFloat(document.getElementById('sim-anticipo').value)||0;
   const cont=document.getElementById('sim-result');
   const waBtn=document.getElementById('sim-wa-btn');
   if(precio<=0){ cont.innerHTML=''; if(waBtn) waBtn.style.display='none'; return; }
-  const filas=simularPlanes(precio).map(p=>`<tr>
+  const filas=simularPlanes(precio, anticipo).map(p=>`<tr>
       <td style="padding:8px 9px;font-size:13px;font-weight:${p.destacado?'700':'600'};border-bottom:1px solid #f0ece6;${p.destacado?'color:var(--green);':''}">${p.nombre}</td>
       <td style="padding:8px 9px;font-size:12px;color:var(--muted);border-bottom:1px solid #f0ece6;">${p.detalle}</td>
       <td style="padding:8px 9px;font-size:14px;font-weight:700;text-align:right;border-bottom:1px solid #f0ece6;color:var(--navy);">$${fmt(p.total)}</td>
@@ -6466,11 +6479,12 @@ function calcularSimulador(){
 function waSimulador(){
   const precio=parseFloat(document.getElementById('sim-precio').value)||0;
   if(precio<=0){ toast('Ingresá un precio'); return; }
+  const anticipo=parseFloat(document.getElementById('sim-anticipo').value)||0;
   const prod=(document.getElementById('sim-prod').value||'').trim();
   let msg=`*ROSSI HOME — Formas de pago*\n`;
   if(prod) msg+=`${prod}\n`;
   msg+=`Precio de lista: $${fmt(precio)}\n\n`;
-  simularPlanes(precio).forEach(p=>{ msg+=`• *${p.nombre}*: $${fmt(p.total)}${p.detalle?`\n   ${p.detalle}`:''}\n`; });
+  simularPlanes(precio, anticipo).forEach(p=>{ msg+=`• *${p.nombre}*: $${fmt(p.total)}${p.detalle?`\n   ${p.detalle}`:''}\n`; });
   msg+=`\n_Valores sujetos a confirmación._`;
   abrirWASelector(msg);
 }
@@ -13192,7 +13206,10 @@ function renderPnL() {
     <div class="mh"><h3>🧮 Simular cuotas</h3><span class="mx" onclick="cM('ovl-simulador')">X</span></div>
     <div class="mb">
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Ingresá el precio de lista y mostrale al cliente todas las formas de pago. No guarda nada.</p>
-      <div class="fg" style="margin-bottom:6px;"><label>Precio de lista</label><input type="number" id="sim-precio" placeholder="0" min="0" oninput="calcularSimulador()"></div>
+      <div class="r2">
+        <div class="fg" style="margin-bottom:6px;"><label>Precio de lista</label><input type="number" id="sim-precio" placeholder="0" min="0" oninput="calcularSimulador()"></div>
+        <div class="fg" style="margin-bottom:6px;"><label>Anticipo (opcional)</label><input type="number" id="sim-anticipo" placeholder="sin anticipo" min="0" oninput="calcularSimulador()"></div>
+      </div>
       <div class="fg" style="margin-bottom:10px;"><label>Producto (opcional)</label><input type="text" id="sim-prod" placeholder="Ej: Termotanque 80L" style="text-transform:none;" oninput="calcularSimulador()"></div>
       <div id="sim-result"></div>
       <div style="display:flex;gap:8px;margin-top:12px;">
