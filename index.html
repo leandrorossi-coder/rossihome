@@ -6350,14 +6350,19 @@ async function confirmarConvPres(id) {
   document.getElementById('pres-venta-popup')?.remove();
   nroVentaCounter++;
   const nroVenta=nroVentaCounter;
-  let precio=0, producto='', items=[];
+  // Buscar el costo del producto en el catálogo (por nombre) para que el margen de la
+  // venta convertida no quede inflado: antes la venta se creaba con costo 0.
+  const _costoCat = nom => { const pc=productos.find(x=>(x.nombre||'').trim().toLowerCase()===(nom||'').trim().toLowerCase()); return pc?.costo||0; };
+  let precio=0, producto='', items=[], costo=0;
   if(p.tipo===1){
     precio=presPrecio(p);            // aplica cantidad y descuento
     producto=p.producto||'';
+    costo=_costoCat(producto)*(p.cantidad||1);
   } else {
     precio=p.items?.reduce((s,i)=>s+i.cant*i.precioUnit,0)||0;
     producto=p.items?.map(i=>`${i.cant}x ${i.desc}`).join(', ')||'';
-    items=p.items?.map(i=>({prod:i.desc,cantidad:i.cant,precioUnit:i.precioUnit||0,costo:0}))||[];
+    items=p.items?.map(i=>({prod:i.desc,cantidad:i.cant,precioUnit:i.precioUnit||0,costo:_costoCat(i.desc)}))||[];
+    costo=items.reduce((s,i)=>s+(i.costo||0)*(i.cantidad||1),0);
   }
   // El presupuesto solo guarda el nombre del cliente: intentar completar el contacto desde el maestro.
   const cliTxt=(p.cliente||'').trim().toLowerCase();
@@ -6371,7 +6376,7 @@ async function confirmarConvPres(id) {
     apellido: cliMatch?.apellido || p.cliente||'', nombre: cliMatch?.nombre||'',
     dni: cliMatch?.dni||'', tel: cliMatch?.tel||'', dir: cliMatch?.dir||'',
     obs:'Generado desde presupuesto #'+String(p.id).slice(-6),
-    producto, precio, formaPago:pago, estado:'pendiente', estadoEntrega:'pendiente',
+    producto, precio, costo, formaPago:pago, estado:'pendiente', estadoEntrega:'pendiente',
     items
   };
   ventas.unshift(nuevaVenta);
