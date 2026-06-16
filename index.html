@@ -5228,6 +5228,11 @@ async function guardarProd(){
   if(editProdId){
     const idx=productos.findIndex(p=>p.id===editProdId);
     if(idx<0){toast('! Error: producto no encontrado');return;}
+    // Evitar pisar a $0 el precio de un producto que ya tenía precio (borrado accidental
+    // del campo). Permite el $0 a propósito ("a consultar") confirmando.
+    if(_precioProd<=0 && (productos[idx].precio||0)>0){
+      if(!confirm(`El precio quedó en $0 y antes era $${fmt(productos[idx].precio)}.\n¿Guardar igual?`)) return;
+    }
     productos[idx]={...productos[idx],...data};
     toast('OK Producto actualizado');
   } else {
