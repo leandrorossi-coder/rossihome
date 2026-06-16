@@ -624,6 +624,7 @@ select option{text-transform:uppercase;}
       <button class="pill" onclick="filtroCredito('cobradas',this)" style="color:var(--green);">✅ Completados</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+      <button class="btn" style="background:var(--navy);color:#fff;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="abrirAgendaCobranza()" title="Ver agenda de cobros del día y vencidos">📅 Agenda del día</button>
       <input id="cred-buscar" type="text" placeholder="Buscar cliente o producto..." oninput="clearTimeout(window._credT);window._credT=setTimeout(renderCreditos,250)"
         style="flex:1;min-width:150px;border:1.5px solid var(--border);border-radius:9px;padding:7px 12px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
       <select id="cred-vendedor" onchange="renderCreditos()"
@@ -5031,6 +5032,92 @@ function _enviarSiguienteReminder() {
 function waRecordatorio(tel,nombre,nCuota,total,monto,fecha){
   const msg=`Hola ${nombre}! Te recordamos la cuota ${nCuota}/${total} de $${fmt(monto)} con vencimiento ${fmtD(fecha)}. Rossi Home `;
   abrirWASelector(msg, tel);
+}
+
+// ===
+// AGENDA DE COBRANZA
+// ===
+function abrirAgendaCobranza() {
+  const fechaEl = document.getElementById('agenda-cobr-fecha');
+  const contEl  = document.getElementById('agenda-cobr-content');
+  if (!fechaEl || !contEl) return;
+
+  const h = hoy();
+  const h7 = addD(h, 7);
+  fechaEl.textContent = `Hoy: ${fmtD(h)}`;
+
+  const vencidas=[], cobrarHoy=[], proximas=[];
+
+  const creditosAct = ventas.filter(v => isCPorL30(v.pago) && v.cpData && !esAhorro(v));
+  creditosAct.forEach(v => {
+    const cp = v.cpData;
+    // anticipo pendiente
+    if (cp.anticipo > 0 && !cp.anticipoPagado) {
+      const item = { v, tipo:'anticipo', monto: cp.anticipo - ((cp.cobros||[]).filter(c=>c.tipo==='anticipo').reduce((s,c)=>s+(c.monto||0),0)), fecha: cp.fechaPrimeraCuota||h };
+      if (item.monto <= 0) { /* ya pagado */ }
+      else if (item.fecha < h) vencidas.push(item);
+      else if (item.fecha === h) cobrarHoy.push(item);
+      else if (item.fecha <= h7) proximas.push(item);
+    }
+    // cuotas
+    const fechas = buildFechasCuotas(cp);
+    for (let i = 0; i < cp.nCuotas; i++) {
+      const est = estadoCuotaCP(cp, i);
+      if (est === 'pagada') continue;
+      const f = fechas[i] || '';
+      const pendiente = cp.cuota - montoPagadoCuota(cp, i);
+      const item = { v, tipo:'cuota', idx:i, monto:pendiente, fecha:f, total:cp.nCuotas };
+      if (f < h) vencidas.push(item);
+      else if (f === h) cobrarHoy.push(item);
+      else if (f <= h7) proximas.push(item);
+    }
+  });
+
+  const _itemHTML = (it, colorBorde, etiqueta, colorEtiq) => {
+    const v=it.v, cp=v.cpData;
+    const nombre=cliNom(v)||'—';
+    const prod=prodNombre(v)||'';
+    const diasStr = it.fecha && it.fecha < h
+      ? `<span style="color:var(--red);font-weight:700;">${difD(it.fecha, h)}d vencida</span>`
+      : it.fecha === h ? `<span style="color:var(--orange);font-weight:700;">Vence hoy</span>` : `<span style="color:var(--muted);">Vence ${fmtD(it.fecha)}</span>`;
+    const nroCuota = it.tipo==='cuota' ? ` (cuota ${it.idx+1}/${it.total})` : ' (anticipo)';
+    const msgWA = it.tipo==='anticipo'
+      ? `Hola ${nombre}! Te recordamos que tenés el anticipo pendiente de $${fmt(it.monto)}. Gracias! Rossi Home`
+      : `Hola ${nombre}! Te recordamos la cuota ${it.idx+1}/${it.total} de $${fmt(it.monto)}${it.fecha?` con vencimiento ${fmtD(it.fecha)}`:''}. Gracias! Rossi Home`;
+    const waBtnStyle = v.tel ? '' : 'opacity:.4;pointer-events:none;';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-left:3px solid ${colorBorde};background:#fff;border-radius:7px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nombre}</div>
+        <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${prod}${nroCuota}</div>
+        <div style="font-size:11px;margin-top:2px;">${diasStr}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-weight:700;font-size:14px;color:var(--navy);">$${fmt(it.monto)}</div>
+        <button style="margin-top:4px;background:#25D366;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;${waBtnStyle}"
+          onclick="(function(){const _m=${JSON.stringify(msgWA)};const _t=${JSON.stringify(v.tel||'')};abrirWASelector(_m,_t);})()">📲 WA</button>
+      </div>
+    </div>`;
+  };
+
+  let html = '';
+  if (!vencidas.length && !cobrarHoy.length && !proximas.length) {
+    html = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:14px;">🎉 Sin cobros pendientes para hoy ni los próximos 7 días</div>';
+  }
+  if (vencidas.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--red);letter-spacing:.5px;margin-bottom:6px;">Vencidas (${vencidas.length})</div>`;
+    html += vencidas.map(it=>_itemHTML(it,'#e74c3c','Vencida','var(--red)')).join('');
+  }
+  if (cobrarHoy.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--orange);letter-spacing:.5px;margin:${vencidas.length?'12px':0} 0 6px;">Cobrar hoy (${cobrarHoy.length})</div>`;
+    html += cobrarHoy.map(it=>_itemHTML(it,'#e67e22','Hoy','var(--orange)')).join('');
+  }
+  if (proximas.length) {
+    html += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--navy);letter-spacing:.5px;margin:${(vencidas.length||cobrarHoy.length)?'12px':0} 0 6px;">Próximos 7 días (${proximas.length})</div>`;
+    html += proximas.map(it=>_itemHTML(it,'#3498db','Próxima','var(--navy)')).join('');
+  }
+
+  contEl.innerHTML = html;
+  document.getElementById('ovl-agenda-cobr').classList.add('on');
 }
 
 function onCobrarMedio(){} // placeholder
@@ -13252,6 +13339,21 @@ function renderPnL() {
   <div class="modal">
     <div class="mh"><h3>Confirmar venta</h3><span class="mx" onclick="cM('ovl-confirm-venta')">X</span></div>
     <div class="mb" id="confirm-venta-body"></div>
+  </div>
+</div>
+
+<!-- AGENDA DE COBRANZA -->
+<div class="overlay" id="ovl-agenda-cobr" onclick="cM('ovl-agenda-cobr',event)">
+  <div class="modal" style="max-width:520px;">
+    <div class="mh" style="background:var(--navy);"><h3 style="color:#fff;">📅 Agenda de cobranza</h3><span class="mx" style="color:#fff;" onclick="cM('ovl-agenda-cobr')">X</span></div>
+    <div class="mb" style="padding:0;">
+      <div id="agenda-cobr-fecha" style="text-align:center;padding:10px 16px 6px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);"></div>
+      <div id="agenda-cobr-content" style="max-height:70vh;overflow-y:auto;padding:12px 14px;"></div>
+      <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="cM('ovl-agenda-cobr')">Cerrar</button>
+        <button class="btn" style="flex:1;background:var(--navy);color:#fff;" onclick="waReminderMasivo()">📲 WA Masivo</button>
+      </div>
+    </div>
   </div>
 </div>
 
