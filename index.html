@@ -552,6 +552,7 @@ select option{text-transform:uppercase;}
       <div class="fg"><label>Observaciones</label><textarea id="f-obs"></textarea></div>
       <div class="btn-row">
         <button class="btn btn-ghost" onclick="limpiar()">Limpiar</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirSimulador()" title="Comparar formas de pago sin guardar nada">🧮 Simular</button>
         <button class="btn btn-ghost btn-sm" onclick="abrirVentaRapida()" title="Venta rápida sin datos de cliente"> Venta rápida</button>
         <button class="btn btn-gold" id="btn-guardar" onclick="mostrarConfirmVenta()">OK Guardar Venta</button>
       </div>
@@ -6420,6 +6421,58 @@ function presFilasPago(p){
     } else { desc = PAGO_LBL[pago]||pago; }
     return { pago, desc, detalle, totalNum, totalStr:`$${fmt(totalNum)}` };
   });
+}
+
+// ===
+// SIMULADOR DE CUOTAS — herramienta de cierre rápido (no guarda nada)
+// Usa la MISMA matemática que el presupuesto: contado 10% off y CP con
+// anticipo 50% + interés mensual por cantidad de cuotas.
+// ===
+function abrirSimulador(){
+  const elP=document.getElementById('sim-precio'); if(elP) elP.value='';
+  const elN=document.getElementById('sim-prod'); if(elN) elN.value='';
+  const res=document.getElementById('sim-result'); if(res) res.innerHTML='';
+  const wa=document.getElementById('sim-wa-btn'); if(wa) wa.style.display='none';
+  document.getElementById('ovl-simulador').classList.add('on');
+  setTimeout(()=>document.getElementById('sim-precio')?.focus(),100);
+}
+function simularPlanes(precio){
+  const planes=[{nombre:'Contado (efectivo/transf.)', detalle:'10% de descuento', total:Math.round(precio*0.9), destacado:true}];
+  [3,6,9,12].forEach(n=>{
+    const ant=Math.round(precio*ANTICIPO_PCT), saldo=precio-ant;
+    const interes=CP_INT.mensual[n]||0, tot=Math.round(saldo*(1+interes)), cuo=Math.round(tot/n);
+    planes.push({nombre:`Crédito ${n} cuotas`, detalle:`Anticipo $${fmt(ant)} + ${n} × $${fmt(cuo)}`, total:ant+tot});
+  });
+  return planes;
+}
+function calcularSimulador(){
+  const precio=parseFloat(document.getElementById('sim-precio').value)||0;
+  const cont=document.getElementById('sim-result');
+  const waBtn=document.getElementById('sim-wa-btn');
+  if(precio<=0){ cont.innerHTML=''; if(waBtn) waBtn.style.display='none'; return; }
+  const filas=simularPlanes(precio).map(p=>`<tr>
+      <td style="padding:8px 9px;font-size:13px;font-weight:${p.destacado?'700':'600'};border-bottom:1px solid #f0ece6;${p.destacado?'color:var(--green);':''}">${p.nombre}</td>
+      <td style="padding:8px 9px;font-size:12px;color:var(--muted);border-bottom:1px solid #f0ece6;">${p.detalle}</td>
+      <td style="padding:8px 9px;font-size:14px;font-weight:700;text-align:right;border-bottom:1px solid #f0ece6;color:var(--navy);">$${fmt(p.total)}</td>
+    </tr>`).join('');
+  cont.innerHTML=`<table style="width:100%;border-collapse:collapse;">
+    <thead><tr style="background:var(--cream2);">
+      <th style="padding:7px 9px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--muted);">Forma de pago</th>
+      <th style="padding:7px 9px;text-align:left;font-size:10px;text-transform:uppercase;color:var(--muted);">Detalle</th>
+      <th style="padding:7px 9px;text-align:right;font-size:10px;text-transform:uppercase;color:var(--muted);">Total</th>
+    </tr></thead><tbody>${filas}</tbody></table>`;
+  if(waBtn) waBtn.style.display='';
+}
+function waSimulador(){
+  const precio=parseFloat(document.getElementById('sim-precio').value)||0;
+  if(precio<=0){ toast('Ingresá un precio'); return; }
+  const prod=(document.getElementById('sim-prod').value||'').trim();
+  let msg=`*ROSSI HOME — Formas de pago*\n`;
+  if(prod) msg+=`${prod}\n`;
+  msg+=`Precio de lista: $${fmt(precio)}\n\n`;
+  simularPlanes(precio).forEach(p=>{ msg+=`• *${p.nombre}*: $${fmt(p.total)}${p.detalle?`\n   ${p.detalle}`:''}\n`; });
+  msg+=`\n_Valores sujetos a confirmación._`;
+  abrirWASelector(msg);
 }
 
 function verPresupuesto(id) {
@@ -13128,6 +13181,23 @@ function renderPnL() {
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" style="flex:1;" onclick="cM('ovl-venta-rapida')">Cancelar</button>
         <button class="btn btn-gold" style="flex:2;" onclick="guardarVentaRapida()">OK Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIMULADOR DE CUOTAS -->
+<div class="overlay" id="ovl-simulador" onclick="cM('ovl-simulador',event)">
+  <div class="modal">
+    <div class="mh"><h3>🧮 Simular cuotas</h3><span class="mx" onclick="cM('ovl-simulador')">X</span></div>
+    <div class="mb">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Ingresá el precio de lista y mostrale al cliente todas las formas de pago. No guarda nada.</p>
+      <div class="fg" style="margin-bottom:6px;"><label>Precio de lista</label><input type="number" id="sim-precio" placeholder="0" min="0" oninput="calcularSimulador()"></div>
+      <div class="fg" style="margin-bottom:10px;"><label>Producto (opcional)</label><input type="text" id="sim-prod" placeholder="Ej: Termotanque 80L" style="text-transform:none;" oninput="calcularSimulador()"></div>
+      <div id="sim-result"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="cM('ovl-simulador')">Cerrar</button>
+        <button class="btn btn-green" style="flex:1;display:none;" id="sim-wa-btn" onclick="waSimulador()">📲 Enviar por WhatsApp</button>
       </div>
     </div>
   </div>
