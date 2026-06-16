@@ -1380,6 +1380,7 @@ select option{text-transform:uppercase;}
       <div class="ch" style="display:flex;justify-content:space-between;align-items:center;">
         <h2>&#128101; Clientes</h2>
         <div style="display:flex;gap:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="abrirRankingClientes()" title="Top clientes por monto comprado">🏆 Top</button>
           <button class="btn btn-ghost btn-sm" onclick="exportarClientesCSV()">⬇ CSV</button>
           <button class="btn btn-gold btn-sm" onclick="abrirNuevoCliente()">+ Nuevo</button>
         </div>
@@ -1421,6 +1422,24 @@ select option{text-transform:uppercase;}
       <div class="empty" id="empty-clientes" style="display:none;"><div class="empty-ico">&#128101;</div><p>Sin clientes todav&#237;a</p></div>
     </div>
   </div>
+
+<!-- RANKING MEJORES CLIENTES -->
+<div class="overlay" id="ovl-ranking-cli" onclick="cM('ovl-ranking-cli',event)">
+  <div class="modal" style="max-width:520px;">
+    <div class="mh" style="background:#b8860b;"><h3 style="color:#fff;">🏆 Top clientes</h3><span class="mx" style="color:#fff;" onclick="cM('ovl-ranking-cli')">X</span></div>
+    <div class="mb" style="padding:0;">
+      <div style="display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);">
+        <button class="pill on" id="rcli-tab-monto" onclick="rcliTab('monto')">💰 Más compras</button>
+        <button class="pill" id="rcli-tab-cant" onclick="rcliTab('cant')">🛒 Más pedidos</button>
+        <button class="pill" id="rcli-tab-puntual" onclick="rcliTab('puntual')">🟢 Más puntuales</button>
+      </div>
+      <div id="ranking-cli-content" style="max-height:65vh;overflow-y:auto;padding:12px 14px;"></div>
+      <div style="padding:10px 14px;border-top:1px solid var(--border);">
+        <button class="btn btn-ghost" style="width:100%;" onclick="cM('ovl-ranking-cli')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODALES ══ -->
 <!-- Modal Gasto -->
@@ -5224,6 +5243,91 @@ function abrirAgendaCobranza() {
 // RANKING DE COBRANZA / CARTERA VENCIDA
 // Agrupa la deuda por cliente: total a cobrar, saldo vencido, % de mora y top deudores.
 // ===
+// ===
+// RANKING MEJORES CLIENTES
+// ===
+let _rcliOrden = 'monto';
+
+function abrirRankingClientes() {
+  _rcliOrden = 'monto';
+  document.querySelectorAll('[id^="rcli-tab-"]').forEach(b => b.classList.remove('on'));
+  const t = document.getElementById('rcli-tab-monto'); if(t) t.classList.add('on');
+  _renderRankingClientes();
+  document.getElementById('ovl-ranking-cli').classList.add('on');
+}
+
+function rcliTab(orden) {
+  _rcliOrden = orden;
+  document.querySelectorAll('[id^="rcli-tab-"]').forEach(b => b.classList.remove('on'));
+  const t = document.getElementById('rcli-tab-'+orden); if(t) t.classList.add('on');
+  _renderRankingClientes();
+}
+
+function _renderRankingClientes() {
+  const cont = document.getElementById('ranking-cli-content');
+  if (!cont) return;
+
+  // Enriquecer cada cliente
+  const enriched = clientes.map(c => {
+    const cVentas = ventas.filter(v =>
+      !v.cancelada &&
+      ((c.dni && v.dni === c.dni) ||
+       ((v.apellido||'').toUpperCase() === (c.apellido||'').toUpperCase() &&
+        (v.nombre||'').toUpperCase()   === (c.nombre||'').toUpperCase()))
+    );
+    const totalComprado = cVentas.reduce((s,v) => s + (v.precio||0), 0);
+    const nPedidos = cVentas.length;
+    const ultima = cVentas.reduce((m,v) => (!m||v.fecha>m)?v.fecha:m, '');
+    const score = scoreCliente(cVentas.filter(v=>v.cpData));
+    let deuda = 0, tieneVencido = false;
+    cVentas.forEach(v => {
+      if (!v.cpData) return;
+      const cp = v.cpData;
+      if (cp.anticipo>0 && !cp.anticipoPagado) { const p=(cp.cobros||[]).filter(c=>c.tipo==='anticipo').reduce((s,c)=>s+(c.monto||0),0); deuda+=Math.max(0,cp.anticipo-p); }
+      const fechas = buildFechasCuotas(cp);
+      for(let i=0;i<cp.nCuotas;i++){
+        const est=estadoCuotaCP(cp,i); if(est==='pagada') continue;
+        deuda+=cp.cuota-montoPagadoCuota(cp,i);
+        if(est==='vencida') tieneVencido=true;
+      }
+    });
+    return { c, totalComprado, nPedidos, ultima, score, deuda, tieneVencido };
+  }).filter(x => x.totalComprado > 0 || x.nPedidos > 0);
+
+  // Ordenar según tab
+  let lista = [...enriched];
+  if (_rcliOrden === 'monto') lista.sort((a,b) => b.totalComprado - a.totalComprado);
+  else if (_rcliOrden === 'cant') lista.sort((a,b) => b.nPedidos - a.nPedidos);
+  else if (_rcliOrden === 'puntual') lista = lista.filter(x=>x.score.nivel==='puntual').sort((a,b)=>b.totalComprado-a.totalComprado);
+
+  if (!lista.length) { cont.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">Sin datos aún</div>'; return; }
+
+  const top = lista.slice(0, 20);
+  cont.innerHTML = top.map((x, idx) => {
+    const { c, totalComprado, nPedidos, ultima, score, deuda, tieneVencido } = x;
+    const nombre = [c.apellido, c.nombre].filter(Boolean).join(' ') || '—';
+    const medallaColor = idx===0?'#FFD700':idx===1?'#C0C0C0':idx===2?'#CD7F32':'var(--muted)';
+    const deudaStr = deuda > 0
+      ? `<span style="color:${tieneVencido?'var(--red)':'var(--orange)'};font-size:11px;font-weight:600;">${tieneVencido?'⚠':'💳'} $${fmt(deuda)}</span>`
+      : '';
+    const msgWA = `Hola ${c.nombre||c.apellido}! Gracias por elegirnos. En Rossi Home tenemos novedades para vos. Cualquier consulta escribinos! 😊`;
+    const waBtnStyle = c.tel ? '' : 'opacity:.4;pointer-events:none;';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:#fff;border-radius:7px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+      <div style="font-size:${idx<3?'18px':'13px'};font-weight:700;color:${medallaColor};width:24px;text-align:center;flex-shrink:0;">${idx<3?['🥇','🥈','🥉'][idx]:idx+1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nombre}</div>
+        <div style="font-size:11px;color:var(--muted);">${nPedidos} compra(s) · última: ${ultima?fmtD(ultima):'—'} · ${score.emoji} ${score.label}</div>
+        ${deudaStr?`<div style="margin-top:2px;">${deudaStr}</div>`:''}
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-weight:700;font-size:14px;color:var(--navy);">$${fmt(totalComprado)}</div>
+        <button style="margin-top:4px;background:#25D366;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;${waBtnStyle}"
+          onclick="(function(){const _m=${JSON.stringify(msgWA)};const _t=${JSON.stringify(c.tel||'')};abrirWASelector(_m,_t);})()">📲 WA</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function abrirRankingCobranza() {
   const kpisEl = document.getElementById('ranking-cobr-kpis');
   const contEl = document.getElementById('ranking-cobr-content');
