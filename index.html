@@ -4176,6 +4176,32 @@ function estadoCuotaCP(cp, idx) {
   return 'pendiente';
 }
 
+// Semáforo de comportamiento de pago del cliente, calculado con SU propio historial de
+// créditos (no consulta nada externo):
+//  🔴 moroso  → tiene cuotas vencidas sin pagar hoy
+//  🟡 se atrasa → pagó tarde alguna cuota en el pasado (después del vencimiento)
+//  🟢 puntual → tiene créditos y pagó siempre en fecha
+//  ⚪ sin historial → no tiene créditos registrados
+function scoreCliente(cVentas){
+  let tieneCredito=false, vencidoAhora=false, atrasos=0, cuotasEval=0;
+  (cVentas||[]).forEach(v=>{
+    const cp=v.cpData; if(!cp || v.cancelada) return;
+    tieneCredito=true;
+    const fechas=buildFechasCuotas(cp);
+    for(let i=0;i<(cp.nCuotas||0);i++){ if(estadoCuotaCP(cp,i)==='vencida') vencidoAhora=true; }
+    (cp.cobros||[]).forEach(c=>{
+      if(c.tipo==='cuota' && c.idx!=null && fechas[c.idx] && c.fecha){
+        cuotasEval++;
+        if(c.fecha > fechas[c.idx]) atrasos++; // se cobró después del vencimiento
+      }
+    });
+  });
+  if(!tieneCredito) return {nivel:'nuevo',   label:'Sin historial', emoji:'⚪', color:'#6e7a8a', detalle:'Sin créditos registrados'};
+  if(vencidoAhora)  return {nivel:'moroso',  label:'Moroso',        emoji:'🔴', color:'#b02020', detalle:'Tiene cuotas vencidas sin pagar'};
+  if(atrasos>0)     return {nivel:'atrasa',  label:'Se atrasa',     emoji:'🟡', color:'#c05010', detalle:`Pagó tarde ${atrasos} de ${cuotasEval} cuota(s)`};
+  return {nivel:'puntual', label:'Puntual', emoji:'🟢', color:'#1a7a4a', detalle:'Pagó siempre en fecha'};
+}
+
 let cobroActual = null; // {ventaId, tipo:'anticipo'|'cuota', idx?, monto}
 
 function abrirCobrarAnticipo(vid) {
@@ -11880,7 +11906,7 @@ renderClientes = function(){
       (c.dni&&p.dni===c.dni)||
       ((p.apellido||'').toUpperCase()===(c.apellido||'').toUpperCase()&&(p.nombre||'').toUpperCase()===(c.nombre||'').toUpperCase())
     )).length;
-    return {...c, _ventas:cVentas, _ultima:ultima, _total:totalComprado, _pend:pendiente, _venc:tieneVencido, _prespend:pressPend};
+    return {...c, _ventas:cVentas, _ultima:ultima, _total:totalComprado, _pend:pendiente, _venc:tieneVencido, _prespend:pressPend, _score:scoreCliente(cVentas)};
   };
 
   let lista = clientes.map(enrich);
@@ -11953,6 +11979,7 @@ renderClientes = function(){
           <div style="font-weight:600;font-size:13px;">${c.apellido||''} ${c.nombre||''}
             ${esMayor?'<span style="font-size:9px;background:var(--navy);color:#fff;padding:2px 5px;border-radius:4px;margin-left:3px;">MAYOR</span>':''}
             ${cat?`<span style="font-size:9px;background:${catColors[cat]||'#eee'};color:${catText[cat]||'#666'};padding:2px 5px;border-radius:4px;margin-left:3px;">${cat}</span>`:''}
+            ${c._score&&c._score.nivel!=='nuevo'?`<span style="font-size:9px;background:${c._score.color}22;color:${c._score.color};padding:2px 5px;border-radius:4px;margin-left:3px;" title="${c._score.detalle}">${c._score.emoji} ${c._score.label}</span>`:''}
             ${c._venc?'<span style="font-size:9px;background:#fdeaea;color:var(--red);padding:2px 5px;border-radius:4px;margin-left:3px;">⚠ VENCIDO</span>':''}
             ${c._prespend>0?`<span style="font-size:9px;background:#e3f0ff;color:#1a5fb4;padding:2px 5px;border-radius:4px;margin-left:3px;">${c._prespend} pres.</span>`:''}
           </div>
