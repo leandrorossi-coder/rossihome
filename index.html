@@ -4828,7 +4828,10 @@ function renderCreditos() {
           Cobrado: <strong>$${fmt(montoPagado + (cp.anticipo>0&&cp.anticipoPagado?cp.anticipo:0))}</strong> de $${fmt((cp.totalCredito||0) + (cp.anticipo||0))}
           ${acuenta>0?` · A cuenta: <strong>$${fmt(acuenta)}</strong>`:''}
         </div>
-        <button class="btn btn-blue btn-sm" onclick="abrirPagoCuenta(${v.id})">$ A cuenta</button>
+        <div style="display:flex;gap:6px;">
+          ${v.tel?`<button class="btn btn-sm" style="background:#25D366;color:#fff;font-size:11px;" onclick="waEstadoCuenta(${v.id})">📄 Estado WA</button>`:''}
+          <button class="btn btn-blue btn-sm" onclick="abrirPagoCuenta(${v.id})">$ A cuenta</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -5151,6 +5154,57 @@ function _enviarSiguienteReminder() {
 function waRecordatorio(tel,nombre,nCuota,total,monto,fecha){
   const msg=`Hola ${nombre}! Te recordamos la cuota ${nCuota}/${total} de $${fmt(monto)} con vencimiento ${fmtD(fecha)}. Rossi Home `;
   abrirWASelector(msg, tel);
+}
+
+// Estado de cuenta completo por WhatsApp — como lo manda una financiera
+function waEstadoCuenta(vid) {
+  const v = ventas.find(x => x.id === vid);
+  if (!v || !v.cpData) return;
+  if (!v.tel) { toast('El cliente no tiene teléfono cargado'); return; }
+  const cp = v.cpData;
+  const nombre = cliNom(v) || 'Cliente';
+  const fechas = buildFechasCuotas(cp);
+  const h = hoy();
+
+  let pagado = 0, saldo = 0, vencido = 0, proxFecha = '', proxMonto = 0;
+  const cobrosAnt = (cp.cobros||[]).filter(c=>c.tipo==='anticipo').reduce((s,c)=>s+(c.monto||0),0);
+  if (cp.anticipo > 0) {
+    if (cp.anticipoPagado) pagado += cp.anticipo;
+    else saldo += cp.anticipo - cobrosAnt;
+  }
+
+  const lineasCuotas = [];
+  for (let i = 0; i < cp.nCuotas; i++) {
+    const est = estadoCuotaCP(cp, i);
+    const f = fechas[i] || '';
+    const pagadoCuota = montoPagadoCuota(cp, i);
+    const debe = cp.cuota - pagadoCuota;
+    if (est === 'pagada') { pagado += cp.cuota; continue; }
+    saldo += debe;
+    const diasMora = (est === 'vencida' && f) ? difD(h, f) : 0;
+    if (est === 'vencida') vencido += debe;
+    if (!proxFecha && (est === 'proxima' || est === 'pendiente' || est === 'parcial')) { proxFecha = f; proxMonto = debe; }
+    const estado = est === 'vencida' ? `⚠ ${diasMora}d mora` : est === 'proxima' ? '→ Próxima' : est === 'parcial' ? `parcial ($${fmt(pagadoCuota)}/$${fmt(cp.cuota)})` : '';
+    lineasCuotas.push(`  Cuota ${i+1}/${cp.nCuotas}: $${fmt(debe)} — ${f?fmtD(f):'sin fecha'}${estado?' ('+estado+')':''}`);
+  }
+
+  let msg = `*ROSSI HOME — Estado de cuenta*\n`;
+  msg += `_${fmtD(h)}_\n\n`;
+  msg += `Hola ${nombre}! Te enviamos el detalle de tu crédito:\n\n`;
+  msg += `*Producto:* ${prodNombre(v)}\n`;
+  msg += `*Precio de lista:* $${fmt(cp.precioLista||v.precio||0)}\n`;
+  if (cp.anticipo > 0) msg += `*Anticipo:* $${fmt(cp.anticipo)}${cp.anticipoPagado?' ✓':' (pendiente)'}\n`;
+  msg += `*Cuota:* $${fmt(cp.cuota)} × ${cp.nCuotas} (${cp.frecuencia||'mensual'})\n\n`;
+  if (lineasCuotas.length) {
+    msg += `*Cuotas pendientes:*\n${lineasCuotas.join('\n')}\n\n`;
+  }
+  msg += `*Total pagado:* $${fmt(pagado)}\n`;
+  msg += `*Saldo pendiente: $${fmt(saldo)}*\n`;
+  if (vencido > 0) msg += `⚠ *Monto vencido: $${fmt(vencido)}*\n`;
+  if (proxFecha && !vencido) msg += `📅 Próximo vencimiento: ${fmtD(proxFecha)} — $${fmt(proxMonto)}\n`;
+  msg += `\n_${INFO_EMPRESA.nombre} · ${INFO_EMPRESA.wa}_`;
+
+  abrirWASelector(msg, v.tel);
 }
 
 // ===
