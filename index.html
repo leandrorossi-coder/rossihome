@@ -5008,13 +5008,63 @@ function abrirRefinanciar(vid) {
   if(!esAdmin()){toast('Sin permiso');return;}
   const v=ventas.find(x=>x.id===vid); if(!v||!v.cpData)return;
   const cp=v.cpData;
-  const montoPendiente=cp.totalCredito-(cp.cobros||[]).filter(c=>c.tipo==='cuota').reduce((s,c)=>s+(c.monto||0),0);
+
+  // Calcular saldo real pendiente (cuotas no pagadas)
+  let saldoPend=0;
+  for(let i=0;i<cp.nCuotas;i++){
+    if(estadoCuotaCP(cp,i)!=='pagada') saldoPend+=cp.cuota-montoPagadoCuota(cp,i);
+  }
+  if(cp.anticipo>0&&!cp.anticipoPagado){
+    const pagAnt=(cp.cobros||[]).filter(c=>c.tipo==='anticipo').reduce((s,c)=>s+(c.monto||0),0);
+    saldoPend+=Math.max(0,cp.anticipo-pagAnt);
+  }
+
+  // Contar vencidas para mostrar en el info
+  let vencCount=0;
+  for(let i=0;i<cp.nCuotas;i++){ if(estadoCuotaCP(cp,i)==='vencida') vencCount++; }
+
   document.getElementById('refin-vid').value=vid;
-  document.getElementById('refin-info').innerHTML=`<strong>${cliNom(v)}</strong> — ${prodNombre(v)}<br>Pendiente: <strong>$${fmt(montoPendiente)}</strong>`;
-  document.getElementById('refin-monto').value=montoPendiente;
+  document.getElementById('refin-info').innerHTML=
+    `<strong>${cliNom(v)}</strong> — ${prodNombre(v)}<br>
+     Saldo pendiente: <strong>$${fmt(saldoPend)}</strong>
+     ${vencCount>0?`<span style="color:var(--red);margin-left:8px;">⚠ ${vencCount} cuota(s) vencida(s)</span>`:''}`;
+  document.getElementById('refin-monto').value=saldoPend;
   document.getElementById('refin-ncuotas').value=cp.nCuotas;
+  document.getElementById('refin-freq').value=cp.frecuencia||'mensual';
   document.getElementById('refin-fecha1').value=hoy();
+  document.getElementById('refin-sin-interes').checked=true;
+  const prev=document.getElementById('refin-preview'); if(prev) prev.style.display='none';
   document.getElementById('ovl-refinanciar').classList.add('on');
+  recalcRefin();
+}
+
+function recalcRefin(){
+  const monto=parseFloat(document.getElementById('refin-monto').value)||0;
+  const n=parseInt(document.getElementById('refin-ncuotas').value)||1;
+  const sinInt=document.getElementById('refin-sin-interes').checked;
+  const freq=document.getElementById('refin-freq').value||'mensual';
+  const fecha1=document.getElementById('refin-fecha1').value||hoy();
+  const prev=document.getElementById('refin-preview');
+  if(!prev) return;
+  if(!monto||!n){ prev.style.display='none'; return; }
+  const interes = sinInt ? 0 : (CP_INT[freq]?.[n]||0);
+  const total=Math.round(monto*(1+interes));
+  const cuota=Math.round(total/n);
+  const pctLabel=interes>0?` (interés ${Math.round(interes*100)}%)`:'';
+  prev.style.display='block';
+  prev.innerHTML=`
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="color:var(--muted);">Total refinanciado${pctLabel}</span>
+      <strong>$${fmt(total)}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="color:var(--muted);">Nueva cuota</span>
+      <strong style="color:var(--navy);font-size:15px;">$${fmt(cuota)} × ${n}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;">
+      <span style="color:var(--muted);">Frecuencia · 1° cuota</span>
+      <strong>${freq} · ${fmtD(fecha1)}</strong>
+    </div>`;
 }
 
 async function confirmarRefinanciar() {
@@ -5023,21 +5073,42 @@ async function confirmarRefinanciar() {
   const cp=v.cpData;
   const monto=parseFloat(document.getElementById('refin-monto').value)||0;
   const n=parseInt(document.getElementById('refin-ncuotas').value)||1;
+  const freq=document.getElementById('refin-freq').value||'mensual';
   const fecha1=document.getElementById('refin-fecha1').value||hoy();
-  if(!monto||!n){toast('! Completá todos los campos');return;}
-  const nuevaCuota=Math.round(monto/n);
-  // Contar cuotas EFECTIVAMENTE saldadas (no registros de cobro) para no generar cuotas fantasma
+  const sinInt=document.getElementById('refin-sin-interes').checked;
+  if(!monto||!n||!fecha1){toast('! Completá todos los campos');return;}
+  const interes=sinInt?0:(CP_INT[freq]?.[n]||0);
+  const total=Math.round(monto*(1+interes));
+  const nuevaCuota=Math.round(total/n);
+  // Cuotas ya saldadas (no tocar)
   let cuotasSaldadas=0;
   for(let i=0;i<(cp.nCuotas||0);i++){ if(estadoCuotaCP(cp,i)==='pagada') cuotasSaldadas++; }
-  cp.totalCredito=(cp.cobros||[]).filter(c=>c.tipo==='cuota').reduce((s,c)=>s+(c.monto||0),0)+monto;
+  const cobradoAnt=(cp.cobros||[]).filter(c=>c.tipo==='cuota').reduce((s,c)=>s+(c.monto||0),0);
+  cp.totalCredito=cobradoAnt+total;
   cp.cuota=nuevaCuota;
   cp.nCuotas=cuotasSaldadas+n;
+  cp.frecuencia=freq;
   cp.fechaPrimeraCuota=fecha1;
   cp.refinanciado=true;
   if(typeof _cacheFechas!=='undefined') _cacheFechas.delete(cp);
+  logActividad(`Refinanció crédito de ${cliNom(v)} — ${n} cuotas de $${fmt(nuevaCuota)} desde ${fmtD(fecha1)}`);
   await guardarVentas();
   cM('ovl-refinanciar'); renderCreditos();
   toast(`OK Refinanciado: ${n} cuotas de $${fmt(nuevaCuota)}`);
+  // Ofrecer enviar nuevo plan por WA
+  if(v.tel) setTimeout(()=>{
+    const msg=`Hola ${cliNom(v)}! Te informamos que tu crédito fue refinanciado.\n*Nuevo plan:* ${n} cuotas de $${fmt(nuevaCuota)} (${freq})\n1° vencimiento: ${fmtD(fecha1)}\nCualquier duda escribinos! Rossi Home`;
+    const banner=document.createElement('div');
+    banner.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;background:#7a5a10;color:#fff;border-radius:12px;padding:13px 16px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:13px;display:flex;align-items:center;gap:12px;max-width:92vw;';
+    banner.innerHTML=`<span>📲 ¿Avisarle a <strong>${cliNom(v)}</strong> el nuevo plan?</span>
+      <button style="background:#fff;color:#7a5a10;border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Enviar WA</button>
+      <button style="background:transparent;color:rgba(255,255,255,.6);border:none;font-size:18px;cursor:pointer;line-height:1;">×</button>`;
+    const btns=banner.querySelectorAll('button');
+    btns[0].onclick=()=>{banner.remove();abrirWASelector(msg,v.tel);};
+    btns[1].onclick=()=>banner.remove();
+    document.body.appendChild(banner);
+    setTimeout(()=>{if(banner.parentNode)banner.remove();},10000);
+  },400);
 }
 
 // Pausar/reanudar crédito
@@ -13756,17 +13827,34 @@ function renderPnL() {
 
 <!-- Modal refinanciar -->
 <div class="overlay" id="ovl-refinanciar" onclick="cM('ovl-refinanciar',event)">
-  <div class="modal" style="max-width:460px;">
-    <div class="mh"><h3>Refinanciar Crédito</h3><span class="mx" onclick="cM('ovl-refinanciar')">X</span></div>
+  <div class="modal" style="max-width:480px;">
+    <div class="mh" style="background:#7a5a10;"><h3 style="color:#fff;">🔄 Refinanciar crédito</h3><span class="mx" style="color:#fff;" onclick="cM('ovl-refinanciar')">X</span></div>
     <div class="mb">
       <div id="refin-info" style="margin-bottom:12px;padding:10px;background:var(--gbg);border-radius:8px;font-size:13px;"></div>
       <input type="hidden" id="refin-vid">
-      <div class="fg"><label>Monto pendiente a refinanciar ($)</label><input type="number" id="refin-monto" placeholder="0"></div>
-      <div class="fg"><label>Cantidad de cuotas nuevas</label><input type="number" id="refin-ncuotas" placeholder="6" min="1"></div>
-      <div class="fg"><label>Fecha primera cuota nueva</label><input type="date" id="refin-fecha1"></div>
+      <div class="r2">
+        <div class="fg"><label>Monto a refinanciar ($)</label><input type="number" id="refin-monto" placeholder="0" min="0" oninput="recalcRefin()"></div>
+        <div class="fg"><label>Cuotas nuevas</label><input type="number" id="refin-ncuotas" placeholder="6" min="1" max="60" oninput="recalcRefin()"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label>Frecuencia</label>
+          <select id="refin-freq" onchange="recalcRefin()">
+            <option value="mensual">Mensual</option>
+            <option value="quincenal">Quincenal</option>
+            <option value="semanal">Semanal</option>
+          </select>
+        </div>
+        <div class="fg"><label>1° cuota nueva</label><input type="date" id="refin-fecha1" onchange="recalcRefin()"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="refin-sin-interes" onchange="recalcRefin()"> Sin interés (lista)
+        </label>
+      </div>
+      <div id="refin-preview" style="display:none;background:var(--cream2);border-radius:9px;padding:12px;margin-bottom:12px;font-size:13px;"></div>
       <div class="btn-row">
         <button class="btn btn-ghost" onclick="cM('ovl-refinanciar')">Cancelar</button>
-        <button class="btn btn-gold" onclick="confirmarRefinanciar()">Confirmar Refinanciación</button>
+        <button class="btn btn-gold" onclick="confirmarRefinanciar()">✓ Confirmar</button>
       </div>
     </div>
   </div>
