@@ -9738,10 +9738,14 @@ async function actualizarPreciosProv(event, provId){
     if(/COD/.test(h)) codCol=i;
     if(/PREC|PRICE|VALOR|LISTA/.test(h)) precioCol=i;
   });
-  const startRow = (codCol>=0&&precioCol>=0) ? 1 : 0;
+  const headerDetectado = (codCol>=0 && precioCol>=0);
+  const startRow = headerDetectado ? 1 : 0;
   // If no header detected, assume col 0 = code, col 1 = price
   if(codCol<0) codCol=0;
   if(precioCol<0) precioCol=1;
+  // Sin encabezado CODIGO/PRECIO no hay forma de saber el orden de las columnas:
+  // avisar antes de aplicar para no importar precios contra la columna equivocada.
+  if(!headerDetectado && !confirm('No se detectó encabezado CODIGO / PRECIO en el archivo.\n\nSe asumirá: columna 1 = código, columna 2 = precio.\n\n¿Continuar igual?')){ event.target.value=''; return; }
 
   // Build code→price map
   const mapa = {};
@@ -9768,6 +9772,7 @@ async function actualizarPreciosProv(event, provId){
     await guardarProds();
     renderPrecios();
     renderCatalogo();
+    logActividad(`Actualizó ${actualizados} precio(s) del proveedor ${prov.nombre}`);
   }
   toast(`✅ ${actualizados} precios actualizados · ${sinCambio} sin cambio · ${noEncontrado} sin coincidencia`);
   event.target.value='';
