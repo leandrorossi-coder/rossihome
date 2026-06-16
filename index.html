@@ -3944,7 +3944,20 @@ async function eliminarVenta(id) {
   lineas.push('¿Confirmás la eliminación? Esta acción no se puede deshacer.');
   if(!confirm(lineas.join('\n')))return;
   ventas=ventas.filter(v=>v.id!==id);
-  if (nGastos>0) { movCaja=movCaja.filter(m=>!(m.auto&&m.ventaNro===vd?.nroVenta)); await guardarCajaData(); }
+  // Limpiar de la caja TODO lo asociado a esta venta: los gastos automáticos de MP
+  // y los movimientos de los cobros del crédito (ingreso + comisiones, agrupados como
+  // 'cobro_<id>'). Antes solo se borraban los gastos auto y los cobros quedaban como
+  // ingresos huérfanos en la caja, descuadrando el saldo.
+  const _cobros = (vd?.cpData?.cobros||[]);
+  const _gruposCobro = new Set(_cobros.map(c => 'cobro_' + c.id));
+  const _idsCobro = new Set(); _cobros.forEach(c => { _idsCobro.add(c.id); _idsCobro.add(c.id+1); });
+  const _antesCaja = movCaja.length;
+  movCaja = movCaja.filter(m =>
+    !(m.auto && m.ventaNro===vd?.nroVenta) &&
+    !(m.grupo && _gruposCobro.has(m.grupo)) &&
+    !(!m.grupo && _idsCobro.has(m.id))
+  );
+  if (movCaja.length !== _antesCaja) await guardarCajaData();
   await guardarVentas(); cM('ovl-det'); renderPills(); renderVentas(); renderCreditos();
   logActividad('Eliminó venta '+(vd?'#'+(vd.nroVenta||'')+' '+(vd.producto||''):''));
   toast('Venta eliminada');
