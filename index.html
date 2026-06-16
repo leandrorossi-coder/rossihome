@@ -626,6 +626,7 @@ select option{text-transform:uppercase;}
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
       <button class="btn" style="background:var(--navy);color:#fff;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="abrirAgendaCobranza()" title="Ver agenda de cobros del día y vencidos">📅 Agenda del día</button>
+      <button class="btn" style="background:#7a2533;color:#fff;border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="abrirRankingCobranza()" title="Cartera vencida: total a cobrar, % de mora y top deudores">📊 Cobranza</button>
       <input id="cred-buscar" type="text" placeholder="Buscar cliente o producto..." oninput="clearTimeout(window._credT);window._credT=setTimeout(renderCreditos,250)"
         style="flex:1;min-width:150px;border:1.5px solid var(--border);border-radius:9px;padding:7px 12px;font-size:13px;font-family:'Outfit',sans-serif;outline:none;background:var(--white);">
       <select id="cred-vendedor" onchange="renderCreditos()"
@@ -5165,6 +5166,106 @@ function abrirAgendaCobranza() {
 
   contEl.innerHTML = html;
   document.getElementById('ovl-agenda-cobr').classList.add('on');
+}
+
+// ===
+// RANKING DE COBRANZA / CARTERA VENCIDA
+// Agrupa la deuda por cliente: total a cobrar, saldo vencido, % de mora y top deudores.
+// ===
+function abrirRankingCobranza() {
+  const kpisEl = document.getElementById('ranking-cobr-kpis');
+  const contEl = document.getElementById('ranking-cobr-content');
+  if (!kpisEl || !contEl) return;
+  const h = hoy();
+
+  const creditosAct = ventas.filter(v => isCPorL30(v.pago) && v.cpData && !esAhorro(v) && !v.cancelada);
+
+  // Agrupar por cliente (apellido+nombre)
+  const mapa = new Map();
+  let totalCalle = 0, totalVencido = 0;
+  creditosAct.forEach(v => {
+    const cp = v.cpData;
+    const key = `${(v.apellido||'').toUpperCase()}|${(v.nombre||'').toUpperCase()}`;
+    let saldo = 0, vencido = 0, cuotasVenc = 0, moraMax = 0;
+    // anticipo pendiente
+    if (cp.anticipo > 0 && !cp.anticipoPagado) {
+      const pagAnt = (cp.cobros||[]).filter(c=>c.tipo==='anticipo').reduce((s,c)=>s+(c.monto||0),0);
+      const debeAnt = Math.max(0, cp.anticipo - pagAnt);
+      saldo += debeAnt;
+      const fAnt = cp.fechaPrimeraCuota||'';
+      if (fAnt && fAnt < h) { vencido += debeAnt; if (difD(fAnt,h) > moraMax) moraMax = difD(fAnt,h); }
+    }
+    const fechas = buildFechasCuotas(cp);
+    for (let i = 0; i < cp.nCuotas; i++) {
+      const est = estadoCuotaCP(cp, i);
+      if (est === 'pagada') continue;
+      const debe = cp.cuota - montoPagadoCuota(cp, i);
+      saldo += debe;
+      if (est === 'vencida') { vencido += debe; cuotasVenc++; const d = fechas[i]?difD(fechas[i],h):0; if (d > moraMax) moraMax = d; }
+    }
+    if (saldo <= 0) return;
+    totalCalle += saldo; totalVencido += vencido;
+    const prev = mapa.get(key) || { nombre: cliNom(v), tel: v.tel||'', saldo:0, vencido:0, cuotasVenc:0, moraMax:0 };
+    prev.saldo += saldo; prev.vencido += vencido; prev.cuotasVenc += cuotasVenc;
+    if (moraMax > prev.moraMax) prev.moraMax = moraMax;
+    if (!prev.tel && v.tel) prev.tel = v.tel;
+    mapa.set(key, prev);
+  });
+
+  const clientesArr = [...mapa.values()];
+  const conMora = clientesArr.filter(c => c.vencido > 0);
+  const pctMora = totalCalle > 0 ? Math.round(totalVencido / totalCalle * 100) : 0;
+
+  // KPIs
+  kpisEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div style="background:var(--navy);color:#fff;border-radius:9px;padding:11px;text-align:center;">
+        <div style="font-size:9px;opacity:.65;text-transform:uppercase;letter-spacing:.5px;">En la calle</div>
+        <div style="font-size:18px;font-weight:700;margin-top:2px;">$${fmt(totalCalle)}</div>
+      </div>
+      <div style="background:#fdeaea;border-radius:9px;padding:11px;text-align:center;">
+        <div style="font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:.5px;">Vencido</div>
+        <div style="font-size:18px;font-weight:700;color:var(--red);margin-top:2px;">$${fmt(totalVencido)}</div>
+      </div>
+      <div style="background:${pctMora>30?'#fdeaea':pctMora>0?'#fff4e6':'#eaf7ef'};border-radius:9px;padding:11px;text-align:center;">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">% de mora</div>
+        <div style="font-size:18px;font-weight:700;color:${pctMora>30?'var(--red)':pctMora>0?'var(--orange)':'var(--green)'};margin-top:2px;">${pctMora}%</div>
+      </div>
+      <div style="background:var(--cream2);border-radius:9px;padding:11px;text-align:center;">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Deudores en mora</div>
+        <div style="font-size:18px;font-weight:700;color:var(--navy);margin-top:2px;">${conMora.length}</div>
+      </div>
+    </div>`;
+
+  // Top deudores por saldo total (los que más plata deben)
+  const topDeudores = [...clientesArr].sort((a,b)=>b.saldo-a.saldo).slice(0,15);
+  if (!topDeudores.length) {
+    contEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:14px;">🎉 No hay saldos pendientes</div>';
+  } else {
+    const filas = topDeudores.map((c, idx) => {
+      const enMora = c.vencido > 0;
+      const moraStr = enMora
+        ? `<span style="color:var(--red);font-weight:600;">$${fmt(c.vencido)} vencido${c.moraMax>0?` · ${c.moraMax}d`:''}</span>`
+        : `<span style="color:var(--muted);">al día</span>`;
+      const msgWA = `Hola ${c.nombre}! Te recordamos que tenés un saldo pendiente de $${fmt(c.saldo)}${enMora?` ($${fmt(c.vencido)} ya vencido)`:''} con nosotros. Cualquier consulta avisanos. Gracias! Rossi Home`;
+      const waBtnStyle = c.tel ? '' : 'opacity:.4;pointer-events:none;';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-left:3px solid ${enMora?'#e74c3c':'#3498db'};background:#fff;border-radius:7px;margin-bottom:7px;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+        <div style="font-size:13px;font-weight:700;color:var(--muted);width:20px;text-align:center;flex-shrink:0;">${idx+1}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.nombre}</div>
+          <div style="font-size:11px;margin-top:2px;">${moraStr}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-weight:700;font-size:14px;color:var(--navy);">$${fmt(c.saldo)}</div>
+          <button style="margin-top:4px;background:#25D366;color:#fff;border:none;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;${waBtnStyle}"
+            onclick="(function(){const _m=${JSON.stringify(msgWA)};const _t=${JSON.stringify(c.tel||'')};abrirWASelector(_m,_t);})()">📲 WA</button>
+        </div>
+      </div>`;
+    }).join('');
+    contEl.innerHTML = `<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--navy);letter-spacing:.5px;margin-bottom:8px;">Top deudores (${topDeudores.length})</div>${filas}`;
+  }
+
+  document.getElementById('ovl-ranking-cobr').classList.add('on');
 }
 
 function onCobrarMedio(){} // placeholder
@@ -13388,6 +13489,20 @@ function renderPnL() {
   <div class="modal">
     <div class="mh"><h3>Confirmar venta</h3><span class="mx" onclick="cM('ovl-confirm-venta')">X</span></div>
     <div class="mb" id="confirm-venta-body"></div>
+  </div>
+</div>
+
+<!-- RANKING DE COBRANZA / MOROSIDAD -->
+<div class="overlay" id="ovl-ranking-cobr" onclick="cM('ovl-ranking-cobr',event)">
+  <div class="modal" style="max-width:560px;">
+    <div class="mh" style="background:#7a2533;"><h3 style="color:#fff;">📊 Cartera de cobranza</h3><span class="mx" style="color:#fff;" onclick="cM('ovl-ranking-cobr')">X</span></div>
+    <div class="mb" style="padding:0;">
+      <div id="ranking-cobr-kpis" style="padding:14px;border-bottom:1px solid var(--border);"></div>
+      <div id="ranking-cobr-content" style="max-height:62vh;overflow-y:auto;padding:12px 14px;"></div>
+      <div style="padding:12px 14px;border-top:1px solid var(--border);">
+        <button class="btn btn-ghost" style="width:100%;" onclick="cM('ovl-ranking-cobr')">Cerrar</button>
+      </div>
+    </div>
   </div>
 </div>
 
