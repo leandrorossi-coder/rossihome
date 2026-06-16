@@ -2950,6 +2950,55 @@ function iniciarApp() {
       selVend.style.display='block';
     }
   }
+  // Recordatorio de cobranza del día (solo una vez por día, tras cargar datos)
+  setTimeout(()=>{ try { recordatorioCobranzaDelDia(); } catch(e){} }, 1500);
+}
+
+// Aviso automático al abrir la app: cuántos cobros vencen hoy / están vencidos.
+// Se muestra una sola vez por día para no molestar en cada recarga.
+function recordatorioCobranzaDelDia(){
+  if(!usuarioActual) return;
+  const h = hoy();
+  const flagKey = 'rh_recordatorio_'+ (usuarioActual.nombre||'') +'_'+ h;
+  try { if(localStorage.getItem(flagKey)) return; } catch(e){}
+
+  const creditosAct = ventas.filter(v => isCPorL30(v.pago) && v.cpData && !esAhorro(v) && !v.cancelada);
+  let venceHoy=0, vencidas=0, montoHoy=0, montoVenc=0;
+  creditosAct.forEach(v=>{
+    const cp=v.cpData;
+    if(cp.anticipo>0 && !cp.anticipoPagado){
+      const fAnt=cp.fechaPrimeraCuota||'';
+      const pagAnt=(cp.cobros||[]).filter(c=>c.tipo==='anticipo').reduce((s,c)=>s+(c.monto||0),0);
+      const debe=Math.max(0,cp.anticipo-pagAnt);
+      if(debe>0){ if(fAnt===h){venceHoy++;montoHoy+=debe;} else if(fAnt&&fAnt<h){vencidas++;montoVenc+=debe;} }
+    }
+    const fechas=buildFechasCuotas(cp);
+    for(let i=0;i<cp.nCuotas;i++){
+      const est=estadoCuotaCP(cp,i);
+      if(est==='pagada') continue;
+      const debe=cp.cuota-montoPagadoCuota(cp,i);
+      const f=fechas[i]||'';
+      if(f===h){venceHoy++;montoHoy+=debe;}
+      else if(f<h){vencidas++;montoVenc+=debe;}
+    }
+  });
+
+  try { localStorage.setItem(flagKey,'1'); } catch(e){}
+  if(venceHoy===0 && vencidas===0) return;
+
+  const partes=[];
+  if(venceHoy>0) partes.push(`${venceHoy} cuota(s) vencen hoy ($${fmt(montoHoy)})`);
+  if(vencidas>0) partes.push(`${vencidas} vencida(s) ($${fmt(montoVenc)})`);
+  const banner=document.createElement('div');
+  banner.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;background:var(--navy);color:#fff;border-radius:12px;padding:13px 16px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:13px;display:flex;align-items:center;gap:12px;max-width:92vw;';
+  banner.innerHTML=`<span>📅 <strong>Cobranza de hoy:</strong> ${partes.join(' · ')}</span>
+    <button style="background:#fff;color:var(--navy);border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Ver agenda</button>
+    <button style="background:transparent;color:rgba(255,255,255,.6);border:none;font-size:18px;cursor:pointer;line-height:1;">×</button>`;
+  const btns=banner.querySelectorAll('button');
+  btns[0].onclick=()=>{ banner.remove(); if(esAdmin()||esLocal()){goTab('creditos');} abrirAgendaCobranza(); };
+  btns[1].onclick=()=>banner.remove();
+  document.body.appendChild(banner);
+  setTimeout(()=>{ if(banner.parentNode) banner.remove(); }, 12000);
 }
 
 // ===
@@ -3502,6 +3551,8 @@ async function guardar() {
     logActividad('Nueva venta #'+nroVenta+' — $'+fmt(precioVenta));
     const _cliToast = [base.apellido,base.nombre].filter(Boolean).join(' ').trim();
     toast('OK Venta #'+nroVenta+' — $'+fmt(precioVenta)+(_cliToast?' — '+_cliToast:''), 4000);
+    // Ticket WA: si hay teléfono del cliente, ofrecer enviar comprobante
+    if (base.tel) setTimeout(()=>ofrecerTicketVenta(nuevaVenta), 600);
     // Verificar tope sueldo si el cobro va a caja Rosa o Gabriela
     impactosCaja(nuevaVenta).forEach(({caja}) => verificarTopeSueldo(caja));
     // Gastos automáticos MP para ventas TC (interés + cargo de servicio)
@@ -4142,6 +4193,7 @@ function verDetalle(id) {
       ${esLocal()&&!v.cancelada?`<button class="btn btn-blue btn-sm" onclick="cM('ovl-det');editarVenta(${id})">Ed Editar</button>`:''}
       ${esLocal()&&!v.cancelada?`<button class="btn btn-ghost btn-sm" onclick="cM('ovl-det');duplicarVenta(${id})"> Duplicar</button>`:''}
       <button class="btn btn-wa btn-sm" onclick="compartirReciboPDF(${id})">WA Recibo</button>
+      ${v.tel?`<button class="btn btn-sm" style="background:#25D366;color:#fff;" onclick="enviarTicketVenta(${id})">🎫 Ticket WA</button>`:''}
     </div>`;
   document.getElementById('ovl-det').classList.add('on');
 }
@@ -6748,6 +6800,63 @@ function waSimulador(){
   simularPlanes(precio, anticipo).forEach(p=>{ msg+=`• *${p.nombre}*: $${fmt(p.total)}${p.detalle?`\n   ${p.detalle}`:''}\n`; });
   msg+=`\n_Valores sujetos a confirmación._`;
   abrirWASelector(msg);
+}
+
+// ===
+// TICKET DE VENTA POR WHATSAPP
+// ===
+function _msgTicket(v) {
+  const cp = v.cpData;
+  const nombre = cliNom(v) || 'Cliente';
+  const prod = prodNombre(v);
+  let msg = `*ROSSI HOME — Comprobante de compra*\n`;
+  msg += `_${fmtD(v.fecha)}_\n\n`;
+  msg += `Hola ${nombre}! Te enviamos el detalle de tu compra:\n\n`;
+  // Ítems
+  if (v.items && v.items.length > 1) {
+    msg += `*Productos:*\n`;
+    v.items.forEach(i => { msg += `  • ${i.cantidad||1}x ${i.prod} — $${fmt((i.precioUnit||0)*(i.cantidad||1))}\n`; });
+  } else {
+    msg += `*Producto:* ${prod}\n`;
+    if ((v.cantidad||1) > 1) msg += `*Cantidad:* ${v.cantidad}\n`;
+  }
+  msg += `\n*Total: $${fmt(v.precio)}*\n`;
+  // Forma de pago
+  if (cp) {
+    msg += `*Forma de pago:* Crédito ${cp.nCuotas} cuotas\n`;
+    if (cp.anticipo > 0) msg += `  Anticipo: $${fmt(cp.anticipo)}\n`;
+    msg += `  Cuotas: ${cp.nCuotas} × $${fmt(cp.cuota)} (${cp.frecuencia||'mensual'})\n`;
+    if (cp.fechaPrimeraCuota) msg += `  1° vencimiento: ${fmtD(cp.fechaPrimeraCuota)}\n`;
+  } else {
+    msg += `*Forma de pago:* ${PAGO_LBL[v.pago]||v.pago}\n`;
+  }
+  if (v.estadoEntrega && v.estadoEntrega !== 'pendiente') msg += `*Entrega:* ${v.estadoEntrega}\n`;
+  if (v.fechaEntrega) msg += `*Fecha entrega estimada:* ${fmtD(v.fechaEntrega)}\n`;
+  msg += `\n_Venta #${v.nroVenta||v.id} · ${INFO_EMPRESA.nombre}_\n`;
+  msg += `_${INFO_EMPRESA.wa} · ${INFO_EMPRESA.horario}_`;
+  return msg;
+}
+
+function ofrecerTicketVenta(v) {
+  if (!v || !v.tel) return;
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;background:#1a7a4a;color:#fff;border-radius:12px;padding:13px 16px;box-shadow:0 6px 24px rgba(0,0,0,.3);font-size:13px;display:flex;align-items:center;gap:12px;max-width:92vw;';
+  banner.innerHTML = `<span>🎫 ¿Enviar ticket a <strong>${cliNom(v)}</strong> por WhatsApp?</span>
+    <button style="background:#fff;color:#1a7a4a;border:none;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">📲 Enviar</button>
+    <button style="background:transparent;color:rgba(255,255,255,.6);border:none;font-size:18px;cursor:pointer;line-height:1;">×</button>`;
+  const btns = banner.querySelectorAll('button');
+  btns[0].onclick = () => { banner.remove(); abrirWASelector(_msgTicket(v), v.tel); };
+  btns[1].onclick = () => banner.remove();
+  document.body.appendChild(banner);
+  setTimeout(() => { if (banner.parentNode) banner.remove(); }, 10000);
+}
+
+// Permite reenviar el ticket desde el detalle de una venta ya guardada
+function enviarTicketVenta(vid) {
+  const v = ventas.find(x => x.id === vid);
+  if (!v) return;
+  if (!v.tel) { toast('El cliente no tiene teléfono cargado'); return; }
+  abrirWASelector(_msgTicket(v), v.tel);
 }
 
 function verPresupuesto(id) {
