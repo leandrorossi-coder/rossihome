@@ -307,9 +307,10 @@ select option{text-transform:uppercase;}
       <!-- 3. DATOS DEL CLIENTE -->
       <div id="blk-datos-cliente">
         <div class="r2">
-          <div class="fg"><label>Apellido</label><input type="text" id="f-apellido"></div>
-          <div class="fg"><label>Nombre</label><input type="text" id="f-nombre"></div>
+          <div class="fg"><label>Apellido</label><input type="text" id="f-apellido" oninput="updateScoreVenta()"></div>
+          <div class="fg"><label>Nombre</label><input type="text" id="f-nombre" oninput="updateScoreVenta()"></div>
         </div>
+        <div id="venta-score-cliente" style="display:none;margin-bottom:10px;"></div>
         <div class="r2">
           <div class="fg"><label>DNI</label><input type="text" id="f-dni" placeholder="Sin puntos" oninput="this.value=this.value.replace(/[^0-9]/g,'');autoFillByDNI(this.value)"></div>
           <div class="fg">
@@ -3010,6 +3011,7 @@ function onPago() {
     }
     recalcCP();
   }
+  updateScoreVenta();
   recalc();
 }
 
@@ -3593,6 +3595,7 @@ function limpiar() {
     if(id==='f-fecha') el.value=hoy(); else el.value='';
   });
   const ftelNum=document.getElementById('f-tel-num'); if(ftelNum)ftelNum.value='';
+  const scoreEl=document.getElementById('venta-score-cliente'); if(scoreEl){scoreEl.style.display='none';scoreEl.innerHTML='';}
   const ee=document.getElementById('f-estado-entrega'); if(ee)ee.value='pendiente';
   const chkFE=document.getElementById('chk-fecha-entrega'); if(chkFE)chkFE.checked=false;
   const inpFE=document.getElementById('f-fecha-entrega'); if(inpFE){inpFE.value='';inpFE.style.display='none';}
@@ -3646,6 +3649,7 @@ function editarVenta(id) {
     if(v.fechaEntrega){const chkFE=document.getElementById('chk-fecha-entrega');const inpFE=document.getElementById('f-fecha-entrega');if(chkFE&&inpFE){chkFE.checked=true;inpFE.style.display='';inpFE.value=v.fechaEntrega;}}
     document.getElementById('f-apellido').value=v.apellido||'';
     document.getElementById('f-nombre').value=v.nombre||'';
+    updateScoreVenta();
     document.getElementById('f-dni').value=v.dni||'';
     document.getElementById('f-tel').value=v.tel||'';
     parseTelEnSplit(v.tel||'', 'f-tel-car', 'f-tel-num', syncTelFull);
@@ -4201,6 +4205,49 @@ function scoreCliente(cVentas){
   if(vencidoAhora)  return {nivel:'moroso',  label:'Moroso',        emoji:'🔴', color:'#b02020', detalle:'Tiene cuotas vencidas sin pagar'};
   if(atrasos>0)     return {nivel:'atrasa',  label:'Se atrasa',     emoji:'🟡', color:'#c05010', detalle:`Pagó tarde ${atrasos} de ${cuotasEval} cuota(s)`};
   return {nivel:'puntual', label:'Puntual', emoji:'🟢', color:'#1a7a4a', detalle:'Pagó siempre en fecha'};
+}
+
+// Muestra el semáforo de comportamiento del cliente en el form de Nueva Venta,
+// calculado con su propio historial de créditos. Se resalta cuando la venta es a crédito.
+function updateScoreVenta(){
+  const cont = document.getElementById('venta-score-cliente');
+  if(!cont) return;
+  const ape = (document.getElementById('f-apellido')?.value||'').trim().toUpperCase();
+  const nom = (document.getElementById('f-nombre')?.value||'').trim().toUpperCase();
+  const pago = document.getElementById('f-pago')?.value||'';
+  const esCredito = isCPorL30(pago) && pago!=='AHORRO';
+  if(!ape && !nom){ cont.style.display='none'; cont.innerHTML=''; return; }
+
+  // Ventas previas del mismo cliente (excluye la venta que se está editando)
+  const cVentas = ventas.filter(v =>
+    v.id !== editVentaId &&
+    (v.apellido||'').toUpperCase()===ape &&
+    (v.nombre||'').toUpperCase()===nom
+  );
+  const tieneCredito = cVentas.some(v=>v.cpData && !v.cancelada);
+
+  // Sin historial: solo mostramos aviso si la venta es a crédito (caso relevante)
+  if(!tieneCredito){
+    if(!esCredito){ cont.style.display='none'; cont.innerHTML=''; return; }
+    cont.style.display='block';
+    cont.innerHTML=`<div style="display:flex;align-items:center;gap:8px;background:#f4f5f7;border-radius:8px;padding:8px 11px;font-size:12px;color:#6e7a8a;">
+      <span style="font-size:15px;">⚪</span><span><strong>Cliente nuevo</strong> — sin historial de crédito</span></div>`;
+    return;
+  }
+
+  const s = scoreCliente(cVentas);
+  const totalCredArr = cVentas.filter(v=>v.cpData && !v.cancelada);
+  const sub = `${totalCredArr.length} crédito(s) previos · ${s.detalle}`;
+  const bg = {moroso:'#fdeaea', atrasa:'#fff4e6', puntual:'#eaf7ef', nuevo:'#f4f5f7'}[s.nivel]||'#f4f5f7';
+  const alerta = (s.nivel==='moroso' && esCredito)
+    ? `<div style="font-size:11px;color:var(--red);font-weight:600;margin-top:3px;">⚠ Tiene cuotas vencidas — revisá antes de dar más crédito</div>` : '';
+  cont.style.display='block';
+  cont.innerHTML=`<div style="background:${bg};border-left:3px solid ${s.color};border-radius:8px;padding:8px 11px;">
+    <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
+      <span style="font-size:16px;">${s.emoji}</span>
+      <span style="font-weight:700;color:${s.color};">${s.label}</span>
+      <span style="font-size:11px;color:var(--muted);margin-left:auto;">${sub}</span>
+    </div>${alerta}</div>`;
 }
 
 let cobroActual = null; // {ventaId, tipo:'anticipo'|'cuota', idx?, monto}
@@ -9142,6 +9189,7 @@ function autoFillByDNI(dni) {
     document.getElementById('f-dir').value = c.dir||'';
     if (c.tel) parseTelEnSplit(c.tel, 'f-tel-car', 'f-tel-num', syncTelFull);
     toast(`Cliente encontrado: ${c.apellido} ${c.nombre}`);
+    updateScoreVenta();
   }
 }
 
@@ -9177,6 +9225,7 @@ function seleccionarCliente(id) {
   document.getElementById('f-obs').value = c.obs||'';
   document.getElementById('f-cliente-buscar').value = c.apellido + ' ' + c.nombre;
   document.getElementById('f-cliente-sugerencias').style.display='none';
+  updateScoreVenta();
 }
 
 // Toggle consumidor final
