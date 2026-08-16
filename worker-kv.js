@@ -165,7 +165,14 @@ async function intentarWooStoreAPI(origin, headers) {
       for (const p of data) {
         const nombre = limpiar(p.name || '');
         if (!nombre) continue;
-        const precio = parsePrecioAR((p.prices?.price || p.price_html || '0').replace(/[^\d.,]/g, ''));
+        // Store API: prices.price viene en unidades mínimas (centavos); currency_minor_unit = decimales
+        let precio = 0;
+        if (p.prices?.price) {
+          const minor = parseInt(p.prices.currency_minor_unit, 10);
+          precio = (parseInt(p.prices.price, 10) || 0) / Math.pow(10, isNaN(minor) ? 2 : minor);
+        } else {
+          precio = parsePrecioAR((p.price_html || '0').replace(/[^\d.,]/g, ''));
+        }
         productos.push({ nombre, precio, descripcion: limpiar(p.short_description || '').slice(0, 200), foto: p.images?.[0]?.src || null, url: p.permalink || origin, sku: p.sku || '', categoria: p.categories?.[0]?.name || '' });
       }
       if (data.length < 100) break;
