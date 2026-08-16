@@ -138,9 +138,17 @@ async function intentarWooStoreAPI(origin, headers) {
       for (const p of data) {
         const nombre = limpiar(p.name || '');
         if (!nombre) continue;
-        // precio viene como string "1234.56" o con HTML
-        const precioStr = limpiar(p.prices?.price || p.price_html || '0');
-        const precio = parsePrecioAR(precioStr.replace(/[^\d.,]/g, ''));
+        // Store API: prices.price viene en unidades mínimas (centavos).
+        // currency_minor_unit indica cuántos decimales tiene (ej: "1234500" con minor_unit 2 = $12.345,00)
+        let precio = 0;
+        if (p.prices?.price) {
+          const minor = parseInt(p.prices.currency_minor_unit, 10);
+          const divisor = Math.pow(10, isNaN(minor) ? 2 : minor);
+          precio = (parseInt(p.prices.price, 10) || 0) / divisor;
+        } else {
+          const precioStr = limpiar(p.price_html || '0');
+          precio = parsePrecioAR(precioStr.replace(/[^\d.,]/g, ''));
+        }
         const foto = p.images?.[0]?.src || null;
         productos.push({
           nombre,
